@@ -13,12 +13,12 @@ def _codeunit():
     BEGIN
     END.
   }
-  PROCEDURE Caller();
+    PROCEDURE Caller();
   BEGIN
     MESSAGE('OtherProc');
   END;
 
-  PROCEDURE OtherProc();
+    PROCEDURE OtherProc();
   BEGIN
   END;
 }

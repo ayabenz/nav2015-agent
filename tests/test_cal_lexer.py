@@ -31,4 +31,4 @@ def test_mask_cal_strings_preserves_code_and_line_count():
     assert "OtherProc();" in masked
     assert "MESSAGE(" in masked
     assert "'OtherProc'" not in masked
-    assert masked.count("\\n") == source.count("\\n")
+    assert masked.count("\n") == source.count("\n")

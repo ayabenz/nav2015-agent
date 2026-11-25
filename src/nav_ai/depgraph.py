@@ -44,10 +44,22 @@ READS = {"GET", "FIND", "FINDFIRST", "FINDLAST", "FINDSET", "NEXT", "SETRANGE", 
 def obj_of(node):
     return node.split(".", 1)[0]
 
-def uncomment(s, braces=False):  # shortcut: naive; a "//" inside a string literal is lost
+def uncomment(s, braces=False):
+    # Mask single-quoted C/AL string literals so that // and {} inside them are not
+    # mistakenly treated as comments / brace blocks.
+    _strings: list[str] = []
+
+    def _mask(m: re.Match[str]) -> str:
+        _strings.append(m.group(0))
+        return f"\x00STR{len(_strings) - 1}\x00"
+
+    s = re.sub(r"'(?:[^']|'')*'", _mask, s)
     s = re.sub(r'//[^\n]*', ' ', s)
-    # {..} is a comment only inside code; in object sections it delimits properties and entries
-    return re.sub(r'\{[^{}]*\}', ' ', s) if braces else s
+    if braces:
+        s = re.sub(r'\{[^{}]*\}', ' ', s)
+    for i, st in enumerate(_strings):
+        s = s.replace(f"\x00STR{i}\x00", st)
+    return s
 
 def split_procs(block):
     code = n.code_section(block)
@@ -57,13 +69,19 @@ def split_procs(block):
             for i, m in enumerate(ms)}
 
 class Index:
-    """Name -> id and procedure-name lookup over every known object (company wins over original)."""
+    """Name -> id(s) and procedure-name lookup over every known object (company wins over original).
+
+    ``names`` maps (type.lower(), name.lower()) -> list of object ids because distinct objects
+    may share the same name (e.g. two tables named "Customer" with IDs 18 and 50000).
+    """
     def __init__(self, objects):
-        self.names, self.pn, self.nodes, self.obj_name = {}, {}, set(), {}
+        self.names: dict[tuple[str, str], list[int]] = {}
+        self.pn, self.nodes, self.obj_name = {}, set(), {}
         for key, block in objects.items():
             h = n.HEADER.match(block)
             name = h.group(3).strip() if h else ""
-            self.names[(key[0].lower(), name.lower())] = key[1]
+            lk = (key[0].lower(), name.lower())
+            self.names.setdefault(lk, []).append(key[1])
             self.obj_name[f"{key[0]} {key[1]}"] = name
             self.nodes.add(f"{key[0]} {key[1]}")
             self.pn[key] = {p.lower(): (p, v["line"], v["local"]) for p, v in split_procs(block).items()}
@@ -77,13 +95,21 @@ def scan(key, block, idx):
     def use(src, table, op):
         if table in idx.nodes: tops[(src, table, op)] += 1
     def resolve(kind, name):
-        oid = idx.names.get((KIND[kind.lower()].lower(), name.strip('"').lower()))
-        return f"{KIND[kind.lower()]} {oid}" if oid else None
+        key = (KIND[kind.lower()].lower(), name.strip('"').lower())
+        oids = idx.names.get(key, [])
+        if not oids:
+            return None
+        # Ambiguous name: multiple objects share type+name; pick the first (lowest insertion order).
+        oid = oids[0]
+        return f"{KIND[kind.lower()]} {oid}"
 
     procs = split_procs(block)
     code_raw = n.section(block, "CODE")
     full = uncomment(block)
     head = uncomment(block.replace(code_raw, "", 1)) if code_raw else full
+    # Trigger code: CODE section before first procedure (trigger bodies like OnInsert, OnValidate).
+    _proc_matches = list(n.PROC.finditer(code_raw))
+    trigger_code = code_raw[:_proc_matches[0].start()] if _proc_matches else code_raw
     varmap = defaultdict(set)
     for m in VAR_RE.finditer(full):
         tt, tid = KIND[m.group(2).lower()], int(m.group(3))
@@ -106,10 +132,23 @@ def scan(key, block, idx):
             if dst: use(me, dst, "RELATION")
 
     own_lc = {p.lower(): p for p in procs}
-    # shortcut: matches the name anywhere in code (also inside strings); C/AL allows calls without "()"
-    self_re = re.compile(r'(?<![\w."])(' + "|".join(map(re.escape, sorted(own_lc.values(), key=len, reverse=True))) +
-                         r')(?![\w"@])', re.I) if own_lc else None
-    scopes = [(me, head)] + [(f"{me}.{p}", uncomment(v["raw"], True)) for p, v in procs.items()]
+    # Build self-call regex from own procedure names, normalized (quotes stripped, lowercased).
+    # Only match when not preceded by "." (avoid matching inside string-literal-like sequences)
+    # and not followed by word chars / quote / @.
+    _own_names = sorted({p.strip('"') for p in own_lc.values()}, key=len, reverse=True)
+    self_re = (
+        re.compile(
+            r'(?<![\w."])(' + "|".join(map(re.escape, _own_names)) + r')(?![\w"@])',
+            re.I,
+        )
+        if _own_names
+        else None
+    )
+    # Object header + trigger code (before first proc) + each procedure body as separate scopes.
+    scopes = [
+        (me, head),
+        (me + " TRIGGERS", uncomment(trigger_code, True)),
+    ] + [(f"{me}.{p}", uncomment(v["raw"], True)) for p, v in procs.items()]
     for src, body in scopes:
         for m in REF_RE.finditer(body):
             dst = resolve(m.group(1), m.group(2))
@@ -192,11 +231,57 @@ def analyze(orig, comp, changed_objs, added, changed):
             "origin": origin, "names": idx.obj_name}
 
 def parse_diff(path):
-    x = pd.read_excel(path, sheet_name=None)
-    o, p = x["Object Semantic Summary"], x["Procedure Changes"]
-    changed_objs = {(r["Object Type"], int(r["Object ID"])) for _, r in o.iterrows() if r["Semantic Change Detected"] == "Yes"}
-    added = {(r["Object Type"], int(r["Object ID"]), r["Procedure"]) for _, r in p.iterrows() if r["Change Type"] == "ADDED"}
-    changed = {(r["Object Type"], int(r["Object ID"]), r["Procedure"]) for _, r in p.iterrows() if r["Change Type"] == "CHANGED"}
+    """Read a Semantic Source Diff report (.xlsx workbook or v3 CSV files).
+
+    Returns (changed_objs, added, changed) sets usable by analyze().
+    For .xlsx: reads "Object Semantic Summary" and "Procedure Changes" sheets.
+    For .csv: auto-detects sheet type by columns; callers should pass both
+    <base>_Object_Semantic_Summary.csv and <base>_Procedure_Changes.csv separately
+    and merge results, or pass a directory containing them.
+    """
+    path = Path(path)
+    if path.suffix.lower() == ".xlsx":
+        x = pd.read_excel(path, sheet_name=None)
+        o = x.get("Object Semantic Summary", pd.DataFrame())
+        p = x.get("Procedure Changes", pd.DataFrame())
+    elif path.suffix.lower() == ".csv":
+        import csv as _csv
+        _rows = []
+        with open(path, newline="", encoding="utf-8") as _f:
+            _rdr = _csv.reader(_f)
+            _header = next(_rdr, None)
+            for _row in _rdr:
+                _rows.append(_row)
+        if _header:
+            _ncol = len(_header)
+            _rows = [list(r[:_ncol]) + [""] * max(0, _ncol - len(r)) for r in _rows]
+            df = pd.DataFrame(_rows, columns=_header)
+        else:
+            df = pd.DataFrame()
+        cols = {c.lower() for c in df.columns}
+        if "procedure" in cols and "change type" in cols:
+            o, p = pd.DataFrame(), df
+        elif "semantic change detected" in cols:
+            o, p = df, pd.DataFrame()
+        else:
+            o, p = pd.DataFrame(), pd.DataFrame()
+    else:
+        raise ValueError(f"Unsupported diff format: {path}")
+    changed_objs = {
+        (str(r["Object Type"]).strip(), int(str(r["Object ID"]).strip()))
+        for _, r in o.iterrows()
+        if str(r.get("Semantic Change Detected", "")).strip() == "Yes"
+    }
+    added = {
+        (str(r["Object Type"]).strip(), int(str(r["Object ID"]).strip()), str(r["Procedure"]).strip())
+        for _, r in p.iterrows()
+        if str(r.get("Change Type", "")).strip() == "ADDED"
+    }
+    changed = {
+        (str(r["Object Type"]).strip(), int(str(r["Object ID"]).strip()), str(r["Procedure"]).strip())
+        for _, r in p.iterrows()
+        if str(r.get("Change Type", "")).strip() == "CHANGED"
+    }
     return changed_objs, added, changed
 
 def write_db(path, res):
@@ -309,7 +394,15 @@ def main():
     db_path = f"data/depgraph/{args.company}/depgraph.db"
     excel_path = f"reports/{args.company}/{args.excel}"
     diff_path = f"reports/{args.company}/{args.diff}"
-    changed_objs, added, changed = parse_diff(diff_path)
+    # Support both .xlsx workbook and v3 CSV files. For CSV, read object summary and
+    # procedure changes from sibling files when available.
+    if diff_path.lower().endswith(".csv"):
+        base = diff_path[:-4]
+        co, ca, cc = parse_diff(Path(f"{base}_Object_Semantic_Summary.csv"))
+        _, pa, pc = parse_diff(Path(f"{base}_Procedure_Changes.csv"))
+        changed_objs, added, changed = co, ca | pa, cc | pc
+    else:
+        changed_objs, added, changed = parse_diff(diff_path)
     res = analyze(n.load_original(original_dir), n.load_company(company_dir), changed_objs, added, changed)
     Path(excel_path).parent.mkdir(parents=True, exist_ok=True)
     write_db(db_path, res); write_excel(excel_path, res)

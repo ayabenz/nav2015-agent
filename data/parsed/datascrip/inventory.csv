@@ -1,6 +1,0 @@
-﻿object_type,object_id,object_name,modified,date,version_list,field_count,key_count,control_count,action_count,procedure_count,variable_count,trigger_count,dependency_count,source_file,sha256
-Codeunit,80,Sales-Post,True,10/07/25,"[NAVW18.00.00.41370;DTS:D34,T30,T26,T25,T28,T31]",0,0,0,0,150,499,1,122,COD80.TXT,5b84b4169f16b0fb84f55e46cb6f0c317b199efd3f4e4ae6b42b03addd4bf198
-Page,42,Sales Order,True,10/07/25,"[NAVW18.00.00.40459;DTS:D34,D32,D07,T30,T26,T28]",0,0,116,72,26,90,72,57,PAG42.TXT,ea66dd623db6516abe18aeab7db1c61351026a7fb03537992c789e39a4ea351a
-Table,27,Item,True,07/23/26,"[NAVW18.00.00.40262;DTS:D18,D41,D37,D34,D51,T30,T24,T37,T00]",230,17,0,0,41,106,4,77,TAB27.TXT,c5af7c220af07f5355564374e739ba8c9f3520ba316b79bd2e37abb76b8dff7a
-Table,36,Sales Header,True,07/29/26,"[NAVW18.00.00.40459;DTS:D34,D32,D35,D07,T13,D05,T01,T30,T26,T32,T25,T29,T28,T00,D38]",215,10,0,0,84,208,3,81,TAB36.TXT,2778451ed22aedf1b087049bb71e699109079642eac0e1682db4e677bc519fbc
-Table,50076,Brand,True,12/16/25,,3,1,0,0,0,0,0,0,TAB50076.TXT,a6e3421b9c2b218250e943b17b7552a90eebf91f053fc486e3b7cd84d695b19e

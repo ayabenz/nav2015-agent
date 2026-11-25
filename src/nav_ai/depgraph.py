@@ -87,6 +87,20 @@ class Index:
             self.pn[key] = {p.lower(): (p, v["line"], v["local"]) for p, v in split_procs(block).items()}
             for p in self.pn[key].values(): self.nodes.add(f"{key[0]} {key[1]}.{p[0]}")
 
+    def resolve(self, kind, name):
+        """Resolve a type/name only when exactly one object matches.
+
+        Duplicate names are intentionally unresolved: choosing by insertion order
+        can create a false dependency between unrelated NAV objects.
+        """
+        object_type = KIND[kind.lower()]
+        key = (object_type.lower(), name.strip('"').lower())
+        ids = self.names.get(key, [])
+        if len(ids) != 1:
+            return None
+        return f"{object_type} {ids[0]}"
+
+
 def scan(key, block, idx):
     t, i = key; me = f"{t} {i}"
     edges, tops = Counter(), Counter()
@@ -95,13 +109,7 @@ def scan(key, block, idx):
     def use(src, table, op):
         if table in idx.nodes: tops[(src, table, op)] += 1
     def resolve(kind, name):
-        key = (KIND[kind.lower()].lower(), name.strip('"').lower())
-        oids = idx.names.get(key, [])
-        if not oids:
-            return None
-        # Ambiguous name: multiple objects share type+name; pick the first (lowest insertion order).
-        oid = oids[0]
-        return f"{KIND[kind.lower()]} {oid}"
+        return idx.resolve(kind, name)
 
     procs = split_procs(block)
     code_raw = n.section(block, "CODE")
@@ -150,13 +158,16 @@ def scan(key, block, idx):
         (me + " TRIGGERS", uncomment(trigger_code, True)),
     ] + [(f"{me}.{p}", uncomment(v["raw"], True)) for p, v in procs.items()]
     for src, body in scopes:
-        for m in REF_RE.finditer(body):
+        # Strings are retained by uncomment() for other parsing, but must not
+        # contribute executable references or procedure-call matches.
+        code_body = n.mask_cal_strings(body)
+        for m in REF_RE.finditer(code_body):
             dst = resolve(m.group(1), m.group(2))
             if m.group(1).upper() == "DATABASE":  # data reference, not an execution path
                 add(src, dst, "TABLE_REF")
                 if dst: use(src, dst, "REF")
             else: add(src, dst, "REF")
-        for var, meth in CALL_RE.findall(body):
+        for var, meth in CALL_RE.findall(code_body):
             for tt, tid in varmap.get(var.strip('"').lower(), ()):
                 mu = meth.upper()
                 if tt == "Table" and mu in WRITES: use(src, f"Table {tid}", "WRITE")
@@ -164,7 +175,7 @@ def scan(key, block, idx):
                 tp = idx.pn.get((tt, tid), {}).get(meth.lower())
                 if tp: add(src, f"{tt} {tid}.{tp[0]}", "CALL")
                 elif mu == "RUN" and tt != "Table": add(src, f"{tt} {tid}", "CALL")
-        for meth in (self_re.findall(body) if self_re else ()):
+        for meth in (self_re.findall(code_body) if self_re else ()):
             add(src, f"{me}.{own_lc[meth.lower()]}", "CALL")
     return edges, tops
 

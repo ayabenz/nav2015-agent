@@ -7,20 +7,18 @@ def _codeunit():
 {
   PROPERTIES
   {
-  END.
+  }
   CODE
   {
-    BEGIN
-    END.
-  }
     PROCEDURE Caller();
-  BEGIN
-    MESSAGE('OtherProc');
-  END;
+    BEGIN
+      MESSAGE('OtherProc');
+    END;
 
     PROCEDURE OtherProc();
-  BEGIN
-  END;
+    BEGIN
+    END;
+  }
 }
 """
 

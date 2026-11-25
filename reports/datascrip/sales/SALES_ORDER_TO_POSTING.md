@@ -302,7 +302,7 @@ The general Post action on Page 42 may have a different route and should be kept
 
 ## 11. Ownership Table 50035 — evidence gap and next required source
 
-The current GitHub tree for branch `datascrip` contains Codeunit 22 references to Table 50035, but **does not contain an exported `Table_50035.txt`**. Therefore the following cannot yet be source-verified:
+The current GitHub tree for branch `datascrip` contains Codeunit 22 references to Table 50035, but **does not contain a standalone `Table_50035.txt` file**. The complete company archive does contain this object, as confirmed by the inventory (see Section 13); it needs to be extracted before its source can be inspected. Therefore the following cannot yet be source-verified:
 
 - exact field IDs, types, captions and validation triggers;
 - primary key and secondary keys;
@@ -320,8 +320,25 @@ The code's object change history comments in Codeunit 22 record:
 
 These comments are evidence of the developers' stated intent, not proof of all current table constraints or runtime behavior.
 
-**Next source required:** export Table 50035 from the company and matching original baseline, plus any object references found by searching the full company object set for `Record 50035` / `RecordRef` / table ID 50035. Until those sources are available in the repository, the table schema and complete lifecycle remain open questions.
+**Next source required:** extract Table 50035 from the company archive and search the full company object set for `Record 50035` / `RecordRef` / table ID 50035. Extract the corresponding original-baseline objects where they exist. Until the individual source texts are available for inspection, the table schema and complete lifecycle remain open questions.
 
 ## 12. Version and provenance warning
 
 The three wrappers have `Version List=DTS:D34` and dates in 2015/2020/2026, while Codeunit 22 and Codeunit 80 source headers identify NAVW18.00.00. This reinforces the need to identify the exact NAV application build and compare against a matching original baseline before marking individual procedures as company-modified standard versus later-version standard.
+
+
+### 14.1 Extraction command
+
+The repository now includes `scripts/export_nav_objects.py`, which extracts selected objects from the existing TXT/ZIP source archive without requiring another NAV export. After pulling the latest `datascrip` branch, run this from the repository root:
+
+```powershell
+python scripts/export_nav_objects.py --input data/input/datascrip/datascrip.zip --output reports/datascrip/ownership --objects Table:50035 Table:14 Codeunit:50107 Codeunit:50035
+```
+
+To extract the standard comparison objects from the original archive (only where they exist):
+
+```powershell
+python scripts/export_nav_objects.py --input data/input/original/original.zip --output reports/original/ownership --objects Table:14 Codeunit:22
+```
+
+The original export may be from a different NAV build; use it as a comparison candidate, not as a trusted same-version baseline until the version headers are reconciled.

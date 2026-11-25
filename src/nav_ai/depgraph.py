@@ -42,7 +42,8 @@ READS = {"GET", "FIND", "FINDFIRST", "FINDLAST", "FINDSET", "NEXT", "SETRANGE", 
          "CALCFIELDS", "CALCSUMS", "COUNT", "ISEMPTY", "SETCURRENTKEY", "SETRECFILTER"}
 
 def obj_of(node):
-    return node.split(".", 1)[0]
+    # "Table 18 TRIGGERS" is the trigger scope of "Table 18"
+    return node.split(".", 1)[0].removesuffix(" TRIGGERS")
 
 def uncomment(s, braces=False):
     # Mask single-quoted C/AL string literals so that // and {} inside them are not

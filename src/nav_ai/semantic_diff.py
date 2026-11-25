@@ -71,12 +71,74 @@ def section(block, name):
         i += 1
     return block[start+1:]
 
+def strip_cal_comments(source, strip_braces=True):
+    """Remove C/AL // and {...} comments without touching quoted literals."""
+    out = []
+    i = 0
+    single = double = False
+    brace_depth = 0
+    while i < len(source):
+        c = source[i]
+        nxt = source[i + 1] if i + 1 < len(source) else ""
+        if single:
+            out.append(c)
+            if c == "'" and nxt == "'":
+                out.append(nxt); i += 2; continue
+            if c == "'":
+                single = False
+            i += 1; continue
+        if double:
+            out.append(c)
+            if c == '"' and nxt == '"':
+                out.append(nxt); i += 2; continue
+            if c == '"':
+                double = False
+            i += 1; continue
+        if c == "'":
+            single = True; out.append(c); i += 1; continue
+        if c == '"':
+            double = True; out.append(c); i += 1; continue
+        if c == "/" and nxt == "/":
+            out.extend("  "); i += 2
+            while i < len(source) and source[i] not in "\r\n":
+                out.append(" "); i += 1
+            continue
+        if strip_braces and c == "{":
+            brace_depth = 1
+            out.append(" "); i += 1
+            while i < len(source) and brace_depth:
+                ch = source[i]
+                if ch == "{": brace_depth += 1
+                elif ch == "}": brace_depth -= 1
+                out.append("\n" if ch == "\n" else " ")
+                i += 1
+            continue
+        out.append(c); i += 1
+    return "".join(out)
+
+
+def mask_cal_strings(source):
+    """Replace single-quoted C/AL strings with spaces, preserving line positions."""
+    out = []
+    i = 0
+    in_string = False
+    while i < len(source):
+        c = source[i]
+        if not in_string and c == "'":
+            in_string = True; out.append(" "); i += 1; continue
+        if in_string:
+            if c == "'" and i + 1 < len(source) and source[i + 1] == "'":
+                out.extend("  "); i += 2; continue
+            if c == "'":
+                in_string = False
+            out.append("\n" if c == "\n" else " ")
+            i += 1; continue
+        out.append(c); i += 1
+    return "".join(out)
+
+
 def lexical_tokens(source, strip_braces=True):
-    # Heuristic comment removal; quoted strings are retained by the tokenizer.
-    source = re.sub(r'//[^\n]*', ' ', source)
-    # shortcut: {..} is a C/AL comment only in code; structural sections use it for entries.
-    if strip_braces:
-        source = re.sub(r'\{[^{}]*\}', ' ', source)
+    source = strip_cal_comments(source, strip_braces=strip_braces)
     return " ".join(TOKEN.findall(source))
 
 CODE_TAIL = re.compile(r'\n\s{4}BEGIN\s*(?:\{[^{}]*\}\s*)?END\.[\s}]*$')

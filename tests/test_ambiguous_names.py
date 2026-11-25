@@ -57,20 +57,14 @@ def test_index_names_stores_multiple_ids_for_same_name():
     assert 50000 in idx.names[key]
 
 
-def test_resolve_returns_first_id_for_ambiguous_name():
+def test_resolve_returns_none_for_ambiguous_name():
     block1 = _make_table(18)
     block2 = _make_table(50000)
     objs = {("Table", 18): block1, ("Table", 50000): block2}
     idx = Index(objs)
 
-    def resolve(kind, name):
-        key = (KIND[kind.lower()].lower(), name.strip('"').lower())
-        oids = idx.names.get(key, [])
-        if not oids:
-            return None
-        return f"{KIND[kind.lower()]} {oids[0]}"
-
-    assert resolve("record", "Customer") == "Table 18"
+    assert idx.resolve("record", "Customer") is None
+    assert idx.resolve("record", "Missing") is None
 
 
 def test_scan_with_ambiguous_table_reference():
@@ -86,11 +80,16 @@ def test_scan_with_ambiguous_table_reference():
     idx = Index(objs)
     edges, tops = scan(("Codeunit", 50010), block_cu, idx)
 
-    # Should resolve to one of the Customer table IDs
+    # Duplicate names are not guessed: ambiguous references remain unresolved.
     ref_edges = [(s, d, k) for (s, d, k), _ in edges.items() if k in ("REF", "TABLE_REF")]
-    assert len(ref_edges) > 0, f"Expected REF edges, got {ref_edges}"
-    dst = ref_edges[0][1]
-    assert dst in ("Table 18", "Table 50000"), f"Unexpected dst: {dst}"
+    assert ref_edges == []
+    assert idx.resolve("database", "Customer") is None
+
+
+def test_resolve_returns_unique_object():
+    block = _make_table(18)
+    idx = Index({("Table", 18): block})
+    assert idx.resolve("record", "Customer") == "Table 18"
 
 
 def test_index_names_single_id_unchanged():

@@ -212,3 +212,33 @@ This is not an exhaustive customization inventory for Codeunit 80 or Codeunit 12
 - [Codeunit 22 — Item Jnl.-Post Line](https://github.com/ayabenz/nav2015-agent/blob/datascrip/reports/datascrip/sales_next/Codeunit_22.txt)
 - [Table 32 — Item Ledger Entry](https://github.com/ayabenz/nav2015-agent/blob/datascrip/reports/datascrip/sales/Table_32.txt)
 - [Posting dependency edges](https://github.com/ayabenz/nav2015-agent/blob/datascrip/reports/datascrip/sales_next/posting_edges.csv)
+
+
+## 9. Deeper validation findings
+
+### 9.1 Codeunit 80 ValidateQuantity is an Item Ledger availability sum
+
+Procedure `ValidateQuantity` is at Codeunit 80 lines 6998–7023.
+
+It:
+- filters Table 32 by Item No. (supports an `&` filter expression) and Location Code;
+- iterates matching Item Ledger Entries and sums `Remaining Quantity` (lines 7006–7018);
+- compares the total with requested quantity (line 7019).
+
+The former filters on Open=TRUE and Quantity>0 are commented out (lines 7013–7014). The active implementation therefore sums Remaining Quantity for all matching Item Ledger Entry rows and does not filter by Owner.
+
+**Important distinction:** this is a location/item availability check, not an owner-specific availability check. The later Codeunit 22 Ownership check is a separate control over Table 50035. The two checks should not be treated as equivalent.
+
+### 9.2 Owner-specific and total inventory controls are separate
+
+For a Sales shipment, current source indicates two validation layers:
+
+1. Codeunit 80 `ValidateQuantity`: sum Item Ledger Entry Remaining Quantity for Item + Location.
+2. Codeunit 22 `InsertOwnership` → `CheckRemainingQty`: sum Ownership Quantity for Item + Location + Owner, when location Ownership is enabled and the source/entry type is in the guarded cases.
+
+This means a document may pass the total inventory check but fail the owner-specific check. That appears intentional if inventory is partitioned by owner, but the business rule must be confirmed with the inventory process owner.
+
+### 9.3 Confirmed persistent G/L Entry write
+
+Codeunit 12 `FinishPosting` (lines 1234–1267) iterates `TempGLEntryBuf`, copies each row to `GlobalGLEntry`, sets prior-year status, and calls `GlobalGLEntry.INSERT` at line 1248. This confirms the persistent Table 17 insert. It then updates/inserts the G/L Register range and checks posting balance consistency.
+

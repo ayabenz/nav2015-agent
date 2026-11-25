@@ -80,11 +80,10 @@ def test_scan_with_ambiguous_table_reference():
     idx = Index(objs)
     edges, tops = scan(("Codeunit", 50010), block_cu, idx)
 
-    # Should resolve to one of the Customer table IDs
+    # Duplicate names are not guessed: ambiguous references remain unresolved.
     ref_edges = [(s, d, k) for (s, d, k), _ in edges.items() if k in ("REF", "TABLE_REF")]
-    assert len(ref_edges) > 0, f"Expected REF edges, got {ref_edges}"
-    dst = ref_edges[0][1]
-    assert dst in ("Table 18", "Table 50000"), f"Unexpected dst: {dst}"
+    assert ref_edges == []
+    assert idx.resolve("database", "Customer") is None
 
 
 def test_resolve_returns_unique_object():

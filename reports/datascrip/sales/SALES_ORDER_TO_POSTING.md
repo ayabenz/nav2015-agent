@@ -242,3 +242,86 @@ This means a document may pass the total inventory check but fail the owner-spec
 
 Codeunit 12 `FinishPosting` (lines 1234–1267) iterates `TempGLEntryBuf`, copies each row to `GlobalGLEntry`, sets prior-year status, and calls `GlobalGLEntry.INSERT` at line 1248. This confirms the persistent Table 17 insert. It then updates/inserts the G/L Register range and checks posting balance consistency.
 
+
+
+## 10. Sales posting wrappers: Codeunit 50081, 50082 and 50084
+
+The additional wrapper objects are present in `sales_next` and have now been inspected.
+
+### 10.1 Codeunit 50081 — Sales-Post (Y/N) Ship
+
+- TableNo = 36.
+- `OnRun` first calls `Codeunit 50107.BlockStocktakeSalesHeader(Rec, FALSE)`, then copies the Sales Header and executes its local `Code`.
+- The local `Code` requires Status = Released.
+- For Order: calls `AddLotNo`, sets Ship = TRUE and Invoice = FALSE.
+- For Return Order: sets Receive = TRUE and Invoice = FALSE.
+- It then calls Codeunit 80.
+- `AddLotNo` scans item Sales Lines. For a location that is not Directed Put-away and Pick, with Qty. to Ship > 0, and an Item Tracking Code, it invokes `SalesReserve.CallItemTracking-HSL(SalesLine)`.
+
+**Business implication:** the Ship action wrapper does more than set posting flags. It blocks a stocktake condition through Codeunit 50107 and opens item tracking for qualifying sales lines before posting. The exact stocktake rule is not established here because Codeunit 50107 source is not in this export.
+
+### 10.2 Codeunit 50082 — Sales-Post (Y/N) Invoice
+
+- TableNo = 36.
+- Requires Status = Released.
+- For Order: sets Ship = FALSE and Invoice = TRUE.
+- For Return Order: sets Receive = FALSE and Invoice = TRUE.
+- Calls Codeunit 80.
+
+This wrapper explicitly selects invoice-only behavior for an Order; it does not request shipment in the same call. For a Return Order it selects invoice processing without receipt in this wrapper.
+
+### 10.3 Codeunit 50084 — Sales-Post + Print Invoice
+
+- Requires Status = Released.
+- For Order, its active selection menu is invoice-only: Ship = FALSE and Invoice = TRUE.
+- For Return Order, its active selection is invoice-only: Receive = FALSE and Invoice = TRUE.
+- Calls Codeunit 80 and then prints the resulting posted document using Report Selection (Table 77).
+- It selects posted shipment, invoice, return receipt or credit memo records based on document type and posting flags.
+
+### 10.4 Wrapper-to-posting flow
+
+```text
+Page 42 action
+  +-- Ship --> Codeunit 50081
+  |              +-- Codeunit 50107 stocktake block
+  |              +-- AddLotNo / item tracking
+  |              +-- Ship=TRUE, Invoice=FALSE
+  |              +-- Codeunit 80
+  |
+  +-- Invoice --> Codeunit 50082
+  |                 +-- Ship=FALSE, Invoice=TRUE
+  |                 +-- Codeunit 80
+  |
+  +-- Post + Print --> Codeunit 50084
+                     +-- invoice-only selection in active code
+                     +-- Codeunit 80
+                     +-- Report Selection / print
+```
+
+The general Post action on Page 42 may have a different route and should be kept distinct from these named wrappers.
+
+## 11. Ownership Table 50035 — evidence gap and next required source
+
+The current GitHub tree for branch `datascrip` contains Codeunit 22 references to Table 50035, but **does not contain an exported `Table_50035.txt`**. Therefore the following cannot yet be source-verified:
+
+- exact field IDs, types, captions and validation triggers;
+- primary key and secondary keys;
+- table-level OnInsert/OnModify/OnDelete/OnRename triggers;
+- whether Quantity is FlowField or stored Decimal;
+- whether there are additional filters, FlowFilters, or relations;
+- whether other codeunits/pages/reports mutate the Ownership table.
+
+The Codeunit 22 source does prove the fields it attempts to read/write: `Entry No.`, `Description`, `Posting Date`, `Entry Type`, `Document No.`, `Item No.`, `Owner`, `Location Code`, `Document Type`, `Item Ledger Entry No.`, `User ID`, and `Quantity`. It also proves the key selected by `CheckRemainingQty`: Item No., Location Code, Owner, Posting Date. This does not replace the missing table definition.
+
+The code's object change history comments in Codeunit 22 record:
+- T30.01 — 18 Sep 2015: add `InsertOwnership`.
+- T30.02 — 30 Sep 2015: add `CheckRemainingQty` to prevent negative ownership.
+- T30.03 — 20 Oct 2015: add User ID to Ownership Ledger Entry.
+
+These comments are evidence of the developers' stated intent, not proof of all current table constraints or runtime behavior.
+
+**Next source required:** export Table 50035 from the company and matching original baseline, plus any object references found by searching the full company object set for `Record 50035` / `RecordRef` / table ID 50035. Until those sources are available in the repository, the table schema and complete lifecycle remain open questions.
+
+## 12. Version and provenance warning
+
+The three wrappers have `Version List=DTS:D34` and dates in 2015/2020/2026, while Codeunit 22 and Codeunit 80 source headers identify NAVW18.00.00. This reinforces the need to identify the exact NAV application build and compare against a matching original baseline before marking individual procedures as company-modified standard versus later-version standard.

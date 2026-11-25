@@ -1,0 +1,142 @@
+OBJECT Codeunit 50081 Sales-Post (Y/N) Ship
+{
+  OBJECT-PROPERTIES
+  {
+    Date=10/07/26;
+    Time=14:10:34;
+    Modified=Yes;
+    Version List=DTS:D34;
+  }
+  PROPERTIES
+  {
+    TableNo=36;
+    OnRun=VAR
+            CUBlockStocktake@1000 : Codeunit 50107;
+          BEGIN
+            // D34.03
+            CUBlockStocktake.BlockStocktakeSalesHeader(Rec, FALSE); // BNY
+            SalesHeader.COPY(Rec);
+            Code;
+            Rec := SalesHeader;
+            // D34.03
+          END;
+
+  }
+  CODE
+  {
+    VAR
+      SalesHeader@1002 : Record 36;
+      SalesPost@1001 : Codeunit 80;
+      Selection@1000 : Integer;
+      Text000@1005 : TextConst 'ENU=&Ship';
+      Text001@1004 : TextConst 'ENU=Do you want to post the %1?';
+      Text002@1003 : TextConst 'ENU=&Receive';
+
+    LOCAL PROCEDURE Code@1();
+    VAR
+      tSL@1000000000 : Record 37;
+      tItem@1000000001 : Record 27;
+    BEGIN
+      // D34.03
+      WITH SalesHeader DO BEGIN
+      // YE:050902
+        TESTFIELD(Status,Status::Released);
+      // YE
+
+        CASE "Document Type" OF
+          "Document Type"::Order:
+            BEGIN
+              AddLotNo;
+              Ship := TRUE;
+              Invoice := FALSE;
+            END;
+
+          "Document Type"::"Return Order":
+            BEGIN
+              Receive := TRUE;
+              Invoice := FALSE;
+            END ELSE
+              IF NOT
+                 CONFIRM(
+                   Text001,FALSE,
+                   "Document Type")
+              THEN
+                EXIT;
+        END;
+
+
+        //DVZ TEMP - PINDAHAN PULOGADUNG
+
+       {IF ("No." <> '') THEN BEGIN
+          tSL.RESET;
+          tSL.SETRANGE("Document No.", "No.");
+          tSL.SETRANGE("Document Type", "Document Type");
+          tSL.SETRANGE(Type, tSL.Type::Item);
+          IF Ship THEN
+             tSL.SETFILTER("Qty. to Ship", '<>0');
+
+          IF Receive THEN
+             tSL.SETFILTER("Return Qty. to Receive", '<>0');
+
+          IF tSL.FINDFIRST THEN REPEAT
+              tItem.RESET;
+              tItem.SETRANGE("No.",tSL."No.");
+              tItem.SETRANGE("Global Dimension 1 Code",'102');
+              IF tItem.FINDFIRST THEN
+                 ERROR('Item ' + FORMAT(tSL."No.")
+                           + ' sedang tidak dapat digunakan, '
+                           + 'karena sedang dalam proses stocktake');
+
+            {
+              IF tItem.GET(tSL."No.") THEN
+                IF tItem."Item Category Code" IN ['104-70000'] THEN
+                    ERROR('Item ' + FORMAT(tSL."No.")
+                        + ' sedang tidak dapat digunakan, '
+                        + 'karena sedang dalam proses stocktake');
+            }
+          UNTIL tSL.NEXT = 0;
+        END;  }
+
+        SalesPost.RUN(SalesHeader);
+      END;
+      // D34.03
+    END;
+
+    PROCEDURE AddLotNo@1000000000();
+    VAR
+      SalesLine@1000000000 : Record 37;
+      Location@1000000001 : Record 14;
+      item@1000000002 : Record 27;
+      SalesReserve@1000000003 : Codeunit 99000832;
+    BEGIN
+      // D34.03
+      SalesLine.SETRANGE(SalesLine."Document Type",SalesHeader."Document Type");
+      SalesLine.SETRANGE(SalesLine."Document No.",SalesHeader."No.");
+      SalesLine.SETRANGE(SalesLine.Type,SalesLine.Type::Item);
+      IF SalesLine.FINDFIRST THEN
+        REPEAT
+         IF Location.GET(SalesLine."Location Code") AND (Location."Directed Put-away and Pick"=FALSE) AND
+          (SalesLine."Qty. to Ship">0) THEN BEGIN
+           IF item.GET(SalesLine."No.") AND (item."Item Tracking Code"<>'')THEN BEGIN
+             SalesReserve."CallItemTracking-HSL"(SalesLine)
+           END
+         END
+        UNTIL SalesLine.NEXT=0;
+      // D34.03
+    END;
+
+    BEGIN
+    {
+      D34.01    07 Agustus  2015    BNY   Buat Codeunit baru 50081 - "Sales-Post (Y/N) Ship" dari Nav.5
+      D34.01    07 Agustus  2015    BNY   Tambah variabel :
+                                          - SalesHeader
+                                          - SalesPost
+                                          - Selection
+      D34.01    07 Agustus  2015    BNY   Tambah coding & function :
+                                          - OnRun()
+                                          - Code()
+                                          - AddLotNo()
+    }
+    END.
+  }
+}

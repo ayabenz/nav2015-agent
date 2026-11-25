@@ -1,0 +1,76 @@
+OBJECT Codeunit 50082 Sales-Post (Y/N) Invoice
+{
+  OBJECT-PROPERTIES
+  {
+    Date=08/10/20;
+    Time=14:01:00;
+    Modified=Yes;
+    Version List=DTS:D34;
+  }
+  PROPERTIES
+  {
+    TableNo=36;
+    OnRun=BEGIN
+            // D34.03
+            SalesHeader.COPY(Rec);
+            Code;
+            Rec := SalesHeader;
+            // D34.03
+          END;
+
+  }
+  CODE
+  {
+    VAR
+      SalesHeader@1002 : Record 36;
+      SalesPost@1001 : Codeunit 80;
+      Selection@1000 : Integer;
+      Text000@1005 : TextConst 'ENU=&Invoice';
+      Text001@1004 : TextConst 'ENU=Do you want to post the %1?';
+      Text002@1003 : TextConst 'ENU=&Invoice';
+
+    LOCAL PROCEDURE Code@1();
+    BEGIN
+      // D34.03
+      WITH SalesHeader DO BEGIN
+      // YE:050902
+        TESTFIELD(Status,Status::Released);
+      // YE
+
+        CASE "Document Type" OF
+          "Document Type"::Order:
+            BEGIN
+             Ship := FALSE;   // BNY 20.11.26
+             Invoice := TRUE;
+            END;
+          "Document Type"::"Return Order":
+            BEGIN
+              Receive := FALSE;
+              Invoice := TRUE;
+            END ELSE
+              IF NOT
+                 CONFIRM(
+                   Text001,FALSE,
+                   "Document Type")
+              THEN
+                EXIT;
+        END;
+        SalesPost.RUN(SalesHeader);
+      END;
+      // D34.03
+    END;
+
+    BEGIN
+    {
+      D34.01    06 Agustus 2015   BNY   Buat Codeunit baru 50082 - Sales-Post (Y/N) Invoice dari codeunit di Nav.5
+      D34.02    06 Agustus 2015   BNY   Add variabel :
+                                        - SalesHeader
+                                        - SalesPost
+                                        - Selection
+      D34.03    06 Agustus 2015   BNY   Add coding :
+                                        - OnRun()
+                                        - Code()
+    }
+    END.
+  }
+}

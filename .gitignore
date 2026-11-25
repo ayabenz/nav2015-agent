@@ -4,16 +4,6 @@ __pycache__/
 *.py[cod]
 .env
 .env.example
-data/snapshots/*
-data/parsed/*
-!data/snapshots/.gitkeep
-!data/parsed/.gitkeep
-data/depgraph/*
-!data/depgraph/.gitkeep
-data/search/*
-!data/search/.gitkeep
-reports/*
-!reports/.gitkeep
 .venv
 build/
 src/nav2015_agent.egg-info

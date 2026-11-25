@@ -1,0 +1,338 @@
+﻿source_type,source_id,source_name,target_type,target_id,evidence_kind,evidence_lines,confidence
+Codeunit,80,Sales-Post,Codeunit,11,variable_declaration,2561,static
+Codeunit,80,Sales-Post,Codeunit,12,variable_declaration,2562,static
+Codeunit,80,Sales-Post,Codeunit,22,variable_declaration,2564,static
+Codeunit,80,Sales-Post,Codeunit,60,variable_declaration,2567,static
+Codeunit,80,Sales-Post,Codeunit,90,variable_declaration,2576,static
+Codeunit,80,Sales-Post,Codeunit,212,variable_declaration,2563,static
+Codeunit,80,Sales-Post,Codeunit,378,variable_declaration,5407,static
+Codeunit,80,Sales-Post,Codeunit,396,variable_declaration,2560,static
+Codeunit,80,Sales-Post,Codeunit,400,variable_declaration,7027,static
+Codeunit,80,Sales-Post,Codeunit,408,variable_declaration,2568,static
+Codeunit,80,Sales-Post,Codeunit,410,variable_declaration,46,static
+Codeunit,80,Sales-Post,Codeunit,427,variable_declaration,48;5967,static
+Codeunit,80,Sales-Post,Codeunit,439,variable_declaration,2569,static
+Codeunit,80,Sales-Post,Codeunit,442,variable_declaration,3479,static
+Codeunit,80,Sales-Post,Codeunit,447,variable_declaration,49,static
+Codeunit,80,Sales-Post,Codeunit,825,variable_declaration,6268;6286;6311;6388,static
+Codeunit,80,Sales-Post,Codeunit,900,variable_declaration,2580,static
+Codeunit,80,Sales-Post,Codeunit,1001,variable_declaration,2578,static
+Codeunit,80,Sales-Post,Codeunit,5063,variable_declaration,6066,static
+Codeunit,80,Sales-Post,Codeunit,5760,variable_declaration,2574,static
+Codeunit,80,Sales-Post,Codeunit,5763,variable_declaration,2575,static
+Codeunit,80,Sales-Post,Codeunit,5771,variable_declaration,2570,static
+Codeunit,80,Sales-Post,Codeunit,5775,variable_declaration,4865,static
+Codeunit,80,Sales-Post,Codeunit,5777,variable_declaration,4799,static
+Codeunit,80,Sales-Post,Codeunit,5836,variable_declaration,2577,static
+Codeunit,80,Sales-Post,Codeunit,5895,variable_declaration,2565,static
+Codeunit,80,Sales-Post,Codeunit,5920,variable_declaration,2579,static
+Codeunit,80,Sales-Post,Codeunit,6500,variable_declaration,2571;3058;3118;4992,static
+Codeunit,80,Sales-Post,Codeunit,7150,variable_declaration,47,static
+Codeunit,80,Sales-Post,Codeunit,7301,variable_declaration,2573,static
+Codeunit,80,Sales-Post,Codeunit,7302,variable_declaration,2572,static
+Codeunit,80,Sales-Post,Codeunit,99000830,variable_declaration,4991,static
+Codeunit,80,Sales-Post,Codeunit,99000832,variable_declaration,2566,static
+Codeunit,80,Sales-Post,Codeunit,99000834,variable_declaration,3278;5301,static
+Codeunit,80,Sales-Post,Table,4,variable_declaration,2525,static
+Codeunit,80,Sales-Post,Table,14,variable_declaration,2546,static
+Codeunit,80,Sales-Post,Table,15,variable_declaration,2528;5404,static
+Codeunit,80,Sales-Post,Table,17,variable_declaration,2493;2652;2658,static
+Codeunit,80,Sales-Post,Table,18,variable_declaration,37;63;69;6430,static
+Codeunit,80,Sales-Post,Table,21,variable_declaration,44;6310,static
+Codeunit,80,Sales-Post,Table,23,variable_declaration,5888,static
+Codeunit,80,Sales-Post,Table,27,variable_declaration,2488;6956;7537,static
+Codeunit,80,Sales-Post,Table,32,variable_declaration,42;3057;3117;6088;6089;6093;6749;7000,static
+Codeunit,80,Sales-Post,Table,36,object_property;variable_declaration,12;60;2494;7165;7201;7222;7236;7279;7339;7353;7356;7392;7768,static
+Codeunit,80,Sales-Post,Table,37,variable_declaration,45;70;77;2495;2496;2497;2498;2499;2500;2501;2552;2554;2648;2651;2674;3839;3840;3863;3872;4150;4151;4301;4415;4416;4554;4555;4753;4798;4988;5178;5405;5611;5612;5696;5983;5984;5985;6044;6595;6843;7166;7202;7237;7261;7280;7354;7393,static
+Codeunit,80,Sales-Post,Table,38,variable_declaration,2510,static
+Codeunit,80,Sales-Post,Table,39,variable_declaration,2511,static
+Codeunit,80,Sales-Post,Table,43,variable_declaration,40;5364;5365,static
+Codeunit,80,Sales-Post,Table,44,variable_declaration,66;2522;2523,static
+Codeunit,80,Sales-Post,Table,49,variable_declaration,2526;3500,static
+Codeunit,80,Sales-Post,Table,81,variable_declaration,2516;2553;6194;7417;7482,static
+Codeunit,80,Sales-Post,Table,83,variable_declaration,2517;2677;2925,static
+Codeunit,80,Sales-Post,Table,91,variable_declaration,7046,static
+Codeunit,80,Sales-Post,Table,92,variable_declaration,72;2519,static
+Codeunit,80,Sales-Post,Table,98,variable_declaration,2491,static
+Codeunit,80,Sales-Post,Table,110,variable_declaration,2502;6806,static
+Codeunit,80,Sales-Post,Table,111,variable_declaration,2503;3056;4417;4713;5695;5986;6090,static
+Codeunit,80,Sales-Post,Table,112,variable_declaration,2504;2653;2656;7283;7622,static
+Codeunit,80,Sales-Post,Table,113,variable_declaration,2505;2655;7284;7623,static
+Codeunit,80,Sales-Post,Table,114,variable_declaration,2506;2659;7624,static
+Codeunit,80,Sales-Post,Table,115,variable_declaration,2507;2660;7625,static
+Codeunit,80,Sales-Post,Table,120,variable_declaration,2512,static
+Codeunit,80,Sales-Post,Table,121,variable_declaration,2513,static
+Codeunit,80,Sales-Post,Table,130,variable_declaration,6836,static
+Codeunit,80,Sales-Post,Table,156,variable_declaration,7538,static
+Codeunit,80,Sales-Post,Table,207,variable_declaration,2518,static
+Codeunit,80,Sales-Post,Table,222,variable_declaration,6825,static
+Codeunit,80,Sales-Post,Table,223,variable_declaration,2527,static
+Codeunit,80,Sales-Post,Table,230,variable_declaration,2521,static
+Codeunit,80,Sales-Post,Table,242,variable_declaration,2520,static
+Codeunit,80,Sales-Post,Table,252,variable_declaration,2524,static
+Codeunit,80,Sales-Post,Table,280,variable_declaration,5406,static
+Codeunit,80,Sales-Post,Table,290,variable_declaration,2544;2545,static
+Codeunit,80,Sales-Post,Table,308,variable_declaration,7045,static
+Codeunit,80,Sales-Post,Table,309,variable_declaration,61;7035,static
+Codeunit,80,Sales-Post,Table,311,variable_declaration,75;2490,static
+Codeunit,80,Sales-Post,Table,312,variable_declaration,39,static
+Codeunit,80,Sales-Post,Table,313,variable_declaration,2492,static
+Codeunit,80,Sales-Post,Table,325,variable_declaration,6943,static
+Codeunit,80,Sales-Post,Table,330,variable_declaration,2489,static
+Codeunit,80,Sales-Post,Table,336,variable_declaration,34;35;2547;2548;2549;2550;2678;3176;5065;5140;5177;5300;6551,static
+Codeunit,80,Sales-Post,Table,337,variable_declaration,4989;5066;5299,static
+Codeunit,80,Sales-Post,Table,409,variable_declaration,7029,static
+Codeunit,80,Sales-Post,Table,410,variable_declaration,5887,static
+Codeunit,80,Sales-Post,Table,413,variable_declaration,38;5889,static
+Codeunit,80,Sales-Post,Table,420,variable_declaration,36,static
+Codeunit,80,Sales-Post,Table,454,variable_declaration,2529;2530,static
+Codeunit,80,Sales-Post,Table,780,variable_declaration,6942,static
+Codeunit,80,Sales-Post,Table,900,variable_declaration,41;6596;6612;6624;6647;6691;6713,static
+Codeunit,80,Sales-Post,Table,904,variable_declaration,6690;6723,static
+Codeunit,80,Sales-Post,Table,914,variable_declaration,43;6648;6748,static
+Codeunit,80,Sales-Post,Table,5092,variable_declaration,6463,static
+Codeunit,80,Sales-Post,Table,5093,variable_declaration,6464,static
+Codeunit,80,Sales-Post,Table,5600,variable_declaration,2531,static
+Codeunit,80,Sales-Post,Table,5611,variable_declaration,2532,static
+Codeunit,80,Sales-Post,Table,5700,variable_declaration,2559,static
+Codeunit,80,Sales-Post,Table,5765,variable_declaration,2533,static
+Codeunit,80,Sales-Post,Table,5767,variable_declaration,6968,static
+Codeunit,80,Sales-Post,Table,5769,variable_declaration,4896,static
+Codeunit,80,Sales-Post,Table,5770,variable_declaration,65,static
+Codeunit,80,Sales-Post,Table,5802,variable_declaration,7626,static
+Codeunit,80,Sales-Post,Table,5809,variable_declaration,2514;2515;4386;4396;4474;4475;4529,static
+Codeunit,80,Sales-Post,Table,5940,variable_declaration,2555;2556,static
+Codeunit,80,Sales-Post,Table,5941,variable_declaration,2557;2558;6091;6092,static
+Codeunit,80,Sales-Post,Table,6502,variable_declaration,4990;6957,static
+Codeunit,80,Sales-Post,Table,6507,variable_declaration,33;3177;4930;4959,static
+Codeunit,80,Sales-Post,Table,6508,variable_declaration,2551;5163,static
+Codeunit,80,Sales-Post,Table,6660,variable_declaration,2508,static
+Codeunit,80,Sales-Post,Table,6661,variable_declaration,2509;3116;4714,static
+Codeunit,80,Sales-Post,Table,7311,variable_declaration,2675;2676,static
+Codeunit,80,Sales-Post,Table,7316,variable_declaration,2534;2535,static
+Codeunit,80,Sales-Post,Table,7317,variable_declaration,2536,static
+Codeunit,80,Sales-Post,Table,7318,variable_declaration,2540,static
+Codeunit,80,Sales-Post,Table,7319,variable_declaration,2541,static
+Codeunit,80,Sales-Post,Table,7320,variable_declaration,2537;2538,static
+Codeunit,80,Sales-Post,Table,7321,variable_declaration,2539;6780;6781,static
+Codeunit,80,Sales-Post,Table,7322,variable_declaration,2542,static
+Codeunit,80,Sales-Post,Table,7323,variable_declaration,2543,static
+Codeunit,80,Sales-Post,Table,50002,variable_declaration,76,static
+Codeunit,80,Sales-Post,Table,50010,variable_declaration,2649;2650,static
+Codeunit,80,Sales-Post,Table,50016,variable_declaration,7536,static
+Codeunit,80,Sales-Post,Table,50031,variable_declaration,67,static
+Page,42,Sales Order,Codeunit,56,variable_declaration,1751,static
+Page,42,Sales Order,Codeunit,80,variable_declaration,864;1555;1786;1941,static
+Page,42,Sales Order,Codeunit,82,variable_declaration,918,static
+Page,42,Sales Order,Codeunit,228,variable_declaration,1748,static
+Page,42,Sales Order,Codeunit,229,variable_declaration,1749,static
+Page,42,Sales Order,Codeunit,414,variable_declaration,331;523;1793,static
+Page,42,Sales Order,Codeunit,427,variable_declaration,655,static
+Page,42,Sales Order,Codeunit,439,variable_declaration,656;716;725;859;1747;1935;2057,static
+Page,42,Sales Order,Codeunit,443,variable_declaration,966;978;991;1003,static
+Page,42,Sales Order,Codeunit,1400,variable_declaration,1867,static
+Page,42,Sales Order,Codeunit,5063,variable_declaration,1750,static
+Page,42,Sales Order,Codeunit,5700,variable_declaration,1753,static
+Page,42,Sales Order,Codeunit,5752,variable_declaration,769,static
+Page,42,Sales Order,Codeunit,50107,variable_declaration,1790,static
+Page,42,Sales Order,Page,21,object_property,213,static
+Page,42,Sales Order,Page,67,object_property,239,static
+Page,42,Sales Order,Page,142,object_property,268,static
+Page,42,Sales Order,Page,143,object_property,274;308,static
+Page,42,Sales Order,Page,144,object_property,314,static
+Page,42,Sales Order,Page,511,variable_declaration,1752,static
+Page,42,Sales Order,Page,658,variable_declaration,231,static
+Page,42,Sales Order,Page,829,object_property,246,static
+Page,42,Sales Order,Page,5774,object_property,283,static
+Page,42,Sales Order,Page,5830,variable_declaration,692,static
+Page,42,Sales Order,Page,7341,object_property,297,static
+Page,42,Sales Order,Page,50007,object_property,290,static
+Page,42,Sales Order,Page,99000883,variable_declaration,703,static
+Page,42,Sales Order,Report,292,variable_declaration,1745,static
+Page,42,Sales Order,Report,6699,variable_declaration,1746,static
+Page,42,Sales Order,Table,13,variable_declaration,334;774;2063,static
+Page,42,Sales Order,Table,18,variable_declaration,860;1785;1820;1936;2145,static
+Page,42,Sales Order,Table,27,variable_declaration,771;1769;2059;2342,static
+Page,42,Sales Order,Table,36,variable_declaration,1794;2062;2243,static
+Page,42,Sales Order,Table,37,variable_declaration,90;147;333;770;772;862;863;1212;1768;1938;1940;2058;2060;2212;2341,static
+Page,42,Sales Order,Table,38,variable_declaration,657;858;965;977;990;1002;1934;2056,static
+Page,42,Sales Order,Table,91,variable_declaration,1782,static
+Page,42,Sales Order,Table,110,variable_declaration,2307,static
+Page,42,Sales Order,Table,172,variable_declaration,611,static
+Page,42,Sales Order,Table,225,variable_declaration,1508,static
+Page,42,Sales Order,Table,309,variable_declaration,1767,static
+Page,42,Sales Order,Table,311,variable_declaration,1875,static
+Page,42,Sales Order,Table,323,variable_declaration,332;2163,static
+Page,42,Sales Order,Table,330,variable_declaration,1883;1901,static
+Page,42,Sales Order,Table,349,variable_declaration,773;2061,static
+Page,42,Sales Order,Table,904,variable_declaration,255,static
+Page,42,Sales Order,Table,5401,variable_declaration,1764;1765,static
+Page,42,Sales Order,Table,5714,variable_declaration,146;335,static
+Page,42,Sales Order,Table,50022,variable_declaration,2188,static
+Page,42,Sales Order,Table,99000880,variable_declaration,681,static
+Page,42,Sales Order,Xmlport,50001,object_property,262,static
+Page,42,Sales Order,Xmlport,50004,variable_declaration,1783,static
+Page,42,Sales Order,Xmlport,50007,variable_declaration,1777,static
+Page,42,Sales Order,Xmlport,50008,variable_declaration,1779,static
+Page,42,Sales Order,Xmlport,50009,variable_declaration,1789,static
+Page,42,Sales Order,Xmlport,50027,variable_declaration,1778,static
+Page,42,Sales Order,Xmlport,50053,variable_declaration,1780,static
+Page,42,Sales Order,Xmlport,50057,variable_declaration,1792,static
+Table,27,Item,Codeunit,361,variable_declaration,2063,static
+Table,27,Item,Codeunit,396,variable_declaration,2062,static
+Table,27,Item,Codeunit,408,variable_declaration,2064,static
+Table,27,Item,Codeunit,5703,variable_declaration,2065,static
+Table,27,Item,Codeunit,5804,variable_declaration,2066,static
+Table,27,Item,Codeunit,5931,variable_declaration,2067,static
+Table,27,Item,Codeunit,7380,variable_declaration,1560,static
+Table,27,Item,Codeunit,7600,variable_declaration,2068,static
+Table,27,Item,Codeunit,99000793,variable_declaration,1728,static
+Table,27,Item,Codeunit,99000855,variable_declaration,2090,static
+Table,27,Item,Page,521,variable_declaration,2277,static
+Table,27,Item,Page,5540,variable_declaration,2285,static
+Table,27,Item,Table,23,variable_declaration,2048,static
+Table,27,Item,Table,27,variable_declaration,2244;2293,static
+Table,27,Item,Table,30,variable_declaration,2028,static
+Table,27,Item,Table,32,variable_declaration,288;2123;2148;2265,static
+Table,27,Item,Table,37,variable_declaration,2031,static
+Table,27,Item,Table,39,variable_declaration,2030,static
+Table,27,Item,Table,83,variable_declaration,2037,static
+Table,27,Item,Table,90,variable_declaration,2029,static
+Table,27,Item,Table,97,variable_declaration,2018,static
+Table,27,Item,Table,98,variable_declaration,1297;2009,static
+Table,27,Item,Table,99,variable_declaration,2020,static
+Table,27,Item,Table,204,variable_declaration,252,static
+Table,27,Item,Table,246,variable_declaration,2053,static
+Table,27,Item,Table,251,variable_declaration,2034,static
+Table,27,Item,Table,279,variable_declaration,2033,static
+Table,27,Item,Table,311,variable_declaration,724,static
+Table,27,Item,Table,313,variable_declaration,2010;2527,static
+Table,27,Item,Table,325,variable_declaration,723;2032,static
+Table,27,Item,Table,336,variable_declaration,2161,static
+Table,27,Item,Table,337,variable_declaration,1886;1888;2162,static
+Table,27,Item,Table,348,variable_declaration,1296,static
+Table,27,Item,Table,352,variable_declaration,1293;1294;1295;2076,static
+Table,27,Item,Table,459,variable_declaration,2024,static
+Table,27,Item,Table,460,variable_declaration,2027,static
+Table,27,Item,Table,871,variable_declaration,75,static
+Table,27,Item,Table,900,variable_declaration,2498,static
+Table,27,Item,Table,901,variable_declaration,2512,static
+Table,27,Item,Table,1003,variable_declaration,2544,static
+Table,27,Item,Table,5401,variable_declaration,2036,static
+Table,27,Item,Table,5404,variable_declaration,1727;2035,static
+Table,27,Item,Table,5406,variable_declaration,2038,static
+Table,27,Item,Table,5407,variable_declaration,2039,static
+Table,27,Item,Table,5700,variable_declaration,2041;2192,static
+Table,27,Item,Table,5715,variable_declaration,2045,static
+Table,27,Item,Table,5717,variable_declaration,74,static
+Table,27,Item,Table,5718,variable_declaration,2049,static
+Table,27,Item,Table,5722,variable_declaration,2046,static
+Table,27,Item,Table,5723,variable_declaration,2061,static
+Table,27,Item,Table,5741,variable_declaration,2047,static
+Table,27,Item,Table,5841,variable_declaration,2322,static
+Table,27,Item,Table,5902,variable_declaration,2044,static
+Table,27,Item,Table,5940,variable_declaration,2058,static
+Table,27,Item,Table,5941,variable_declaration,2060,static
+Table,27,Item,Table,5945,variable_declaration,2057,static
+Table,27,Item,Table,5956,variable_declaration,1419,static
+Table,27,Item,Table,5964,variable_declaration,2059,static
+Table,27,Item,Table,6502,variable_declaration,2042;2043;2245,static
+Table,27,Item,Table,7002,variable_declaration,2022,static
+Table,27,Item,Table,7004,variable_declaration,2023,static
+Table,27,Item,Table,7012,variable_declaration,2025,static
+Table,27,Item,Table,7014,variable_declaration,2026,static
+Table,27,Item,Table,7134,variable_declaration,2054,static
+Table,27,Item,Table,7154,variable_declaration,2055,static
+Table,27,Item,Table,7156,variable_declaration,2056,static
+Table,27,Item,Table,7302,variable_declaration,73,static
+Table,27,Item,Table,7381,variable_declaration,1559,static
+Table,27,Item,Table,7704,variable_declaration,2052,static
+Table,27,Item,Table,50017,variable_declaration,2593,static
+Table,27,Item,Table,50076,variable_declaration,1701,static
+Table,27,Item,Table,99000765,variable_declaration,1725,static
+Table,27,Item,Table,99000771,variable_declaration,1726;2050,static
+Table,27,Item,Table,99000772,variable_declaration,2051,static
+Table,27,Item,Table,99000829,variable_declaration,2427,static
+Table,27,Item,Table,99000849,variable_declaration,1887,static
+Table,27,Item,Table,99000850,variable_declaration,2040,static
+Table,36,Sales Header,Codeunit,60,variable_declaration,3844,static
+Table,36,Sales Header,Codeunit,80,variable_declaration,2581,static
+Table,36,Sales Header,Codeunit,88,variable_declaration,4028,static
+Table,36,Sales Header,Codeunit,101,variable_declaration,2582,static
+Table,36,Sales Header,Codeunit,225,variable_declaration,2580,static
+Table,36,Sales Header,Codeunit,312,variable_declaration,2578;3557,static
+Table,36,Sales Header,Codeunit,378,variable_declaration,2579,static
+Table,36,Sales Header,Codeunit,396,variable_declaration,2577,static
+Table,36,Sales Header,Codeunit,408,variable_declaration,2583,static
+Table,36,Sales Header,Codeunit,439,variable_declaration,2584,static
+Table,36,Sales Header,Codeunit,825,variable_declaration,2588,static
+Table,36,Sales Header,Codeunit,829,variable_declaration,2589;3882,static
+Table,36,Sales Header,Codeunit,1004,variable_declaration,3052,static
+Table,36,Sales Header,Codeunit,5063,variable_declaration,2586,static
+Table,36,Sales Header,Codeunit,5700,variable_declaration,2576,static
+Table,36,Sales Header,Codeunit,5781,variable_declaration,2585,static
+Table,36,Sales Header,Codeunit,7600,variable_declaration,2633,static
+Table,36,Sales Header,Codeunit,99000831,variable_declaration,3135,static
+Table,36,Sales Header,Codeunit,99000832,variable_declaration,2587,static
+Table,36,Sales Header,Page,232,variable_declaration,2590,static
+Table,36,Sales Header,Page,5850,variable_declaration,3830,static
+Table,36,Sales Header,Table,3,variable_declaration,1614;2555,static
+Table,36,Sales Header,Table,4,variable_declaration,939,static
+Table,36,Sales Header,Table,13,variable_declaration,2634,static
+Table,36,Sales Header,Table,14,variable_declaration,2572,static
+Table,36,Sales Header,Table,15,variable_declaration,2550,static
+Table,36,Sales Header,Table,18,variable_declaration,177;2356;2554;3358;3380;3402;3483;4313;4381,static
+Table,36,Sales Header,Table,21,variable_declaration,1459;2553;3697,static
+Table,36,Sales Header,Table,27,variable_declaration,4316,static
+Table,36,Sales Header,Table,32,variable_declaration,3717,static
+Table,36,Sales Header,Table,36,variable_declaration,176;2370;2551;2746;3554;3955;4035;4314;4420,static
+Table,36,Sales Header,Table,37,variable_declaration,938;2552;2903;3718;3920;4090;4140;4151;4152;4315,static
+Table,36,Sales Header,Table,38,variable_declaration,3987;4001,static
+Table,36,Sales Header,Table,44,variable_declaration,2558,static
+Table,36,Sales Header,Table,79,variable_declaration,2609,static
+Table,36,Sales Header,Table,81,variable_declaration,2569,static
+Table,36,Sales Header,Table,98,variable_declaration,2549,static
+Table,36,Sales Header,Table,110,variable_declaration,2562;4421,static
+Table,36,Sales Header,Table,111,variable_declaration,3719,static
+Table,36,Sales Header,Table,112,variable_declaration,2444;2563;2566,static
+Table,36,Sales Header,Table,114,variable_declaration,2564;2567,static
+Table,36,Sales Header,Table,130,variable_declaration,1672,static
+Table,36,Sales Header,Table,222,variable_declaration,2559,static
+Table,36,Sales Header,Table,225,variable_declaration,2560,static
+Table,36,Sales Header,Table,242,variable_declaration,3144,static
+Table,36,Sales Header,Table,246,variable_declaration,2575;3328,static
+Table,36,Sales Header,Table,250,variable_declaration,2568,static
+Table,36,Sales Header,Table,252,variable_declaration,4173,static
+Table,36,Sales Header,Table,270,variable_declaration,2561,static
+Table,36,Sales Header,Table,289,variable_declaration,2556,static
+Table,36,Sales Header,Table,308,variable_declaration,2632;2827;4444,static
+Table,36,Sales Header,Table,311,variable_declaration,2548,static
+Table,36,Sales Header,Table,313,variable_declaration,2571,static
+Table,36,Sales Header,Table,323,variable_declaration,2630,static
+Table,36,Sales Header,Table,330,variable_declaration,2557,static
+Table,36,Sales Header,Table,337,variable_declaration,2598;2599;3221,static
+Table,36,Sales Header,Table,352,variable_declaration,4174;4443,static
+Table,36,Sales Header,Table,454,variable_declaration,1044,static
+Table,36,Sales Header,Table,472,variable_declaration,1657,static
+Table,36,Sales Header,Table,827,variable_declaration,3898,static
+Table,36,Sales Header,Table,829,variable_declaration,34;901;1320;1688;3864;3881,static
+Table,36,Sales Header,Table,900,variable_declaration,4068,static
+Table,36,Sales Header,Table,904,variable_declaration,2907;2908;3667;4069,static
+Table,36,Sales Header,Table,1230,variable_declaration,1319,static
+Table,36,Sales Header,Table,5050,variable_declaration,1805;1881;1910;1975;3264;3403;3405;3484;3486;3556,static
+Table,36,Sales Header,Table,5054,variable_declaration,1804;1882;1909;1976;3357;3379;3401;3482;3555,static
+Table,36,Sales Header,Table,5080,variable_declaration,3613,static
+Table,36,Sales Header,Table,5092,variable_declaration,32;1806;4036,static
+Table,36,Sales Header,Table,5093,variable_declaration,33,static
+Table,36,Sales Header,Table,5105,variable_declaration,1734;2004;3404;3485,static
+Table,36,Sales Header,Table,5714,variable_declaration,2570,static
+Table,36,Sales Header,Table,5765,variable_declaration,2573;3591,static
+Table,36,Sales Header,Table,5767,variable_declaration,3919,static
+Table,36,Sales Header,Table,5790,variable_declaration,2574,static
+Table,36,Sales Header,Table,5802,variable_declaration,3721;3813,static
+Table,36,Sales Header,Table,5809,variable_declaration,2904;2905,static
+Table,36,Sales Header,Table,6660,variable_declaration,2565,static
+Table,36,Sales Header,Table,6661,variable_declaration,3720,static
+Table,36,Sales Header,Table,7321,variable_declaration,3940,static
+Table,36,Sales Header,Table,7601,variable_declaration,4382,static
+Table,36,Sales Header,Table,2000000026,variable_declaration,2906,static

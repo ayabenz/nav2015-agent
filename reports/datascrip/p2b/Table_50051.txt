@@ -1,0 +1,37 @@
+OBJECT Table 50051 P2B Location & Ownership
+{
+  OBJECT-PROPERTIES
+  {
+    Date=11/30/15;
+    Time=01:00:00;
+    Modified=Yes;
+    Version List=DTS:T24;
+  }
+  PROPERTIES
+  {
+    LookupPageID=Page50051;
+    DrillDownPageID=Page50051;
+  }
+  FIELDS
+  {
+    { 2   ;   ;Responsibility Center;Code10       ;TableRelation="Responsibility Center" }
+    { 3   ;   ;Sub Dept.           ;Code50        ;TableRelation="P2B Setup".Code WHERE (Type=CONST(Sub Dept.)) }
+    { 4   ;   ;Location Code       ;Code10        ;TableRelation=Location }
+    { 5   ;   ;Ownership Code      ;Code20        ;TableRelation="Dimension Value".Code WHERE (Dimension Code=CONST(OWNERSHIP)) }
+    { 6   ;   ;Warehouse Code      ;Code50        ;TableRelation="P2B Setup".Code WHERE (Type=CONST(Warehouse)) }
+  }
+  KEYS
+  {
+    {    ;Responsibility Center,Sub Dept.,Location Code,Ownership Code,Warehouse Code;
+                                                   Clustered=Yes }
+  }
+  FIELDGROUPS
+  {
+  }
+  CODE
+  {
+
+    BEGIN
+    END.
+  }
+}

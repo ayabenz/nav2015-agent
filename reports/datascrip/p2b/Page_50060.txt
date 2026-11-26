@@ -1,0 +1,231 @@
+OBJECT Page 50060 P2B Workflow
+{
+  OBJECT-PROPERTIES
+  {
+    Date=12/03/24;
+    Time=16:42:04;
+    Modified=Yes;
+    Version List=DTS:T24;
+  }
+  PROPERTIES
+  {
+    LinksAllowed=No;
+    SourceTable=Table50055;
+    DelayedInsert=Yes;
+    PageType=List;
+    RefreshOnActivate=Yes;
+    OnOpenPage=VAR
+                 Rec_LKPCZone@1000 : Record 50022;
+               BEGIN
+                 gOpt_PostingTo := gOpt_PostingTo::None;
+                 RESET;
+                 FILTERGROUP(2);
+                 gRec_UserSetup.RESET;
+                 gRec_UserSetup.GET(USERID);
+                 IF gRec_UserSetup."P2B Resp. Ctr. Filter"<>'' THEN
+                   SETRANGE(Requester,gRec_UserSetup."P2B Resp. Ctr. Filter");
+
+                 IF gRec_UserSetup."KPC Zone Filter"<>'' THEN BEGIN
+                   Rec_LKPCZone.GET(gRec_UserSetup."KPC Zone Filter");
+                   SETRANGE("Sub Dept. Requester",Rec_LKPCZone.City);
+                 END;
+                 FILTERGROUP(0);
+
+                 IF CurrPage.LOOKUPMODE = TRUE THEN
+                   gBol_WorkflowGrpEditable := FALSE
+                 ELSE
+                   gBol_WorkflowGrpEditable := TRUE;
+               END;
+
+  }
+  CONTROLS
+  {
+    { 1   ;0   ;Container ;
+                ContainerType=ContentArea }
+
+    { 13  ;1   ;Group     ;
+                CaptionML=ENU=Option Filters;
+                Visible=FALSE;
+                Editable=FALSE;
+                GroupType=Group }
+
+    { 18  ;2   ;Group     ;
+                GroupType=Group }
+
+    { 14  ;3   ;Field     ;
+                CaptionML=ENU=Document Type;
+                SourceExpr=gCod_DocType;
+                OnValidate=BEGIN
+                             Fn_SetViewOptionFilter;
+                           END;
+
+                OnLookup=VAR
+                           Rec_P2BSetup@1000 : Record 50052;
+                         BEGIN
+                           Rec_P2BSetup.SETRANGE(Type, Rec_P2BSetup.Type::"Document Type");
+                           IF PAGE.RUNMODAL(50052,Rec_P2BSetup) = ACTION::LookupOK THEN BEGIN
+                             gCod_DocType := Rec_P2BSetup.Code;
+                             Fn_SetViewOptionFilter;
+                           END;
+                         END;
+                          }
+
+    { 15  ;3   ;Field     ;
+                Lookup=Yes;
+                CaptionML=ENU=Owner;
+                SourceExpr=gCod_Owner;
+                OnValidate=BEGIN
+                             Fn_SetViewOptionFilter;
+                           END;
+
+                OnLookup=VAR
+                           Rec_RespCenter@1000 : Record 5714;
+                         BEGIN
+                           Rec_RespCenter.RESET;
+                           IF PAGE.RUNMODAL(5715,Rec_RespCenter) = ACTION::LookupOK THEN BEGIN
+                             gCod_Owner := Rec_RespCenter.Code;
+                             Fn_SetViewOptionFilter;
+                           END;
+                         END;
+                          }
+
+    { 17  ;2   ;Group     ;
+                GroupType=Group }
+
+    { 16  ;3   ;Field     ;
+                CaptionML=ENU=Sales Admin Gudang;
+                SourceExpr=gCod_WhseCode;
+                OnValidate=BEGIN
+                             Fn_SetViewOptionFilter;
+                           END;
+
+                OnLookup=VAR
+                           Rec_P2BSetup@1000 : Record 50052;
+                         BEGIN
+                           Rec_P2BSetup.SETRANGE(Type, Rec_P2BSetup.Type::Warehouse);
+                           IF PAGE.RUNMODAL(50052,Rec_P2BSetup) = ACTION::LookupOK THEN BEGIN
+                             gCod_WhseCode := Rec_P2BSetup.Code;
+                             Fn_SetViewOptionFilter;
+                           END;
+                         END;
+                          }
+
+    { 19  ;3   ;Field     ;
+                CaptionML=ENU=Variant Workflow;
+                SourceExpr=gCod_VariantCode;
+                OnValidate=BEGIN
+                             Fn_SetViewOptionFilter;
+                           END;
+
+                OnLookup=VAR
+                           Rec_P2BSetup@1000 : Record 50052;
+                         BEGIN
+                           Rec_P2BSetup.SETRANGE(Type, Rec_P2BSetup.Type::"Sub Dept.");
+                           IF PAGE.RUNMODAL(50052,Rec_P2BSetup) = ACTION::LookupOK THEN BEGIN
+                             gCod_VariantCode := Rec_P2BSetup.Code;
+                             Fn_SetViewOptionFilter;
+                           END;
+                         END;
+                          }
+
+    { 20  ;3   ;Field     ;
+                CaptionML=ENU=Posting To;
+                SourceExpr=gOpt_PostingTo;
+                OnValidate=BEGIN
+                             Fn_SetViewOptionFilter;
+                           END;
+                            }
+
+    { 2   ;1   ;Group     ;
+                Name=WorkflowGrp;
+                Enabled=gBol_WorkflowGrpEditable;
+                Editable=gBol_WorkflowGrpEditable;
+                GroupType=Repeater }
+
+    { 3   ;2   ;Field     ;
+                SourceExpr="Document Type" }
+
+    { 4   ;2   ;Field     ;
+                SourceExpr=Owner }
+
+    { 5   ;2   ;Field     ;
+                SourceExpr="Sub Dept. Owner" }
+
+    { 6   ;2   ;Field     ;
+                SourceExpr=Requester }
+
+    { 7   ;2   ;Field     ;
+                SourceExpr="Sub Dept. Requester" }
+
+    { 8   ;2   ;Field     ;
+                SourceExpr=Confirmation }
+
+    { 9   ;2   ;Field     ;
+                SourceExpr="Warehouse Code" }
+
+    { 10  ;2   ;Field     ;
+                SourceExpr="Posting To" }
+
+    { 11  ;2   ;Field     ;
+                SourceExpr="P2B Workflow ID" }
+
+    { 12  ;1   ;Part      ;
+                SubPageLink=P2B Workflow ID=FIELD(P2B Workflow ID);
+                PagePartID=Page50061;
+                PartType=Page }
+
+  }
+  CODE
+  {
+    VAR
+      gCod_DocType@1000 : Code[50];
+      gCod_Owner@1001 : Code[10];
+      gCod_WhseCode@1002 : Code[50];
+      gCod_VariantCode@1003 : Code[50];
+      gOpt_PostingTo@1005 : 'Item Journal,Transfer Order,Loan,None';
+      gRec_UserSetup@1004 : Record 91;
+      gRec_RespCenter@1006 : Record 5714;
+      gBol_WorkflowGrpEditable@1007 : Boolean;
+
+    LOCAL PROCEDURE Fn_SetViewOptionFilter@1000000004();
+    BEGIN
+      IF gCod_DocType <> '' THEN
+        SETRANGE("Document Type",gCod_DocType)
+      ELSE
+        SETRANGE("Document Type");
+
+      IF gCod_WhseCode <> '' THEN
+        SETRANGE("Warehouse Code",gCod_WhseCode)
+      ELSE
+        SETRANGE("Warehouse Code");
+
+      IF gCod_Owner <> '' THEN
+        SETRANGE(Owner,gCod_Owner)
+      ELSE
+        SETRANGE(Owner);
+
+      IF gCod_VariantCode <> '' THEN
+        SETRANGE("Sub Dept. Requester",gCod_VariantCode)
+      ELSE
+        SETRANGE("Sub Dept. Requester");
+
+      IF gOpt_PostingTo <> gOpt_PostingTo::None THEN
+        SETRANGE("Posting To",gOpt_PostingTo)
+      ELSE
+        SETRANGE("Posting To");
+
+      IF NOT FINDFIRST THEN
+        MESSAGE('RECORD NOT FOUND');
+
+      CurrPage.UPDATE(FALSE);
+    END;
+
+    LOCAL PROCEDURE Fn_SetReadOnly@1();
+    BEGIN
+      gBol_WorkflowGrpEditable := FALSE;
+    END;
+
+    BEGIN
+    END.
+  }
+}

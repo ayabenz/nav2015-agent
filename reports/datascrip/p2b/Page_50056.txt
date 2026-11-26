@@ -1,0 +1,59 @@
+OBJECT Page 50056 P2B Approval Logs
+{
+  OBJECT-PROPERTIES
+  {
+    Date=11/26/15;
+    Time=01:00:00;
+    Modified=Yes;
+    Version List=DTS:T24;
+  }
+  PROPERTIES
+  {
+    Editable=No;
+    SourceTable=Table50054;
+    PageType=List;
+  }
+  CONTROLS
+  {
+    { 1   ;0   ;Container ;
+                ContainerType=ContentArea }
+
+    { 2   ;1   ;Group     ;
+                Name=Group;
+                GroupType=Repeater }
+
+    { 3   ;2   ;Field     ;
+                SourceExpr="P2B No." }
+
+    { 4   ;2   ;Field     ;
+                SourceExpr="Line No." }
+
+    { 5   ;2   ;Field     ;
+                SourceExpr="User ID" }
+
+    { 6   ;2   ;Field     ;
+                SourceExpr="Current Step" }
+
+    { 7   ;2   ;Field     ;
+                SourceExpr="Next Step" }
+
+    { 8   ;2   ;Field     ;
+                SourceExpr=Status }
+
+    { 9   ;2   ;Field     ;
+                SourceExpr="Change Date & Time" }
+
+    { 10  ;2   ;Field     ;
+                SourceExpr=Reason }
+
+    { 11  ;2   ;Field     ;
+                SourceExpr="User Email" }
+
+  }
+  CODE
+  {
+
+    BEGIN
+    END.
+  }
+}

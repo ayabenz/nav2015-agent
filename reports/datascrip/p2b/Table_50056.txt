@@ -1,0 +1,80 @@
+OBJECT Table 50056 P2B Workflow Setup Line
+{
+  OBJECT-PROPERTIES
+  {
+    Date=02/01/16;
+    Time=16:27:34;
+    Modified=Yes;
+    Version List=DTS:T24;
+  }
+  PROPERTIES
+  {
+    OnModify=BEGIN
+               P2BHeader.RESET;
+               P2BHeader.SETCURRENTKEY("WorkFlow ID");
+               P2BHeader.SETRANGE("WorkFlow ID", "P2B Workflow ID");
+               P2BHeader.SETFILTER(Status, '%1|%2',P2BHeader.Status::Open,P2BHeader.Status::Release);
+               IF P2BHeader.FINDFIRST THEN
+                 ERROR('Workflow tidak bisa diedit..');
+             END;
+
+    OnDelete=BEGIN
+               P2BHeader.RESET;
+               P2BHeader.SETCURRENTKEY("WorkFlow ID");
+               P2BHeader.SETRANGE("WorkFlow ID", "P2B Workflow ID");
+               P2BHeader.SETFILTER(Status, '%1|%2',P2BHeader.Status::Open,P2BHeader.Status::Release);
+               IF P2BHeader.FINDFIRST THEN
+                 ERROR('Workflow tidak bisa didelete.. Ada P2B Transaction No. %1', P2BHeader."No.");
+             END;
+
+  }
+  FIELDS
+  {
+    { 1   ;   ;P2B Workflow ID     ;Integer        }
+    { 2   ;   ;Sequence No.        ;Integer       ;CaptionML=ENU=Step No. }
+    { 3   ;   ;User Level          ;Code50        ;TableRelation="P2B Setup".Code WHERE (Type=FILTER(User Level));
+                                                   CaptionML=ENU=User Level 1 }
+    { 4   ;   ;P2B Responsibility Type;Option     ;OptionCaptionML=ENU=" ,Requester,Owner,Confirmation";
+                                                   OptionString=[ ,Requester,Owner,Confirmation] }
+    { 5   ;   ;User Level 2        ;Code50        ;TableRelation="P2B Setup".Code WHERE (Type=FILTER(User Level)) }
+    { 6   ;   ;User Level 3        ;Code50        ;TableRelation="P2B Setup".Code WHERE (Type=FILTER(User Level)) }
+    { 7   ;   ;User Level 4        ;Code50        ;TableRelation="P2B Setup".Code WHERE (Type=FILTER(User Level));
+                                                   Description=for future use;
+                                                   Editable=No }
+    { 8   ;   ;User Level 5        ;Code50        ;TableRelation="P2B Setup".Code WHERE (Type=FILTER(User Level));
+                                                   Description=for future use;
+                                                   Editable=No }
+    { 9   ;   ;User Level 6        ;Code50        ;TableRelation="P2B Setup".Code WHERE (Type=FILTER(User Level));
+                                                   Description=for future use;
+                                                   Editable=No }
+    { 10  ;   ;User Level 7        ;Code50        ;TableRelation="P2B Setup".Code WHERE (Type=FILTER(User Level));
+                                                   Description=for future use;
+                                                   Editable=No }
+    { 11  ;   ;User Level 8        ;Code50        ;TableRelation="P2B Setup".Code WHERE (Type=FILTER(User Level));
+                                                   Description=for future use;
+                                                   Editable=No }
+    { 12  ;   ;User Level 9        ;Code50        ;TableRelation="P2B Setup".Code WHERE (Type=FILTER(User Level));
+                                                   Description=for future use;
+                                                   Editable=No }
+    { 13  ;   ;User Level 10       ;Code50        ;TableRelation="P2B Setup".Code WHERE (Type=FILTER(User Level));
+                                                   Description=for future use;
+                                                   Editable=No }
+    { 50000;  ;Step Ctr            ;Integer       ;Description=for system use;
+                                                   Editable=No }
+  }
+  KEYS
+  {
+    {    ;P2B Workflow ID,Sequence No.            ;Clustered=Yes }
+  }
+  FIELDGROUPS
+  {
+  }
+  CODE
+  {
+    VAR
+      P2BHeader@1000 : Record 50013;
+
+    BEGIN
+    END.
+  }
+}

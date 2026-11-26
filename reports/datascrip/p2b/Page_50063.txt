@@ -1,0 +1,432 @@
+OBJECT Page 50063 P2B Approval subform
+{
+  OBJECT-PROPERTIES
+  {
+    Date=08/23/16;
+    Time=16:35:16;
+    Modified=Yes;
+    Version List=DTS:T24;
+  }
+  PROPERTIES
+  {
+    MultipleNewLines=Yes;
+    LinksAllowed=No;
+    SourceTable=Table50014;
+    DelayedInsert=Yes;
+    SourceTableView=SORTING(Document No.,Line No.)
+                    WHERE(Status=FILTER(Open|Release|Approve));
+    PageType=ListPart;
+    AutoSplitKey=Yes;
+    RefreshOnActivate=Yes;
+    OnOpenPage=BEGIN
+                 IsSalesAdmin := P2BManagement.IsSalesAdmin(USERID);
+                 IsBackOffice := P2BManagement.IsBackOffice(USERID);
+                 IsSpecialPerson := P2BManagement.IsSpesialPerson(USERID);
+                 IsKPC := P2BManagement.IsKPC(USERID);
+               END;
+
+    OnAfterGetRecord=VAR
+                       Rec_P2BHeader@1000 : Record 50013;
+                     BEGIN
+                       //T24.01
+                       Rec_P2BHeader.GET("Document No.");
+                       StatusHeader := Rec_P2BHeader.Status;
+                       //StatusHeader := GetStatus("Document No.");
+                       //T24.01
+
+                       CALCFIELDS("Location Code Header");
+                       //CurrPage."Location Code".EDITABLE := GetOptionPostingTo("Document No.") = 0;
+                       //CurrPage.Owner.EDITABLE := CurrForm."Location Code".EDITABLE;
+                       gBol_LocationEditable := GetOptionPostingTo("Document No.") = 0;
+                       //gBol_OwnerEditable := gBol_LocationEditable;
+
+                       IF Rec_P2BHeader."Posting To" = Rec_P2BHeader."Posting To"::"Item Journal" THEN
+                         gBol_LocationEditable := TRUE
+                       ELSE
+                         gBol_LocationEditable := FALSE;
+                     END;
+
+    OnNewRecord=BEGIN
+                  QtyAvailable := 0;
+                END;
+
+    OnInsertRecord=BEGIN
+                     IF CreateLog THEN
+                     BEGIN
+                        IF GetOptionPostingTo("Document No.") = 0 THEN
+                           P2BManagement.CreateLogLine("Document No.",StatusHeader,USERID,TextInsert,
+                           "Item No.","Unit of Measure",Quantity,"Location Code",Description,
+                           '','',0,'','',"Item Category Code","Product Group Code",'','')
+                        ELSE
+                           P2BManagement.CreateLogLine("Document No.",StatusHeader,USERID,TextInsert,
+                           "Item No.","Unit of Measure",Quantity,LocationHeader,Description,
+                           '','',0,'','',"Item Category Code","Product Group Code",'','');
+                     END;
+                   END;
+
+    OnModifyRecord=BEGIN
+                     IF CreateLog THEN
+                     BEGIN
+                        IF GetOptionPostingTo("Document No.") = 0 THEN
+                           P2BManagement.CreateLogLine("Document No.",StatusHeader,USERID,TextUpdate,
+                           "Item No.","Unit of Measure",Quantity,"Location Code",Description,
+                           xRec."Item No.",xRec."Unit of Measure",xRec.Quantity,xRec."Location Code",
+                           xRec.Description,"Item Category Code","Product Group Code",xRec."Item Category Code",xRec."Product Group Code")
+                        ELSE
+                           P2BManagement.CreateLogLine("Document No.",StatusHeader,USERID,TextUpdate,
+                           "Item No.","Unit of Measure",Quantity,LocationHeader,Description,
+                           xRec."Item No.",xRec."Unit of Measure",xRec.Quantity,LocationHeader,
+                           xRec.Description,"Item Category Code","Product Group Code",xRec."Item Category Code",xRec."Product Group Code");
+                     END;
+                   END;
+
+    OnDeleteRecord=BEGIN
+                     IF CreateLog THEN
+                     BEGIN
+                        IF GetOptionPostingTo("Document No.") = 0 THEN
+                           P2BManagement.CreateLogLine("Document No.",StatusHeader,USERID,TextDelete,
+                           "Item No.","Unit of Measure",Quantity,"Location Code",Description,
+                           '','',0,'','',"Item Category Code","Product Group Code",'','')
+                        ELSE
+                           P2BManagement.CreateLogLine("Document No.",StatusHeader,USERID,TextDelete,
+                           "Item No.","Unit of Measure",Quantity,LocationHeader,Description,
+                           '','',0,'','',"Item Category Code","Product Group Code",'','');
+                     END;
+                   END;
+
+    OnAfterGetCurrRecord=VAR
+                           Rec_LP2BHeader@1000 : Record 50013;
+                           Bol_Allow@1001 : Boolean;
+                         BEGIN
+                           IF Rec_LP2BHeader.GET("Document No.") THEN BEGIN
+                              //CurrForm.ItemPanel.VISIBLE :=
+                              //   PemilikBarang AND (P2BManagement.IsOwner(USERID,LP2BHeader.Owner));
+                              gBol_ItemPanelVisible := PemilikBarang AND (P2BManagement.IsOwner(USERID,Rec_LP2BHeader.Owner));
+                              IF gBol_ItemPanelVisible THEN
+                                HitungAvailable;
+                              GRequester := Rec_LP2BHeader.Requester;
+                              GOwner := Rec_LP2BHeader.Owner;
+                              //CurrForm.Quantity.VISIBLE := TRUE;
+                              gBol_QtyVisible := TRUE;
+                              gRec_UserSetup.GET(USERID);
+
+                              IF NOT gRec_RespCenter.GET(gRec_UserSetup."P2B Resp. Ctr. Filter") THEN
+                                Bol_Allow := TRUE
+                              ELSE IF gRec_RespCenter."P2B Job Title" = gRec_RespCenter."P2B Job Title"::"Sales Dept." THEN
+                                Bol_Allow := TRUE
+                              ELSE
+                                Bol_Allow := FALSE;
+
+                              IF P2BManagement.IsOwner(USERID,Rec_LP2BHeader.Owner) OR Bol_Allow THEN BEGIN
+                                gBol_QtyEditable := TRUE;
+                              END ELSE BEGIN
+                               IF (NOT IsBackOffice) OR IsSpecialPerson THEN BEGIN
+                                 IF IsKPC AND (NOT(P2BManagement.IsOwner(USERID,Rec_LP2BHeader.Owner))) THEN BEGIN
+                                    //CurrForm.Quantity.VISIBLE := FALSE;
+                                    //CurrForm.Quantity.EDITABLE := FALSE;
+                                    //gBol_QtyVisible := FALSE;
+                                    gBol_QtyEditable := FALSE;
+                                 END ELSE BEGIN
+                                    //CurrForm.Quantity.VISIBLE := TRUE;
+                                    //CurrForm.Quantity.EDITABLE := TRUE;
+                                    gBol_QtyVisible := TRUE;
+                                    gBol_QtyEditable := TRUE;
+                                 END;
+                               END ELSE BEGIN
+                                 //CurrForm.Quantity.VISIBLE := FALSE;
+                                 //CurrForm.Quantity.EDITABLE := FALSE;
+                                 //gBol_QtyVisible := FALSE;
+                                 gBol_QtyEditable := FALSE;
+                               END;
+                               IF IsBackOffice OR IsKPC THEN
+                                 gBol_QtyEditable := FALSE
+                               ELSE
+                                 gBol_QtyEditable := TRUE;
+                              END;
+                           END;
+                         END;
+
+    ActionList=ACTIONS
+    {
+      { 13      ;    ;ActionContainer;
+                      ActionContainerType=ActionItems }
+      { 14      ;1   ;ActionGroup;
+                      CaptionML=ENU=&Line;
+                      Image=Line }
+      { 15      ;2   ;Action    ;
+                      CaptionML=ENU=Fill Quantity;
+                      Visible=TRUE;
+                      Enabled=gBol_Qtyeditable;
+                      OnAction=VAR
+                                 Rec_P2BLine@1000 : Record 50014;
+                               BEGIN
+                                 //T00.01
+                                 IF gBol_QtyEditable THEN BEGIN
+                                   Rec_P2BLine.RESET;
+                                   Rec_P2BLine.SETRANGE("Document No.", "Document No.");
+                                   Rec_P2BLine.SETFILTER("Item No.", '<>%1', '');
+                                   Rec_P2BLine.SETFILTER("Qty. Req. Cross Divisi", '>0');
+                                   IF Rec_P2BLine.FINDSET THEN BEGIN
+
+                                     IF GetOptionPostingTo("Document No.") <> 0 THEN
+                                        BEGIN IF (LocationHeader='') THEN ERROR('Location Code harus diisi...') END
+                                     ELSE
+                                        BEGIN IF ("Location Code"='') THEN ERROR('Location Code harus diisi...') END;
+
+                                     REPEAT
+                                       Rec_P2BLine.VALIDATE(Quantity, Rec_P2BLine."Qty. Req. Cross Divisi");
+                                     UNTIL Rec_P2BLine.NEXT = 0;
+                                   END;
+                                 END ELSE
+                                   ERROR('You are not allowed to input Quantity.');
+
+                                 CurrPage.UPDATE;
+                                 //T00.01
+                               END;
+                                }
+    }
+  }
+  CONTROLS
+  {
+    { 1   ;    ;Container ;
+                CaptionML=ENU=P2B Lines;
+                ContainerType=ContentArea }
+
+    { 2   ;1   ;Group     ;
+                Name=Group;
+                GroupType=Repeater }
+
+    { 3   ;2   ;Field     ;
+                SourceExpr="Item No.";
+                OnValidate=BEGIN
+                             ItemNoOnAfterValidate;
+                           END;
+
+                OnLookup=VAR
+                           P2BItem@1000 : Record 50017;
+                         BEGIN
+                           P2BItem.RESET;
+                           IF P2BManagement.GetDeptCodeByRespCenter(GOwner)<>'' THEN
+                             P2BItem.SETRANGE("Global Dimension 1 Code",P2BManagement.GetDeptCodeByRespCenter(GOwner));
+
+                           IF NOT P2BItem.FINDSET THEN
+                             P2BItem.RESET;
+
+                           IF "Item No." <> '' THEN
+                             P2BItem.GET("Item No.");
+
+                           IF PAGE.RUNMODAL(PAGE::"P2B Item List",P2BItem)= ACTION::LookupOK THEN
+                             VALIDATE("Item No.",P2BItem."No.");
+                         END;
+                          }
+
+    { 4   ;2   ;Field     ;
+                SourceExpr=Description }
+
+    { 5   ;2   ;Field     ;
+                SourceExpr="Line Description" }
+
+    { 6   ;2   ;Field     ;
+                SourceExpr="Unit of Measure" }
+
+    { 7   ;2   ;Field     ;
+                SourceExpr="Location Code";
+                Enabled=gBol_LocationEditable;
+                Editable=gBol_LocationEditable;
+                OnValidate=BEGIN
+                             LocationOnAfterValidate;
+                           END;
+                            }
+
+    { 8   ;2   ;Field     ;
+                SourceExpr=Owner;
+                Enabled=gBol_LocationEditable;
+                Editable=gBol_LocationEditable }
+
+    { 9   ;2   ;Field     ;
+                SourceExpr=Quantity;
+                Visible=TRUE;
+                Editable=gBol_Qtyeditable;
+                OnValidate=BEGIN
+                             IF Quantity <> 0 THEN
+                             BEGIN
+                               IF GetOptionPostingTo("Document No.") <> 0 THEN
+                                  BEGIN IF (LocationHeader='') THEN ERROR('Location Code harus diisi...') END
+                               ELSE
+                                  BEGIN IF ("Location Code"='') THEN ERROR('Location Code harus diisi...') END;
+                             END;
+
+                             QuantityOnAfterValidate;
+                           END;
+                            }
+
+    { 10  ;2   ;Field     ;
+                SourceExpr="Qty. Req. Cross Divisi" }
+
+    { 11  ;2   ;Field     ;
+                SourceExpr="Item Category Code";
+                OnLookup=VAR
+                           Rec_P2BHeader@1000 : Record 50013;
+                           Rec_ItemCategory@1002 : Record 5722;
+                           Cod_repload@1001 : Code[10];
+                         BEGIN
+                           IF Rec_P2BHeader.GET("Document No.") THEN
+                             Cod_repload  := Rec_P2BHeader."Department Code" ;
+
+                           IF NOT ((Rec_P2BHeader.Requester = 'DIVISI I') AND (Rec_P2BHeader."Document Type" IN['HRO40-PROMOSI','HRO40-PROMOSI LAIN'])) THEN
+                              EXIT;
+
+                           Rec_ItemCategory.RESET;
+                           Rec_ItemCategory.SETFILTER(Code, Cod_repload+'*' );
+                           IF PAGE.RUNMODAL(5730,Rec_ItemCategory ) = ACTION::LookupOK THEN BEGIN
+                             IF Rec_ItemCategory.Code <> '' THEN
+                               "Item Category Code" := Rec_ItemCategory.Code;
+                           END;
+                         END;
+                          }
+
+    { 12  ;2   ;Field     ;
+                SourceExpr="Product Group Code";
+                OnLookup=VAR
+                           Rec_Itemproductgroup@1002 : Record 5723;
+                           Cod_Repload@1001 : Code[10];
+                           Rec_P2BHeader@1000 : Record 50013;
+                         BEGIN
+                           IF Rec_P2BHeader.GET("Document No.") THEN
+                             Cod_Repload := "Item Category Code";
+
+                           IF NOT ((Rec_P2BHeader.Requester = 'DIVISI I') AND (Rec_P2BHeader."Document Type" IN['HRO40-PROMOSI','HRO40-PROMOSI LAIN'])) THEN
+                             EXIT;
+
+                           Rec_Itemproductgroup.RESET;
+                           Rec_Itemproductgroup.SETFILTER(Rec_Itemproductgroup."Item Category Code", Cod_Repload);
+                           IF PAGE.RUNMODAL(5731,Rec_Itemproductgroup) = ACTION::LookupOK THEN BEGIN
+                             "Product Group Code" := Rec_Itemproductgroup.Code ;
+                           END;
+                         END;
+                          }
+
+  }
+  CODE
+  {
+    VAR
+      gTxt_QtyAvailableIn@1000 : Text[100];
+      gTxt_QtyOnHandIn@1001 : Text[100];
+      gBol_LocationEditable@1008 : Boolean;
+      gBol_QtyOnHandVisible@1010 : Boolean;
+      gBol_ItemPanelVisible@1014 : Boolean;
+      gBol_QtyVisible@1020 : Boolean;
+      gBol_QtyEditable@1021 : Boolean;
+      LocationHeader@1012 : Code[100];
+      ToLocation@1013 : Code[100];
+      TextLocationHeader@1015 : Code[100];
+      StatusHeader@1007 : 'Open,Release,Cancel,Approve,Close';
+      IsSalesAdmin@1005 : Boolean;
+      IsBackOffice@1004 : Boolean;
+      IsSpecialPerson@1003 : Boolean;
+      IsKPC@1002 : Boolean;
+      PemilikBarang@1011 : Boolean;
+      P2BManagement@1006 : Codeunit 50100;
+      QtyAvailable@1016 : Decimal;
+      QtyOnHand@1017 : Decimal;
+      GRequester@1019 : Code[30];
+      GOwner@1018 : Code[30];
+      CreateLog@1022 : Boolean;
+      TextInsert@1025 : TextConst 'ENU=INSERT';
+      TextUpdate@1024 : TextConst 'ENU=UPDATE';
+      TextDelete@1023 : TextConst 'ENU=DELETE';
+      gRec_UserSetup@1009 : Record 91;
+      gRec_RespCenter@1026 : Record 5714;
+
+    PROCEDURE GetOptionPostingTo@1000000003(PDocNo@1000000001 : Code[20]) : Integer;
+    VAR
+      LP2BHeader@1000000000 : Record 50013;
+      LResponsibilityCenter@1000000002 : Record 5714;
+    BEGIN
+      LP2BHeader.RESET;
+      LP2BHeader.SETFILTER("No.",PDocNo);
+      IF LP2BHeader.FINDFIRST THEN
+      BEGIN
+         gBol_QtyOnHandVisible := FALSE;
+         //CurrForm.QtyOnHandTextBox.VISIBLE :=   FALSE;
+      //      (LP2BHeader.Requester<>LP2BHeader.Owner) AND NOT(P2BManagement.IsCrossDivisi(LP2BHeader));
+         IF (LResponsibilityCenter.GET(P2BManagement.GetUserP2BRespCenter(USERID))) THEN
+            PemilikBarang := LResponsibilityCenter."P2B Resp. Owner"
+         ELSE
+            PemilikBarang := FALSE;
+         IF LP2BHeader."Posting To" = LP2BHeader."Posting To"::"Item Journal" THEN
+            LocationHeader := "Location Code"+' '+Owner
+         ELSE
+            LocationHeader := LP2BHeader."From Location"+' '+LP2BHeader."From Location Ownership";
+         IF LResponsibilityCenter.GET(LP2BHeader.Requester) THEN
+           ToLocation := CONVERTSTR(LResponsibilityCenter."P2B Location Code",',','|');
+         EXIT(LP2BHeader."Posting To");
+      END
+      ELSE
+      BEGIN
+         LocationHeader := '';
+         ToLocation := '';
+         EXIT(-1);
+      END;
+    END;
+
+    PROCEDURE HitungAvailable@1000000006();
+    VAR
+      Item@1000000000 : Record 27;
+    BEGIN
+      //IF ("Item No." <> '')AND(GetOptionPostingTo("Document No.") = 0) THEN
+      GetOptionPostingTo("Document No.");
+
+      IF ("Item No." <> '') THEN
+      BEGIN
+         TextLocationHeader := LocationHeader;
+         IF TextLocationHeader= '' THEN TextLocationHeader := "Location Code";
+         QtyAvailable := P2BManagement.GetQuantityAvailable("Item No.",TextLocationHeader);
+         Item.GET("Item No.");
+         WITH Item DO BEGIN
+            RESET;
+            SETFILTER("Location Filter",ToLocation);
+            CALCFIELDS(Inventory);
+            QtyOnHand := Inventory;
+         END;
+      END
+      ELSE
+      BEGIN
+         QtyAvailable := 0;
+         QtyOnHand := 0;
+      END;
+    END;
+
+    PROCEDURE SetCreateLog@1000000002(PActive@1000000000 : Boolean);
+    BEGIN
+      CreateLog := TRUE;
+    END;
+
+    LOCAL PROCEDURE ItemNoOnAfterValidate@1();
+    BEGIN
+      CurrPage.SAVERECORD;
+      IF gBol_ItemPanelVisible THEN
+        HitungAvailable;
+    END;
+
+    LOCAL PROCEDURE LocationOnAfterValidate@8();
+    BEGIN
+      CurrPage.SAVERECORD;
+      IF gBol_ItemPanelVisible THEN
+        HitungAvailable;
+    END;
+
+    LOCAL PROCEDURE QuantityOnAfterValidate@11();
+    BEGIN
+      CurrPage.SAVERECORD;
+      IF gBol_ItemPanelVisible THEN
+        HitungAvailable;
+    END;
+
+    BEGIN
+    {
+      T00.01    SH    9 Jan 16    Add function : Fill Quantity -> used to copy Quantity from "Qty. Req. Cross Divisi" to Quantity
+    }
+    END.
+  }
+}

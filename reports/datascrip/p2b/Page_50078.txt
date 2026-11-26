@@ -1,0 +1,74 @@
+OBJECT Page 50078 P2B Transaction Posted SubForm
+{
+  OBJECT-PROPERTIES
+  {
+    Date=12/02/15;
+    Time=01:00:00;
+    Modified=Yes;
+    Version List=DTS:T24;
+  }
+  PROPERTIES
+  {
+    CaptionML=ENU=Lines;
+    MultipleNewLines=Yes;
+    LinksAllowed=No;
+    SourceTable=Table50014;
+    DelayedInsert=Yes;
+    SourceTableView=WHERE(Status=FILTER(Close|Cancel));
+    PageType=ListPart;
+    AutoSplitKey=Yes;
+  }
+  CONTROLS
+  {
+    { 1   ;0   ;Container ;
+                ContainerType=ContentArea }
+
+    { 2   ;1   ;Group     ;
+                Name=Group;
+                GroupType=Repeater }
+
+    { 3   ;2   ;Field     ;
+                SourceExpr="Item No." }
+
+    { 4   ;2   ;Field     ;
+                SourceExpr=Description }
+
+    { 5   ;2   ;Field     ;
+                SourceExpr="Unit of Measure" }
+
+    { 6   ;2   ;Field     ;
+                SourceExpr=Quantity }
+
+    { 7   ;2   ;Field     ;
+                SourceExpr="Location Code" }
+
+    { 8   ;2   ;Field     ;
+                SourceExpr=Owner }
+
+    { 9   ;2   ;Field     ;
+                SourceExpr="Item Category Code" }
+
+    { 10  ;2   ;Field     ;
+                SourceExpr="Product Group Code" }
+
+    { 11  ;2   ;Field     ;
+                SourceExpr="Qty. Req. Cross Divisi" }
+
+    { 12  ;2   ;Field     ;
+                SourceExpr="Sub Dept" }
+
+  }
+  CODE
+  {
+    VAR
+      gBol_PageEditable@1000 : Boolean;
+
+    PROCEDURE SetReadOnly@1000000005(PActive@1000000000 : Boolean);
+    BEGIN
+      CurrPage.EDITABLE(NOT PActive);
+    END;
+
+    BEGIN
+    END.
+  }
+}

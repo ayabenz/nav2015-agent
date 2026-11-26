@@ -1,0 +1,152 @@
+OBJECT Page 50075 P2B User Setup
+{
+  OBJECT-PROPERTIES
+  {
+    Date=10/26/15;
+    Time=01:00:00;
+    Modified=Yes;
+    Version List=DTS:T24;
+  }
+  PROPERTIES
+  {
+    SourceTable=Table91;
+    PageType=List;
+    OnOpenPage=VAR
+                 LVi_Counter@1000 : Integer;
+               BEGIN
+                 {
+                 P2BManagement.InitializeUserLevel();
+                 P2BManagement.GetUserLevel(UserLevel);
+                 FOR LVi_Counter := 1 TO ARRAYLEN(UserLevel) DO
+                 BEGIN
+                    IF UserLevel[LVi_Counter] <> '' THEN
+                    BEGIN
+                       ItemVariantTransaksi.INIT;
+                       ItemVariantTransaksi.Code := FORMAT(LVi_Counter);
+                       ItemVariantTransaksi.Description := UserLevel[LVi_Counter];
+                       ItemVariantTransaksi.INSERT;
+                    END;
+                 END;
+                 }
+               END;
+
+  }
+  CONTROLS
+  {
+    { 1   ;0   ;Container ;
+                ContainerType=ContentArea }
+
+    { 2   ;1   ;Group     ;
+                Name=Group;
+                GroupType=Repeater }
+
+    { 3   ;2   ;Field     ;
+                SourceExpr="User ID" }
+
+    { 4   ;2   ;Field     ;
+                SourceExpr="Not Send P2B Notifikasi" }
+
+    { 5   ;2   ;Field     ;
+                SourceExpr="Allow Posting From";
+                OnValidate=BEGIN
+                             IF (USERID <> 'ME') AND (USERID <> 'PUDJI') AND (USERID <> 'ADMIN') AND (USERID <> 'AQ') AND (USERID <> 'AD')THEN BEGIN
+                              MESSAGE(Text0001 + Text0002);
+                              "Allow Posting From" := xRec."Allow Posting From";
+                             END;
+                           END;
+                            }
+
+    { 6   ;2   ;Field     ;
+                SourceExpr="Allow Posting To";
+                OnValidate=BEGIN
+                             IF (USERID <> 'ME') AND (USERID <> 'PUDJI') AND (USERID <> 'ADMIN') AND (USERID <> 'AQ')AND (USERID <> 'AD')THEN BEGIN
+                              MESSAGE(Text0001 + Text0002);
+                              "Allow Posting To" := xRec."Allow Posting To";
+                             END;
+                           END;
+                            }
+
+    { 7   ;2   ;Field     ;
+                SourceExpr="Register Time" }
+
+    { 8   ;2   ;Field     ;
+                SourceExpr="Sales Resp. Ctr. Filter" }
+
+    { 9   ;2   ;Field     ;
+                SourceExpr="Purchase Resp. Ctr. Filter" }
+
+    { 10  ;2   ;Field     ;
+                SourceExpr="Allow Edit Flag Daerah" }
+
+    { 11  ;2   ;Field     ;
+                SourceExpr="Allow Edit Flag ED Klaim" }
+
+    { 12  ;2   ;Field     ;
+                SourceExpr="Warehouse Location Filter" }
+
+    { 13  ;2   ;Field     ;
+                SourceExpr="Service Resp. Ctr. Filter" }
+
+    { 14  ;2   ;Field     ;
+                SourceExpr="Allow Print DO More than Once" }
+
+    { 15  ;2   ;Field     ;
+                SourceExpr="Allow Print Inv More than Once" }
+
+    { 16  ;2   ;Field     ;
+                SourceExpr="Service Zone Code" }
+
+    { 17  ;2   ;Field     ;
+                SourceExpr="Enable TTF" }
+
+    { 18  ;2   ;Field     ;
+                SourceExpr="P2B Resp. Ctr. Filter" }
+
+    { 19  ;2   ;Field     ;
+                SourceExpr="KPC Zone Filter" }
+
+    { 20  ;2   ;Field     ;
+                SourceExpr="P2B User Level" }
+
+    { 21  ;2   ;Field     ;
+                SourceExpr="P2B Supervisor By Sub Group" }
+
+    { 22  ;2   ;Field     ;
+                SourceExpr="P2B Flag System" }
+
+    { 23  ;2   ;Field     ;
+                SourceExpr="P2B Force Approve Level" }
+
+    { 24  ;2   ;Field     ;
+                SourceExpr="Journal Template Filter" }
+
+  }
+  CODE
+  {
+    VAR
+      P2BManagement@1001 : Codeunit 50100;
+      ItemVariantTransaksi@1000 : TEMPORARY Record 5401;
+      UserLevel@1002 : ARRAY [100] OF Code[50];
+      ReadOnly@1003 : Boolean;
+      UserSetup@1004 : Record 91;
+      Text0001@1006 : TextConst 'ENU=You do not have permission to change this field !! \\';
+      Text0002@1005 : TextConst 'ENU=Contact the super user if you need to change this field';
+
+    PROCEDURE SetReadOnly@1000000000(PActive@1000000000 : Boolean);
+    BEGIN
+      CurrPage.EDITABLE := NOT PActive;
+      ReadOnly := PActive;
+    END;
+
+    PROCEDURE GetUserIDSelected@1000000001() Result : Code[250];
+    BEGIN
+      IF UserSetup.FINDFIRST THEN
+      REPEAT
+         Result := Result + UserSetup."User ID" + ',';
+      UNTIL UserSetup.NEXT = 0;
+    END;
+
+    BEGIN
+    END.
+  }
+}

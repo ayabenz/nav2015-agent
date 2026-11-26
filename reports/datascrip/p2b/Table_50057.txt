@@ -1,0 +1,43 @@
+OBJECT Table 50057 P2B MEX Approval Setup
+{
+  OBJECT-PROPERTIES
+  {
+    Date=11/06/15;
+    Time=01:00:00;
+    Modified=Yes;
+    Version List=DTS:T24;
+  }
+  PROPERTIES
+  {
+    LookupPageID=Page50058;
+    DrillDownPageID=Page50058;
+  }
+  FIELDS
+  {
+    { 1   ;   ;Responsibility Center;Code10       ;TableRelation="Responsibility Center";
+                                                   NotBlank=Yes }
+    { 2   ;   ;User Level          ;Code50        ;TableRelation="P2B Setup".Code WHERE (Type=FILTER(User Level)) }
+    { 3   ;   ;Sub Department      ;Code50        ;TableRelation="P2B Setup".Code WHERE (Type=FILTER(Sub Dept.)) }
+    { 4   ;   ;User Responsibility ;Code10        ;Description=manual input MIX,MEX }
+    { 5   ;   ;Approval            ;Code50        ;TableRelation="P2B Setup".Code WHERE (Type=FILTER(User Level));
+                                                   CaptionML=ENU=Approval 1 }
+    { 6   ;   ;Approval 2          ;Code50        ;TableRelation="P2B Setup".Code WHERE (Type=FILTER(User Level)) }
+    { 7   ;   ;Approval 3          ;Code50        ;TableRelation="P2B Setup".Code WHERE (Type=FILTER(User Level)) }
+    { 8   ;   ;Approval 4          ;Code50        ;TableRelation="P2B Setup".Code WHERE (Type=FILTER(User Level)) }
+    { 9   ;   ;Approval 5          ;Code50        ;TableRelation="P2B Setup".Code WHERE (Type=FILTER(User Level)) }
+  }
+  KEYS
+  {
+    {    ;Responsibility Center,User Level,Sub Department,User Responsibility;
+                                                   Clustered=Yes }
+  }
+  FIELDGROUPS
+  {
+  }
+  CODE
+  {
+
+    BEGIN
+    END.
+  }
+}

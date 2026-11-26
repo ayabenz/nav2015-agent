@@ -1,0 +1,667 @@
+OBJECT Table 50013 P2B Header
+{
+  OBJECT-PROPERTIES
+  {
+    Date=12/08/25;
+    Time=00:05:01;
+    Modified=Yes;
+    Version List=DTS:D34,T24;
+  }
+  PROPERTIES
+  {
+    OnInsert=BEGIN
+               InvtSetup.GET;
+
+               IF "No." = '' THEN BEGIN
+                 TestNoSeries;
+                 NoSeriesMgt.InitSeries(GetNoSeriesCode,xRec."No. Series","Posting Date","No.","No. Series");
+               END;
+
+               InitRecord;
+             END;
+
+    OnModify=VAR
+               Rec_P2BLine@1000 : Record 50014;
+             BEGIN
+               IF ("From Location" <> xRec."From Location")
+                 OR ("Posting To" <> xRec."Posting To")
+                 OR (Status <> xRec.Status) THEN
+               BEGIN
+                 Rec_P2BLine.RESET;
+                 Rec_P2BLine.SETRANGE("Document No.", "No.");
+                 IF Rec_P2BLine.FINDSET THEN BEGIN
+                   IF ("From Location" <> xRec."From Location") THEN
+                     Rec_P2BLine.MODIFYALL("Header From Location", "From Location");
+                   IF ("Posting To" <> xRec."Posting To") THEN
+                     Rec_P2BLine.MODIFYALL("Header Posting To", "Posting To");
+                   IF (Status <> xRec.Status) THEN
+                     Rec_P2BLine.MODIFYALL(Status, Status);
+                 END;
+               END;
+             END;
+
+    OnDelete=BEGIN
+               //IF NOT CONFIRM(Text50001,FALSE) THEN
+               //  ERROR('Delete cancelled');
+
+               IF USERID <> 'AD' THEN
+                 TESTFIELD(Status,Status::Open);
+
+               P2BLine.RESET;
+               P2BLine.SETRANGE("Document No.","No.");
+               IF P2BLine.FINDSET THEN
+                 P2BLine.DELETEALL;
+
+               //P2BLog.RESET;
+               //P2BLog.SETFILTER("Document No.","No.");
+               //P2BLog.DELETEALL;
+
+               CommentLine.RESET;
+               CommentLine.SETRANGE("Table Name",CommentLine."Table Name"::P2B);
+               CommentLine.SETRANGE("No.","No.");
+               IF CommentLine.FINDSET THEN
+                 CommentLine.DELETEALL;
+             END;
+
+    OnRename=BEGIN
+               ERROR('You cannot rename a %1.',TABLECAPTION);
+             END;
+
+    LookupPageID=Page50057;
+    DrillDownPageID=Page50057;
+  }
+  FIELDS
+  {
+    { 1   ;   ;No.                 ;Code20        ;OnValidate=BEGIN
+                                                                // D34.01
+                                                                IF "No." <> xRec."No." THEN BEGIN
+                                                                  InvtSetup.GET;
+                                                                  NoSeriesMgt.TestManual(GetNoSeriesCode);
+                                                                  "No. Series" := '';
+                                                                END;
+                                                                // D34.01
+                                                              END;
+
+                                                   Description=D34 }
+    { 2   ;   ;Document Type       ;Code50        ;TableRelation="P2B Setup".Code WHERE (Type=FILTER(Document Type));
+                                                   OnValidate=BEGIN
+                                                                // D34.01
+                                                                TESTFIELD(Status,Status::Open);  //T24.02
+
+                                                                IF "Document Type" = '' THEN BEGIN
+                                                                   Owner := '';
+                                                                   "Warehouse Code" := '';
+                                                                   "Sub Dept. Owner" := '';  //T24.02
+                                                                   "Variant Owner" := '';
+                                                                END;
+                                                                // D34.01
+                                                              END;
+
+                                                   Description=[D34; Jenis Dokumen HRO] }
+    { 3   ;   ;Warehouse Code      ;Code50        ;TableRelation="P2B Setup".Code WHERE (Type=FILTER(Warehouse));
+                                                   Description=[D34; Kode Gudang Fisik,T24.01] }
+    { 4   ;   ;Requester           ;Code10        ;TableRelation="Responsibility Center";
+                                                   OnValidate=VAR
+                                                                Rec_RespCenter@1000 : Record 5714;
+                                                              BEGIN
+                                                                //T24.04
+                                                                IF (Requester <> xRec.Requester) THEN BEGIN
+                                                                  IF Rec_RespCenter.GET(Requester) THEN
+                                                                    "P2B Job Title Requester" := Rec_RespCenter."P2B Job Title";
+                                                                END;
+                                                                //T24.04
+                                                              END;
+
+                                                   Description=[D34; Responsibility Center Peminta Barang] }
+    { 5   ;   ;Owner               ;Code10        ;TableRelation="Responsibility Center";
+                                                   Description=[D34; Responsibility Center Pemilik Barang] }
+    { 6   ;   ;User ID Requester   ;Code50        ;Description=D34,T24.01 }
+    { 7   ;   ;User ID Owner       ;Code50        ;Description=D34,T24.01 }
+    { 8   ;   ;Posting To          ;Option        ;OptionCaptionML=ENU=Item Journal,Transfer Order,Loan;
+                                                   OptionString=Item Journal,Transfer Order,Loan;
+                                                   Description=D34 }
+    { 9   ;   ;Location Code       ;Code10        ;TableRelation=Location;
+                                                   Description=D34 }
+    { 10  ;   ;From Location       ;Code10        ;TableRelation=Location;
+                                                   OnValidate=VAR
+                                                                LRangeLocation@1000000001 : Code[50];
+                                                                Rec_P2BLocOwner@1000 : Record 50051;
+                                                              BEGIN
+                                                                P2BLine.RESET;
+                                                                P2BLine.SETFILTER("Document No.","No.");
+                                                                IF P2BLine.FINDFIRST THEN
+                                                                   ERROR('Line Must Be Empty..');
+
+                                                                // D34.01
+                                                                {IF "From Location" = "To Location" THEN
+                                                                   ERROR('From Location Code <> To Location Code ');}
+                                                                { FDR : 12/28/2010 BEGIN }
+                                                                IF Location.GET("From Location") THEN IsWMSFromLocation:= Location.Ownership;
+                                                                IF Location.GET("To Location") THEN IsWMSToLocation:= Location.Ownership;
+
+                                                                IF NOT(IsWMSFromLocation) AND NOT(IsWMSToLocation) THEN
+                                                                   IF "From Location" = "To Location" THEN
+                                                                      ERROR('From Location Code <> To Location Code ');
+                                                                { FDR : 12/28/2010 END}
+
+                                                                {IF ("Warehouse Code"='CKG') AND ("From Location"<>'CKG') THEN
+                                                                   ERROR('From Location Code : ' + "From Location" + ' cannot be seleted');}
+
+                                                                IF ("Warehouse Code"<>'CKG') AND ("From Location"='CKG') THEN
+                                                                   ERROR('From Location Code : ' + "From Location" + ' cannot be seleted');
+
+
+                                                                P2BManagement.InitializeRespHasNoLocation();
+                                                                IF "Posting To" <> "Posting To"::"Item Journal" THEN
+                                                                BEGIN
+                                                                   IF "From Location" <> '' THEN
+                                                                   BEGIN
+                                                                      {
+                                                                      IF P2BManagement.IsRespCenterHasNoLocation(Owner,"Variant Owner",LRangeLocation) THEN
+                                                                      BEGIN
+                                                                         // Cek Location Code berdasarkan variant, nilainya sudah didapat divariable LRangeLocation
+                                                                         IF P2BManagement.ExistLocationCode(Owner,"From Location",TRUE,LRangeLocation) = FALSE THEN
+                                                                            ERROR('From Location Code : ' + "From Location" + ' cannot be seleted');
+                                                                      END
+                                                                      ELSE
+                                                                      // Cek Location Code berdasarkan Responsibility Center
+                                                                      IF P2BManagement.ExistLocationCode(Owner,"From Location",FALSE,'') = FALSE THEN
+                                                                         ERROR('From Location Code : ' + "From Location" + ' cannot be selected')
+                                                                      ELSE
+                                                                      IF "From Location" = "To Location" THEN
+                                                                         ERROR('From Location Code <> To Location Code ');
+                                                                      }
+                                                                      Rec_P2BLocOwner.RESET;
+                                                                      Rec_P2BLocOwner.SETRANGE("Responsibility Center", Owner);
+                                                                      //Rec_P2BLocOwner.SETRANGE("Sub Dept.", "Sub Dept. Owner");
+                                                                      Rec_P2BLocOwner.SETRANGE("Sub Dept.", "Variant Owner");
+                                                                      Rec_P2BLocOwner.SETRANGE("Warehouse Code", "Warehouse Code");
+                                                                      Rec_P2BLocOwner.SETRANGE("Location Code", "From Location");
+                                                                      IF NOT Rec_P2BLocOwner.FINDFIRST THEN
+                                                                        ERROR('From Location Code : ' + "From Location" + ' cannot be selected.');
+
+                                                                   END;
+                                                                END
+                                                                ELSE
+                                                                BEGIN
+                                                                   IF "From Location" <> '' THEN
+                                                                      ERROR('Header From Location Code cannot be selected');
+                                                                END;
+                                                                IF "From Location"<> xRec."From Location" THEN "From Location Ownership":=''; {FDR : 12/28/2008}
+                                                                // D34.01
+
+                                                                IF "From Location" = '' THEN
+                                                                  "From Location Ownership" := '';
+                                                              END;
+
+                                                   OnLookup=VAR
+                                                              Rec_P2BLocOwner@1000 : Record 50051;
+                                                            BEGIN
+                                                              Rec_P2BLocOwner.RESET;
+                                                              Rec_P2BLocOwner.SETRANGE("Responsibility Center", Owner);
+                                                              //Rec_P2BLocOwner.SETRANGE("Sub Dept.", "Sub Dept. Owner");
+                                                              Rec_P2BLocOwner.SETRANGE("Sub Dept.", "Variant Owner");
+                                                              Rec_P2BLocOwner.SETRANGE("Warehouse Code", "Warehouse Code");
+                                                              IF Rec_P2BLocOwner.FINDSET THEN;
+
+                                                              IF PAGE.RUNMODAL(50051,Rec_P2BLocOwner) = ACTION::LookupOK THEN BEGIN
+                                                                VALIDATE("From Location", Rec_P2BLocOwner."Location Code");
+                                                                IF Rec_P2BLocOwner."Ownership Code" <> '' THEN
+                                                                  VALIDATE("From Location Ownership", Rec_P2BLocOwner."Ownership Code");
+                                                              END;
+                                                            END;
+
+                                                   Description=[D34; Untuk lokasi dari gudang mana] }
+    { 11  ;   ;To Location         ;Code10        ;TableRelation=Location;
+                                                   OnValidate=VAR
+                                                                LRangeLocation@1000000000 : Code[50];
+                                                                Rec_P2BLocOwner@1000 : Record 50051;
+                                                              BEGIN
+                                                                Rec_P2BLocOwner.RESET;
+                                                                Rec_P2BLocOwner.SETRANGE("Responsibility Center", Requester);
+                                                                Rec_P2BLocOwner.SETRANGE("Sub Dept.", Variant);
+                                                                Rec_P2BLocOwner.SETRANGE("Warehouse Code", "Warehouse Code");
+                                                                IF NOT Rec_P2BLocOwner.FINDFIRST THEN
+                                                                  ERROR('Record Not Found.');
+
+                                                                // D34.01
+                                                                { FDR : 12/28/2010 BEGIN }
+                                                                IF Location.GET("From Location") THEN IsWMSFromLocation:= Location.Ownership;
+                                                                IF Location.GET("To Location") THEN IsWMSToLocation:= Location.Ownership;
+
+                                                                IF NOT(IsWMSFromLocation) AND NOT(IsWMSToLocation) THEN
+                                                                   IF "From Location" = "To Location" THEN
+                                                                      ERROR('From Location Code <> To Location Code ');
+                                                                { FDR : 12/28/2010 END}
+
+                                                                P2BManagement.InitializeRespHasNoLocation();
+
+                                                                CASE "Posting To" OF
+                                                                  "Posting To"::"Item Journal":
+                                                                    IF "To Location"<>'' THEN ERROR('Header To Location Code cannot be selected');
+                                                                  "Posting To"::Loan:
+                                                                  BEGIN
+                                                                    IF ("To Location"<>'PC')AND("To Location"<>'PD') THEN
+                                                                       ERROR('To Location Code : ' + "To Location" + ' cannot be seleted');
+                                                                    IF "To Location"='PC' THEN "Loan Type":=2 ELSE
+                                                                    IF "To Location"='PD' THEN "Loan Type":=1 ELSE
+                                                                    "Loan Type":=0;
+                                                                  END;
+                                                                  "Posting To"::"Transfer Order":
+                                                                  BEGIN
+                                                                {    IF ("To Location"='PC')OR("To Location"='PD') THEN
+                                                                       ERROR('To Location Code : ' + "To Location" + ' cannot be seleted'); FDR 2 may 2011}
+
+                                                                //FDR 02 may 2011
+                                                                      {
+                                                                      IF P2BManagement.IsRespCenterHasNoLocation(Requester,Variant,LRangeLocation) THEN
+                                                                      BEGIN
+                                                                         IF P2BManagement.ExistLocationCode(Requester,"To Location",TRUE,LRangeLocation) = FALSE THEN
+                                                                            ERROR('To Location Code : ' + "To Location" + ' cannot be seleted')
+                                                                      END ELSE
+                                                                         IF P2BManagement.ExistLocationCode(Requester,"To Location",FALSE,'') = FALSE THEN
+                                                                            ERROR('To Location Code : ' + "To Location" + ' cannot be seleted')
+                                                                      }
+                                                                //FDR 02 May 2011
+                                                                  END;
+                                                                END;
+
+                                                                IF "To Location"<> xRec."To Location" THEN "To Location Ownership" := ''; {FDR : 12/28/2008}
+                                                                // D34.01
+
+                                                                IF "To Location" = '' THEN
+                                                                  "To Location Ownership" := '';
+
+                                                                // D00.01
+                                                                IF "Document Type" = 'MS100-PINDAH-GUDANG' THEN
+                                                                 BEGIN
+                                                                  IF Location.GET("To Location") THEN
+                                                                   BEGIN
+                                                                    "Ship-to Name" := Location.Name;
+                                                                    "Ship-to Name 2" := Location."Name 2";
+                                                                    "Ship-to Address 1" := Location.Address;
+                                                                    "Ship-to Address 2" := Location."Address 2";
+                                                                    "Ship-to City" := Location.City;
+                                                                    "Ship-to Post Code" := Location."Post Code";
+                                                                   END
+                                                                 END
+                                                                // BNY
+                                                              END;
+
+                                                   OnLookup=VAR
+                                                              Rec_P2BLocOwner@1000 : Record 50051;
+                                                            BEGIN
+                                                              Rec_P2BLocOwner.RESET;
+                                                              Rec_P2BLocOwner.SETRANGE("Responsibility Center", Requester);
+                                                              //Rec_P2BLocOwner.SETRANGE("Sub Dept.", "Sub Dept. Requester");
+                                                              Rec_P2BLocOwner.SETRANGE("Sub Dept.", Variant);
+                                                              Rec_P2BLocOwner.SETRANGE("Warehouse Code", "Warehouse Code");
+                                                              IF Rec_P2BLocOwner.FINDSET THEN;
+
+                                                              IF PAGE.RUNMODAL(50051,Rec_P2BLocOwner) = ACTION::LookupOK THEN BEGIN
+                                                                VALIDATE("To Location", Rec_P2BLocOwner."Location Code");
+                                                                IF Rec_P2BLocOwner."Ownership Code" <> '' THEN
+                                                                  VALIDATE("To Location Ownership", Rec_P2BLocOwner."Ownership Code");
+                                                              END;
+                                                            END;
+
+                                                   Description=[D34; Untuk lokasi ke gudang mana] }
+    { 12  ;   ;Transit Location    ;Code10        ;TableRelation=Location WHERE (Use As In-Transit=FILTER(Yes));
+                                                   Description=[D34; Untuk lokasi gudang transit sebelum sampe ke gudang tujuan] }
+    { 13  ;   ;Loan Type           ;Option        ;OptionCaptionML=ENU=" ,Department,Customer";
+                                                   OptionString=[ ,Department,Customer];
+                                                   Description=D34 }
+    { 14  ;   ;Loan-to Customer No.;Code20        ;TableRelation=IF (Loan Type=CONST(Customer)) Customer;
+                                                   OnValidate=VAR
+                                                                LCustomer@1000000000 : Record 18;
+                                                              BEGIN
+                                                                // D34.01
+                                                                IF "Loan-to Customer No." <>'' THEN
+                                                                BEGIN
+                                                                   LCustomer.GET("Loan-to Customer No.");
+                                                                   LCustomer.TESTFIELD(Blocked,0);
+                                                                END;
+                                                                // D34.01
+                                                              END;
+
+                                                   Description=D34 }
+    { 15  ;   ;Area Code           ;Code10        ;TableRelation="Dimension Value".Code WHERE (Global Dimension No.=CONST(2));
+                                                   Description=D34;
+                                                   CaptionClass='1,2,2' }
+    { 16  ;   ;Posting Date        ;Date          ;Description=[D34; Tanggal Posting] }
+    { 17  ;   ;Status              ;Option        ;OptionCaptionML=ENU=Open,Release,Cancel,Approve,Close;
+                                                   OptionString=Open,Release,Cancel,Approve,Close;
+                                                   Description=[D34; open,release,cancel,approve,close,T24.01] }
+    { 18  ;   ;P2B Notification    ;Option        ;OptionString=Manual,Automatic;
+                                                   Description=D34 }
+    { 19  ;   ;Next Approval       ;Code250       ;Description=[D34; Berisi siapa approval selanjutnya] }
+    { 20  ;   ;Current Approval    ;Code250       ;Description=[D34; Berisi siapa yang dapat melakukan approval] }
+    { 21  ;   ;Current Step        ;Code50        ;Description=[D34; Berisi step-step workflow] }
+    { 22  ;   ;No. Series          ;Code10        ;Description=D34 }
+    { 23  ;   ;Create Date & Time  ;DateTime      ;Description=[D34; Tanggal dokumen dibuat,T24.01] }
+    { 25  ;   ;User Global Level   ;Boolean       ;Description=D34 }
+    { 26  ;   ;Journal Template Name;Code10       ;TableRelation="Item Journal Template".Name WHERE (Source Code=FILTER(P2BJNL));
+                                                   Description=D34 }
+    { 27  ;   ;Journal Batch Name  ;Code10        ;TableRelation="Item Journal Batch".Name WHERE (Journal Template Name=FIELD(Journal Template Name));
+                                                   Description=D34 }
+    { 28  ;   ;Gen. Bus. Posting Group;Code10     ;TableRelation="P2B Journal Batch Name Setup"."Gen. Bus. Posting Group" WHERE (Document Type=FIELD(Document Type),
+                                                                                                                                 P2B Job Title=FIELD(P2B Job Title Requester));
+                                                   OnValidate=VAR
+                                                                Rec_GenBusPstngGrp@1000 : Record 250;
+                                                              BEGIN
+                                                                IF Requester = '' THEN
+                                                                  ERROR('Please insert Requester before Gen. Bus. Posting Group');
+
+                                                                Rec_GenBusPstngGrp.RESET;
+                                                                Rec_GenBusPstngGrp.SETRANGE(Code, "Gen. Bus. Posting Group");
+                                                                IF Rec_GenBusPstngGrp.FINDFIRST THEN BEGIN
+                                                                  "Journal Batch Name":= Rec_GenBusPstngGrp."Def. Journal Batch P2B";
+                                                                  IF "Department Code" ='' THEN
+                                                                    "Department Code" := Rec_GenBusPstngGrp."Def. Divisi P2B";
+                                                                END;
+                                                              END;
+
+                                                   Description=D34,T24.01 }
+    { 29  ;   ;Department Code     ;Code20        ;TableRelation="Dimension Value".Code WHERE (Global Dimension No.=CONST(1));
+                                                   OnValidate=VAR
+                                                                LDimensionValue@1000000000 : Record 349;
+                                                              BEGIN
+                                                                // D34.01
+                                                                LDimensionValue.RESET;
+                                                                LDimensionValue.SETFILTER("Dimension Code",'DEPARTMENT');
+                                                                LDimensionValue.SETFILTER(Code,"Department Code");
+                                                                IF LDimensionValue.FIND('-') THEN
+                                                                BEGIN
+                                                                   IF LDimensionValue.Blocked THEN ERROR('Dept Code is Blocked..')
+                                                                END
+                                                                ELSE
+                                                                   ERROR('Dept Code is invalid..');
+                                                                // D34.01
+                                                              END;
+
+                                                   Description=D34,T24.01;
+                                                   CaptionClass='1,2,1' }
+    { 30  ;   ;Salesperson Code    ;Code50        ;TableRelation=Salesperson/Purchaser.Code WHERE (Responsibility Center=FIELD(Requester));
+                                                   ValidateTableRelation=Yes;
+                                                   Description=D34 }
+    { 31  ;   ;Purchaser Code      ;Code50        ;TableRelation=Salesperson/Purchaser WHERE (Responsibility Center=FIELD(Requester));
+                                                   ValidateTableRelation=No;
+                                                   Description=D34 }
+    { 32  ;   ;Variant             ;Code50        ;TableRelation="P2B Setup".Code WHERE (Type=FILTER(Sub Dept.));
+                                                   Description=D34 }
+    { 33  ;   ;Flag Consumables/Inventaris;Option ;OptionString=[ ,Consumables-Inventaris];
+                                                   Description=D34 }
+    { 34  ;   ;Consumables/Inventaris;Option      ;OptionString=[ ,Consumables,Inventaris];
+                                                   Description=D34 }
+    { 35  ;   ;Flag System         ;Boolean       ;OnValidate=BEGIN
+                                                                "Flag Fisik" := NOT "Flag System";  // D34.01
+                                                              END;
+
+                                                   Description=D34 }
+    { 36  ;   ;Ship-to Code        ;Code10        ;TableRelation="Ship-to Address".Code WHERE (Customer No.=FIELD(Loan-to Customer No.));
+                                                   OnValidate=VAR
+                                                                ShipTo@1000 : Record 222;
+                                                              BEGIN
+                                                                TESTFIELD("Loan-to Customer No.");  // D34.01
+
+                                                                // D00.01
+                                                                IF ("Document Type" = 'MS98-PINJAMAN') OR (STRPOS("Document Type", 'HRO40') > 0) THEN
+                                                                 BEGIN
+                                                                  IF ShipTo.GET("Loan-to Customer No.", "Ship-to Code") THEN
+                                                                   BEGIN
+                                                                    "Ship-to Name" := ShipTo.Name;
+                                                                    "Ship-to Name 2" := ShipTo."Name 2";
+                                                                    "Ship-to Address 1" := ShipTo.Address;
+                                                                    "Ship-to Address 2" := ShipTo."Address 2";
+                                                                    "Ship-to City" := ShipTo.City;
+                                                                    "Ship-to Post Code" := ShipTo."Post Code";
+                                                                   END
+                                                                 END;
+                                                                // BNY
+                                                              END;
+
+                                                   Description=D34 }
+    { 37  ;   ;Description         ;Text50        ;Description=D34 }
+    { 38  ;   ;Comment             ;Boolean       ;FieldClass=FlowField;
+                                                   CalcFormula=Exist("Comment Line" WHERE (Table Name=CONST(P2B),
+                                                                                           No.=FIELD(No.)));
+                                                   CaptionML=ENU=Comment;
+                                                   Description=D34;
+                                                   Editable=No }
+    { 39  ;   ;Flag Fisik          ;Boolean       ;OnValidate=BEGIN
+                                                                "Flag System" := NOT "Flag Fisik";  // D34.01
+                                                              END;
+
+                                                   Description=D34 }
+    { 98  ;   ;View Font Bold      ;Boolean       ;Description=D34 }
+    { 99  ;   ;View Font Color     ;Decimal       ;Description=D34 }
+    { 100 ;   ;WorkFlow ID         ;Integer       ;Description=D34 }
+    { 101 ;   ;Variant Owner       ;Code50        ;TableRelation="P2B Setup".Code WHERE (Type=FILTER(Sub Dept.));
+                                                   Description=D34 }
+    { 102 ;   ;Posted Doc No.      ;Code20        ;Description=D34 }
+    { 103 ;   ;Picture             ;BLOB          ;Description=D34 }
+    { 104 ;   ;Cross Divisi        ;Boolean       ;Description=D34 }
+    { 105 ;   ;Loan Due Date       ;Date          ;OnValidate=BEGIN
+                                                                // D34.01
+                                                                IF "Loan Due Date"<=WORKDATE THEN
+                                                                   ERROR('Loan Due Date Is not Valid..');
+                                                                // D34.01
+                                                              END;
+
+                                                   Description=D34 }
+    { 50026;  ;From Location Ownership;Code10     ;TableRelation="P2B Location & Ownership"."Ownership Code" WHERE (Responsibility Center=FIELD(Owner),
+                                                                                                                    Sub Dept.=FIELD(Variant Owner),
+                                                                                                                    Warehouse Code=FIELD(Warehouse Code),
+                                                                                                                    Location Code=FIELD(From Location));
+                                                   OnValidate=VAR
+                                                                cuCWM@1000000004 : Codeunit 50051;
+                                                              BEGIN
+                                                                P2BLine.RESET;
+                                                                P2BLine.SETFILTER("Document No.","No.");
+                                                                IF P2BLine.FINDFIRST THEN
+                                                                   ERROR('Line Must Be Empty..');
+
+                                                                // D34.01
+                                                                cuCWM.ValidateOwnerField("From Location");
+                                                                { FDR : 18 JAN 2011 BEGIN}
+                                                                //IF P2BManagement.ExistOwnershipCode(Owner,"From Location Ownership",FALSE,'') = FALSE THEN
+                                                                //     ERROR('From-Location Ownership Code : ' + "From Location Ownership" + ' cannot be seleted')
+                                                                { FDR : 18 JAN 2011 END}
+                                                                // D34.01
+                                                              END;
+
+                                                   Description=D34 }
+    { 50027;  ;To Location Ownership;Code10       ;TableRelation="P2B Location & Ownership"."Ownership Code" WHERE (Responsibility Center=FIELD(Requester),
+                                                                                                                    Sub Dept.=FIELD(Variant),
+                                                                                                                    Warehouse Code=FIELD(Warehouse Code),
+                                                                                                                    Location Code=FIELD(To Location));
+                                                   OnValidate=VAR
+                                                                cuCWM@1000000004 : Codeunit 50051;
+                                                              BEGIN
+                                                                // D34.01
+                                                                cuCWM.ValidateOwnerField("To Location");
+                                                                { FDR : 12/28/2010 BEGIN}
+                                                                IF Location.GET("From Location") THEN IsWMSFromLocation:= Location.Ownership;
+                                                                IF Location.GET("To Location") THEN IsWMSToLocation:= Location.Ownership;
+
+                                                                IF IsWMSFromLocation OR IsWMSToLocation THEN
+                                                                   IF ("From Location" = "To Location")AND("From Location Ownership"="To Location Ownership") THEN
+                                                                      ERROR('From Location Code <> To Location Code ');
+                                                                { FDR : 12/28/2010 END}
+                                                                // D34.01
+                                                              END;
+
+                                                   Description=D34 }
+    { 50037;  ;Tipe Franco         ;Option        ;OptionCaptionML=ENU=" ,Jabodetabek,Franco Jkt,Franco Tujuan,Franco Gudang";
+                                                   OptionString=[ ,Jabodetabek,Franco Jkt,Franco Tujuan,Franco Gudang];
+                                                   Description=D00 BNY 071918, Ongkir }
+    { 50051;  ;Sub Dept. Owner     ;Code20        ;Description=T24.01,unused;
+                                                   Editable=No }
+    { 50052;  ;Sub Dept. Requester ;Code20        ;Description=T24.01,unused;
+                                                   Editable=No }
+    { 50053;  ;Sub Department      ;Code10        ;Description=T24.01 }
+    { 50054;  ;User Responsibility ;Code10        ;Description=T24.01 }
+    { 50055;  ;Transfer-from Bin Code;Code10      ;Description=T24.01 }
+    { 50056;  ;Transfer-to Bin Code;Code10        ;Description=T24.01 }
+    { 50057;  ;Gen Bus Description ;Text50        ;FieldClass=FlowField;
+                                                   CalcFormula=Lookup("Gen. Business Posting Group".Description WHERE (Code=FIELD(No.)));
+                                                   Editable=No }
+    { 50058;  ;Confirmation        ;Code10        ;TableRelation="Responsibility Center";
+                                                   Description=T24.03 }
+    { 50059;  ;P2B Job Title Requester;Option     ;OptionCaptionML=ENU=Divisi,Back Office,KPC,HRO,Sales Dept.;
+                                                   OptionString=Divisi,Back Office,KPC,HRO,Sales Dept.;
+                                                   Description=T24.04;
+                                                   Editable=No }
+    { 50060;  ;Current Sequence No.;Integer       ;Editable=No }
+    { 50061;  ;Current Steps       ;Code50        ;Editable=No }
+    { 50062;  ;Current Approval2   ;Code250       ;Editable=No }
+    { 50063;  ;Current Approval3   ;Code250       ;Editable=No }
+    { 50064;  ;Current Approval4   ;Code250       ;Editable=No }
+    { 50065;  ;Next Approval2      ;Code250       ;Editable=Yes }
+    { 50066;  ;Next Approval3      ;Code250       ;Editable=No }
+    { 50067;  ;Next Approval4      ;Code250       ;Editable=No }
+    { 50068;  ;Ship-to Name        ;Text50        ;CaptionML=ENU=Ship-to Name;
+                                                   Description=D00.01 }
+    { 50069;  ;Ship-to Name 2      ;Text50        ;CaptionML=ENU=Ship-to Name 2;
+                                                   Description=D00.01 }
+    { 50070;  ;Ship-to Address 1   ;Text50        ;CaptionML=ENU=Ship-to Address 1;
+                                                   Description=D00.01 }
+    { 50071;  ;Ship-to Address 2   ;Text50        ;CaptionML=ENU=Ship-to Address 2;
+                                                   Description=D00.01 }
+    { 50072;  ;Ship-to Address 3   ;Text50        ;CaptionML=ENU=Ship-to Address 3;
+                                                   Description=D00.01 }
+    { 50073;  ;Ship-to City        ;Text30        ;TableRelation="Post Code".City;
+                                                   OnValidate=BEGIN
+                                                                //PostCode.ValidateCity("Ship-to City","Ship-to Post Code","Ship-to County","Ship-to Country/Region Code",(CurrFieldNo <> 0) AND GUIALLOWED);
+                                                              END;
+
+                                                   ValidateTableRelation=No;
+                                                   TestTableRelation=No;
+                                                   CaptionML=ENU=Ship-to City;
+                                                   Description=D00.01 }
+    { 50074;  ;Ship-to Post Code   ;Code20        ;TableRelation="Post Code" WHERE (Code=FILTER(<>00000));
+                                                   TestTableRelation=No;
+                                                   CaptionML=ENU=Ship-to Post Code;
+                                                   Description=D00.01 }
+    { 50154;  ;Dept/Div Beban Ongkir;Code10       ;TableRelation="Dimension Value".Code WHERE (Dimension Code=CONST(DEPARTMENT),
+                                                                                               Blocked=CONST(No));
+                                                   Description=Ongkir }
+    { 50159;  ;Flag Interdivision  ;Boolean       ;Description=BNY 2021.02.10 }
+    { 50160;  ;No. PO Interdivision;Code20        ;Description=BNY 2021.02.10 }
+    { 50162;  ;Ex Loan No.         ;Text50        ;Description=BNY 2025.12.03 }
+  }
+  KEYS
+  {
+    {    ;No.                                     ;Clustered=Yes }
+    {    ;Posting Date,No.                         }
+    {    ;WorkFlow ID                              }
+  }
+  FIELDGROUPS
+  {
+  }
+  CODE
+  {
+    VAR
+      P2BHeader@1006 : Record 50013;
+      P2BLine@1011 : Record 50014;
+      CommentLine@1009 : Record 97;
+      InvtSetup@1000 : Record 313;
+      NoSeriesMgt@1001 : Codeunit 396;
+      Location@1002 : Record 14;
+      IsWMSFromLocation@1003 : Boolean;
+      IsWMSToLocation@1004 : Boolean;
+      P2BManagement@1005 : Codeunit 50100;
+      HasInventorySetup@1007 : Boolean;
+      Text50000@1008 : TextConst 'ENU=The P2B Transaction No. %1 already exists.';
+      Text50001@1010 : TextConst 'ENU=Are you sure?';
+
+    PROCEDURE AssistEdit@1000000001(OldP2BHeader@1000000000 : Record 50013) : Boolean;
+    VAR
+      Rec_P2BHeader@1000000001 : Record 50013;
+    BEGIN
+      WITH P2BHeader DO BEGIN
+        COPY(Rec);
+        GetInventorySetup;
+        TestNoSeries;
+        IF NoSeriesMgt.SelectSeries(GetNoSeriesCode,OldP2BHeader."No. Series","No. Series") THEN BEGIN
+          NoSeriesMgt.SetSeries("No.");
+          IF Rec_P2BHeader.GET("No.") THEN
+            ERROR(Text50000,"No.");
+          Rec := P2BHeader;
+          EXIT(TRUE);
+        END;
+      END;
+    END;
+
+    PROCEDURE InitRecord@1000000000();
+    BEGIN
+      //"Current Step" := P2BManagement.GetTextDefaultFirstStep();
+      Status := Status::Open;
+      "Posting Date" := WORKDATE;
+      "Create Date & Time" := CURRENTDATETIME;
+      "No. Series" := xRec."No. Series";
+      IF "No. Series" = '' THEN
+         "No. Series" := GetNoSeriesRelationship();
+      //P2BManagement.CreateLog(Rec,'',"User ID Requester");
+    END;
+
+    LOCAL PROCEDURE TestNoSeries@6() : Boolean;
+    BEGIN
+      InvtSetup.TESTFIELD("P2B Nos.");
+    END;
+
+    LOCAL PROCEDURE GetNoSeriesCode@1() : Code[10];
+    BEGIN
+      EXIT(InvtSetup."P2B Nos.");
+    END;
+
+    LOCAL PROCEDURE GetInventorySetup@2();
+    BEGIN
+      IF NOT HasInventorySetup THEN BEGIN
+        InvtSetup.GET;
+        HasInventorySetup := TRUE;
+      END;
+    END;
+
+    PROCEDURE GetNoSeriesRelationship@1000000004() : Code[10];
+    VAR
+      NoSeriesRelationship@1000000000 : Record 310;
+    BEGIN
+      NoSeriesRelationship.RESET;
+      NoSeriesRelationship.SETFILTER(Code,GetNoSeriesCode());
+      NoSeriesRelationship.SETFILTER("Resp. Center",Requester);
+      IF NoSeriesRelationship.FIND('-') THEN
+         REPEAT
+            IF STRPOS("No.",NoSeriesRelationship."Series Code") > 0 THEN
+               EXIT(NoSeriesRelationship."Series Code");
+         UNTIL NoSeriesRelationship.NEXT = 0;
+    END;
+
+    BEGIN
+    {
+      D34.01    29 Jul 2015   BNY   Buat table baru "P2B Header" dari Nav.5
+      T24.01    10 Oct 2015   SH    Add fields
+                                    change length "Warehouse Code" from 10 to 20
+                                    change length "Gen. Bus. Posting Group" from 13 to 10
+                                    change length "User ID Requester" from 10 to 50
+                                    change length "User ID Owner" from 10 to 50
+                                    change type "Status" from Code 10 to Option
+                                    change field 23 "Create Date" to "Create Date & Time"
+                                    delete field 24 "Create Time"
+                                    change length "Department Code" from 10 to 20
+      T24.02    13 Nov 2015   SH    Add codes
+      T24.03    23 Nov 2015   SH    Add field
+      T24.04    27 Nov 2015   SH    Add field
+
+      D00.01    15 Sept 2017    BNY   Add fields :
+      "Ship-to Name"
+      "Ship-to Name 2"
+      "Ship-to Address 1"
+      "Ship-to Address 2"
+      "Ship-to Address 3"
+      "Ship-to City"
+      "Ship-to Post Code"
+    }
+    END.
+  }
+}

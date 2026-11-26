@@ -1,0 +1,142 @@
+OBJECT Page 50055 P2B Transaction Sub Form
+{
+  OBJECT-PROPERTIES
+  {
+    Date=03/27/24;
+    Time=14:11:38;
+    Modified=Yes;
+    Version List=DTS:T24;
+  }
+  PROPERTIES
+  {
+    CaptionML=ENU=Lines;
+    MultipleNewLines=Yes;
+    LinksAllowed=No;
+    SourceTable=Table50014;
+    DelayedInsert=Yes;
+    PageType=ListPart;
+    AutoSplitKey=Yes;
+    OnOpenPage=BEGIN
+                 IsBackOffice := P2BManagement.IsBackOffice(USERID);
+                 IsKPC := P2BManagement.IsKPC(USERID);
+               END;
+
+    OnInsertRecord=BEGIN
+                     gRec_P2BHdr.GET("Document No.");
+                     gRec_P2BHdr.TESTFIELD(gRec_P2BHdr.Status, gRec_P2BHdr.Status::Open);
+                   END;
+
+    OnModifyRecord=BEGIN
+                     gRec_P2BHdr.GET("Document No.");
+                     gRec_P2BHdr.TESTFIELD(gRec_P2BHdr.Status, gRec_P2BHdr.Status::Open);
+                   END;
+
+    OnDeleteRecord=BEGIN
+                     gRec_P2BHdr.GET("Document No.");
+                     gRec_P2BHdr.TESTFIELD(gRec_P2BHdr.Status, gRec_P2BHdr.Status::Open);
+                   END;
+
+    OnAfterGetCurrRecord=VAR
+                           Bol_Allow@1000 : Boolean;
+                         BEGIN
+                           gRec_P2BHdr.GET("Document No.");
+                           gRec_UserSetup.GET(USERID);
+
+                           IF NOT gRec_RespCenter.GET(gRec_UserSetup."P2B Resp. Ctr. Filter") THEN
+                             Bol_Allow := TRUE
+                           ELSE IF gRec_RespCenter."P2B Job Title" = gRec_RespCenter."P2B Job Title"::"Sales Dept." THEN
+                             Bol_Allow := TRUE
+                           ELSE
+                             Bol_Allow := FALSE;
+
+                           {IF P2BManagement.IsOwner(USERID,gRec_P2BHdr.Owner) OR Bol_Allow THEN BEGIN
+                             gBol_QtyEditable := TRUE;
+                           END ELSE BEGIN
+                             IF IsBackOffice OR IsKPC THEN
+                               gBol_QtyEditable := FALSE
+                             ELSE
+                               gBol_QtyEditable := TRUE;
+
+                             IF (P2BManagement.IsCrossDivisi(gRec_P2BHdr))
+                             AND NOT(P2BManagement.IsOwner(USERID,gRec_P2BHdr.Owner))
+                             AND NOT(P2BManagement.IsSalesAdmin(USERID)) THEN
+                             BEGIN
+                               gBol_QtyEditable := FALSE;
+                             END;
+                           END;   }
+
+                           gBol_QtyEditable := TRUE;//FDR 1 Mar 16
+
+                           IF gRec_P2BHdr."Posting To" = gRec_P2BHdr."Posting To"::"Item Journal" THEN
+                             gBol_DisableLocation := TRUE
+                           ELSE
+                             gBol_DisableLocation := FALSE;
+                         END;
+
+  }
+  CONTROLS
+  {
+    { 1   ;0   ;Container ;
+                ContainerType=ContentArea }
+
+    { 2   ;1   ;Group     ;
+                Name=Group;
+                GroupType=Repeater }
+
+    { 3   ;2   ;Field     ;
+                SourceExpr="Item No." }
+
+    { 4   ;2   ;Field     ;
+                SourceExpr=Description }
+
+    { 5   ;2   ;Field     ;
+                SourceExpr="Unit of Measure" }
+
+    { 7   ;2   ;Field     ;
+                SourceExpr="Location Code";
+                Enabled=gBol_DisableLocation;
+                Editable=gBol_DisableLocation;
+                OnValidate=BEGIN
+                             IF "Location Code" IN ['PD','PC'] THEN
+                              ERROR('Location PD & PC tidak bisa dipilih.');
+                           END;
+                            }
+
+    { 8   ;2   ;Field     ;
+                SourceExpr=Owner;
+                Enabled=gBol_DisableLocation;
+                Editable=gBol_DisableLocation }
+
+    { 6   ;2   ;Field     ;
+                SourceExpr=Quantity;
+                Editable=gBol_QtyEditable }
+
+    { 11  ;2   ;Field     ;
+                SourceExpr="Qty. Req. Cross Divisi" }
+
+    { 9   ;2   ;Field     ;
+                SourceExpr="Item Category Code" }
+
+    { 10  ;2   ;Field     ;
+                SourceExpr="Product Group Code" }
+
+    { 12  ;2   ;Field     ;
+                SourceExpr="Sub Dept" }
+
+  }
+  CODE
+  {
+    VAR
+      IsBackOffice@1001 : Boolean;
+      IsKPC@1000 : Boolean;
+      gBol_QtyEditable@1003 : Boolean;
+      P2BManagement@1002 : Codeunit 50100;
+      gBol_DisableLocation@1004 : Boolean;
+      gRec_P2BHdr@1005 : Record 50013;
+      gRec_UserSetup@1006 : Record 91;
+      gRec_RespCenter@1007 : Record 5714;
+
+    BEGIN
+    END.
+  }
+}

@@ -1,0 +1,770 @@
+OBJECT Table 50014 P2B Line
+{
+  OBJECT-PROPERTIES
+  {
+    Date=10/07/26;
+    Time=14:34:07;
+    Modified=Yes;
+    Version List=DTS:D34,D51,T30,T24;
+  }
+  PROPERTIES
+  {
+    OnInsert=BEGIN
+               TESTFIELD(Description);
+               "Line UserID" := USERID;
+               IF P2BHeader.GET("Document No.") THEN
+               BEGIN
+                  IF P2BHeader."WorkFlow ID"=0 THEN
+                     ERROR('Anda Harus Pilih Workflow terlebih dahulu...');
+                  Status := P2BHeader.Status;
+                  "Header From Location" := P2BHeader."From Location";
+                  "Header Posting To" := P2BHeader."Posting To";
+                  "Header From Location Ownership" := P2BHeader."From Location Ownership";
+                  IF (P2BHeader."Location Code" <> '') AND ("Location Code" = '') THEN
+                     "Location Code" := P2BHeader."Location Code";
+                  CASE P2BHeader."Posting To" OF
+                     P2BHeader."Posting To"::"Transfer Order",P2BHeader."Posting To"::Loan:
+                       BEGIN
+                          P2BManagement.CheckingHeader(P2BHeader);
+                       END;
+                  END;
+               END;
+             END;
+
+    LookupPageID=Page50074;
+    DrillDownPageID=Page50074;
+  }
+  FIELDS
+  {
+    { 1   ;   ;Document No.        ;Code20        ;TableRelation="P2B Header".No.;
+                                                   Description=D34 }
+    { 2   ;   ;Line No.            ;Integer       ;Description=D34 }
+    { 3   ;   ;Item No.            ;Code20        ;OnValidate=VAR
+                                                                SubGroup@1000000002 : Record 5723;
+                                                                LP2BHeader@1000000001 : Record 50013;
+                                                                LDeptCode@1000000000 : Code[20];
+                                                                P2BItem@1000000003 : Record 50017;
+                                                                Rec_P2BItem@1000 : Record 50017;
+                                                                Rec_RespCenter@1001 : Record 5714;
+                                                                Rec_P2BHeader@1002 : Record 50013;
+                                                              BEGIN
+                                                                IF "Item No." <> '' THEN BEGIN
+                                                                Rec_P2BHeader.GET("Document No.");
+                                                                //Rec_P2BHeader.TESTFIELD(Status, Rec_P2BHeader.Status::Open);
+                                                                Rec_P2BItem.RESET;
+                                                                Rec_P2BItem.SETRANGE("No.", "Item No.");
+                                                                Rec_RespCenter.GET(Rec_P2BHeader.Owner);
+                                                                IF Rec_RespCenter."P2B Job Title" = Rec_RespCenter."P2B Job Title"::Divisi THEN
+                                                                  //Rec_P2BItem.SETRANGE("Global Dimension 1 Code",Rec_RespCenter."Global Dimension 1 Code");
+                                                                  Rec_P2BItem.SETFILTER("Global Dimension 1 Code",P2BManagement.GetDeptCodeByRespCenter(Rec_P2BHeader.Owner)); // BNY 26.10.07
+                                                                  IF NOT Rec_P2BItem.FINDSET THEN
+                                                                    ERROR('Cannot use this Item on P2B %1.', Rec_RespCenter."Global Dimension 1 Code");
+                                                                END;
+
+                                                                // D34.01
+                                                                IF "Item No." <> xRec."Item No." THEN
+                                                                IF Item.GET("Item No.") THEN
+                                                                BEGIN
+                                                                   P2BManagement.InitializeRespCenterOwner();
+                                                                   IF LP2BHeader.GET("Document No.") THEN
+                                                                   BEGIN
+                                                                   //FDR 20 okt 2011
+                                                                      IF P2BManagement.GetDeptCodeByRespCenter(LP2BHeader.Owner)<>'' THEN
+                                                                      BEGIN
+                                                                         IF "Item No."<>'' THEN
+                                                                         BEGIN
+                                                                            P2BItem.RESET;
+                                                                            P2BItem.SETFILTER("Global Dimension 1 Code", P2BManagement.GetDeptCodeByRespCenter(LP2BHeader.Owner));
+                                                                            IF P2BItem.FIND('-') = FALSE THEN
+                                                                               P2BItem.RESET;
+                                                                            IF NOT P2BItem.GET("Item No.") THEN
+                                                                              ERROR('Item is not found...');
+                                                                         END;
+                                                                      END;
+                                                                //FDR 20 okt 2011
+
+                                                                      IF LP2BHeader."Posting To"<>LP2BHeader."Posting To"::"Item Journal" THEN
+                                                                         P2BManagement.CheckingHeader(LP2BHeader);
+                                                                      P2BManagement.IsRespCenterOwner(LP2BHeader.Owner,LDeptCode);
+                                                                      IF (LDeptCode <> '') AND (Item."Global Dimension 1 Code" <> LDeptCode) THEN
+                                                                         ERROR('Items not listed in the ownership department/division ' + LDeptCode);
+                                                                      IF (LP2BHeader."Posting To"=LP2BHeader."Posting To"::"Transfer Order") OR
+                                                                         (LP2BHeader."Posting To"=LP2BHeader."Posting To"::Loan) THEN
+                                                                      BEGIN
+                                                                         P2BManagement.IsRespCenterOwner(LP2BHeader.Requester,LDeptCode);
+                                                                         IF (LDeptCode <> '') AND (Item."Global Dimension 1 Code" <> LDeptCode) THEN
+                                                                            ERROR('Items not listed in the ownership department/division ' + LDeptCode);
+                                                                         // untuk cek barang masuk ke divisi tidak boleh minta barang divisi lain
+                                                                         // untuk pakai sendiri tidak dicek.
+                                                                      END;
+                                                                      IF LP2BHeader."Warehouse Code"='CIKARANG' THEN
+                                                                      BEGIN
+                                                                        {IF (Item."Global Dimension 1 Code" <> '999') THEN
+                                                                        BEGIN
+                                                                        //Ubah 102 menjadi 113
+                                                                          IF (Item."Global Dimension 1 Code"<>'113') AND (Item."Global Dimension 1 Code"<>'112') THEN
+                                                                            ERROR('Item is not valid...');
+                                                                        END;}
+                                                                        IF NOT (Item."Global Dimension 1 Code" IN ['113','999','112'])  THEN
+                                                                           ERROR('Item is not valid...');
+                                                                      END;
+                                                                      IF LP2BHeader."Warehouse Code"='PLG' THEN
+                                                                      BEGIN
+                                                                         IF (Item."Global Dimension 1 Code"='113') OR (Item."Global Dimension 1 Code"='112') THEN
+                                                                            ERROR('Item is not valid...');
+                                                                      END;
+                                                                   END
+                                                                   ELSE
+                                                                      ERROR('Document No ' + "Document No." + ' In Table P2B Header Transaction not found');
+
+                                                                   IF (LDeptCode <> '') AND (Item."Global Dimension 1 Code" <> LDeptCode) THEN
+                                                                      ERROR('Items not listed in the ownership department/division ' + LDeptCode);
+                                                                   Description := Item.Description;
+                                                                   "Unit of Measure" := Item."Base Unit of Measure";
+                                                                   "Item Category Code" := Item."Item Category Code";
+                                                                   "Product Group Code" := Item."Product Group Code";
+                                                                   Quantity := 0;
+                                                                   IF SubGroup.GET(Item."Item Category Code",Item."Product Group Code") THEN
+                                                                   BEGIN
+                                                                      //IF IsP2BNotificationBySubGroup(Item."Global Dimension 1 Code") THEN  //T24.03
+                                                                      Rec_RespCenter.GET(LP2BHeader.Owner);                                  //T24.03
+                                                                      IF Rec_RespCenter."P2B Notification by Prod. Grp" THEN                 //T24.03
+                                                                         IF SubGroup."User ID Responsibility" <> '' THEN
+                                                                         BEGIN
+                                                                            "User ID Responsibility" := SubGroup."User ID Responsibility";
+                                                                            "Sub Dept" := SubGroup."Sub Dept";
+                                                                         END
+                                                                         ELSE
+                                                                             ERROR('Sub Group (' + "Product Group Code" + ') untuk reffcode ' + "Item No." + ' belum ada User ID Responsibility ');
+                                                                   END
+                                                                   ELSE
+                                                                      ERROR('Sub Group (' + "Product Group Code" + ') tidak terdaftar ');
+                                                                END ELSE
+                                                                  ERROR('Cannot Find Item %1', "Item No.");
+                                                                // D34.01
+                                                              END;
+
+                                                   OnLookup=VAR
+                                                              Rec_RespCenter@1000 : Record 5714;
+                                                              Rec_P2BHeader@1001 : Record 50013;
+                                                              Rec_P2BItem@1002 : Record 50017;
+                                                            BEGIN
+                                                              //T24.02
+                                                              Rec_P2BHeader.GET("Document No.");
+                                                              //Rec_P2BHeader.TESTFIELD(Status, Rec_P2BHeader.Status::Open);
+                                                              IF Rec_P2BHeader.Owner = '' THEN
+                                                                ERROR('Please Insert Owner on P2B Header');
+
+                                                              Rec_P2BItem.RESET;
+                                                              Rec_RespCenter.GET(Rec_P2BHeader.Owner);
+                                                              IF Rec_RespCenter."P2B Job Title" = Rec_RespCenter."P2B Job Title"::Divisi THEN BEGIN
+                                                                Rec_P2BItem.SETRANGE("Global Dimension 1 Code",Rec_RespCenter."Global Dimension 1 Code");
+                                                                IF Rec_P2BItem.FINDSET THEN;
+                                                              END;
+
+                                                              IF PAGE.RUNMODAL(50017,Rec_P2BItem) = ACTION::LookupOK THEN
+                                                                VALIDATE("Item No.", Rec_P2BItem."No.");
+                                                              //T24.02
+                                                            END;
+
+                                                   Description=D34 }
+    { 4   ;   ;Unit of Measure     ;Code20        ;TableRelation="Item Unit of Measure".Code;
+                                                   Description=D34 }
+    { 5   ;   ;Quantity            ;Decimal       ;OnValidate=VAR
+                                                                LP2BHeader@1000000000 : Record 50013;
+                                                                cuCWM@1000000001 : Codeunit 50051;
+                                                                tmpQtyAvailable@1000000002 : Decimal;
+                                                                tP2BL@1000000003 : Record 50014;
+                                                                xRecQuantity@1000000004 : Decimal;
+                                                                Bol_Allow@1000 : Boolean;
+                                                              BEGIN
+                                                                // D34.01
+                                                                IF Quantity < 0 THEN
+                                                                  ERROR('Quantity cannot minus');
+
+                                                                IF Quantity <> 0 THEN
+                                                                BEGIN
+                                                                  IF LP2BHeader.GET("Document No.") THEN
+                                                                  BEGIN
+                                                                    gRec_P2BHdr.GET("Document No.");
+                                                                    gRec_UserSetup.GET(USERID);
+
+                                                                    {Bol_Allow := FALSE;
+                                                                    IF NOT Rec_RespCenter.GET(gRec_UserSetup."P2B Resp. Ctr. Filter") THEN
+                                                                      Bol_Allow := TRUE;
+                                                                    IF Rec_RespCenter."P2B Job Title" = Rec_RespCenter."P2B Job Title"::"Sales Dept." THEN
+                                                                      Bol_Allow := TRUE;
+
+                                                                    IF P2BManagement.IsOwner(USERID,LP2BHeader.Owner) THEN  }
+                                                                      Bol_Allow := TRUE;  //FDR all allow 1 mar 2016
+
+                                                                     IF NOT Bol_Allow THEN BEGIN
+                                                                        IF (P2BManagement.IsCrossDivisi(LP2BHeader))
+                                                                        AND NOT(P2BManagement.IsOwner(USERID,LP2BHeader.Owner))
+                                                                        AND NOT(P2BManagement.IsSalesAdmin(USERID)) THEN
+                                                                        BEGIN
+                                                                          ERROR('P2B Cross Divisi dan Back Office input Quantity Di Qty. Req. ...');
+                                                                        END;
+                                                                        IF P2BManagement.IsBackOffice(USERID) THEN
+                                                                          ERROR('P2B Cross Divisi dan Back Office input Quantity Di Qty. Req. ...');
+                                                                        IF P2BManagement.IsKPC(USERID) THEN
+                                                                          ERROR('P2B Cross Divisi dan Back Office input Quantity Di Qty. Req. ...');
+                                                                     END;
+                                                                  END;
+
+                                                                  { DVZ }
+                                                                  IF tP2BL.GET("Document No.", "Line No.") THEN
+                                                                    IF tP2BL."Item No." = "Item No." THEN
+                                                                      xRecQuantity := tP2BL.Quantity;
+
+                                                                  IF ("Location Code" <> '') THEN
+                                                                  BEGIN
+                                                                    IF NOT cuCWM.CekQuantity(
+                                                                      5 { Trans Type 5 = P2B Line }
+                                                                      ,Rec."Item No."
+                                                                      ,Rec."Location Code"
+                                                                      ,Rec.Owner
+                                                                      ,Rec.Quantity
+                                                                      ,Rec."Unit of Measure"
+                                                                      ,xRecQuantity
+                                                                      ,xRec."Unit of Measure"
+                                                                      ,tmpQtyAvailable
+                                                                      ,FALSE)
+                                                                    THEN
+                                                                      ERROR('Quantity ' + "Item No." + ' dengan lokasi : ' + "Location Code" + ' tidak cukup ... ');
+                                                                  END
+                                                                  ELSE
+                                                                  BEGIN
+                                                                    IF NOT cuCWM.CekQuantity(
+                                                                      5 { Trans Type 5 = P2B Line }
+                                                                      ,Rec."Item No."
+                                                                      ,LP2BHeader."From Location"
+                                                                      ,LP2BHeader."From Location Ownership"
+                                                                      ,Rec.Quantity
+                                                                      ,Rec."Unit of Measure"
+                                                                      ,xRecQuantity
+                                                                      ,xRec."Unit of Measure"
+                                                                      ,tmpQtyAvailable
+                                                                      ,FALSE)
+                                                                    { DVZ }
+                                                                    THEN
+                                                                      ERROR('Quantity ' + "Item No." + ' dengan lokasi : ' + "Header From Location" + ' tidak cukup ... ');
+                                                                  END;
+                                                                END;
+                                                                // D34.01
+                                                              END;
+
+                                                   DecimalPlaces=0:5;
+                                                   Description=D34 }
+    { 6   ;   ;Description         ;Text50        ;OnValidate=VAR
+                                                                LP2BHeader@1000000000 : Record 50013;
+                                                              BEGIN
+                                                                // D34.01
+                                                                IF (LP2BHeader.GET("Document No."))AND(LP2BHeader."Posting To" = LP2BHeader."Posting To"::"Item Journal") THEN
+                                                                   TESTFIELD("Item No.");
+                                                                // D34.01
+                                                              END;
+
+                                                   Description=D34 }
+    { 7   ;   ;Location Code       ;Code10        ;TableRelation=Location;
+                                                   OnValidate=VAR
+                                                                LP2BHeader@1000000000 : Record 50013;
+                                                                LRangeLocation@1000000002 : Code[50];
+                                                                xRecQuantity@1000000004 : Decimal;
+                                                                cuCWM@1000000003 : Codeunit 50051;
+                                                                tmpQtyAvailable@1000000001 : Decimal;
+                                                                Rec_P2BLocOwner@1000 : Record 50051;
+                                                              BEGIN
+                                                                // D34.01
+                                                                TESTFIELD("Item No.");
+
+                                                                IF "Location Code" = '' THEN BEGIN
+                                                                  VALIDATE(Owner, '');
+                                                                END ELSE BEGIN
+                                                                  GetHeader;
+                                                                  Rec_P2BLocOwner.RESET;
+                                                                  Rec_P2BLocOwner.SETRANGE("Responsibility Center", gRec_P2BHdr.Owner);
+                                                                  //Rec_P2BLocOwner.SETRANGE("Sub Dept.", "Sub Dept. Owner");
+                                                                  Rec_P2BLocOwner.SETRANGE("Sub Dept.", gRec_P2BHdr."Variant Owner");
+                                                                  Rec_P2BLocOwner.SETRANGE("Warehouse Code", gRec_P2BHdr."Warehouse Code");
+                                                                  Rec_P2BLocOwner.SETRANGE("Location Code", "Location Code");
+                                                                  IF NOT Rec_P2BLocOwner.FINDFIRST THEN
+                                                                    ERROR('Cannot use location %1', "Location Code");
+                                                                END;
+
+                                                                {
+                                                                P2BManagement.InitializeRespHasNoLocation();
+                                                                IF LP2BHeader.GET("Document No.") THEN
+                                                                BEGIN
+                                                                   IF LP2BHeader."Posting To" = LP2BHeader."Posting To"::"Item Journal" THEN
+                                                                   BEGIN
+                                                                      IF "Location Code" <> '' THEN
+                                                                      BEGIN
+
+                                                                         IF (LP2BHeader."Warehouse Code"='CKG') AND ("Location Code"<>'CKG') THEN
+                                                                            ERROR('Location Code : ' + "Location Code" + ' cannot be seleted');
+
+                                                                         IF (LP2BHeader."Warehouse Code"<>'CKG') AND ("Location Code"='CKG') THEN
+                                                                            ERROR('Location Code : ' + "Location Code" + ' cannot be seleted');
+
+                                                                         IF P2BManagement.IsRespCenterHasNoLocation(LP2BHeader.Owner,LP2BHeader."Variant Owner",LRangeLocation) THEN
+                                                                         BEGIN
+                                                                            // Cek Location Code berdasarkan variant, nilainya sudah didapat divariable LRangeLocation
+                                                                            IF P2BManagement.ExistLocationCode(LP2BHeader.Owner,"Location Code",TRUE,LRangeLocation) = FALSE THEN
+                                                                               ERROR('Location Code : ' + "Location Code" + ' cannot be seleted');
+                                                                         END
+                                                                         ELSE
+                                                                         // Cek Location Code berdasarkan Responsibility Center
+                                                                         IF P2BManagement.ExistLocationCode(LP2BHeader.Owner,"Location Code",FALSE,'') = FALSE THEN
+                                                                            ERROR('Location Code : ' + "Location Code" + ' cannot be seleted');
+                                                                      END;
+                                                                      {ELSE
+                                                                         ERROR('Location Code cannot be blank');}
+                                                                   END
+                                                                   ELSE
+                                                                   BEGIN
+                                                                      IF "Location Code" <> '' THEN
+                                                                         ERROR('Line Location Code cannot be selected');
+                                                                   END;
+                                                                END;
+                                                                }
+
+                                                                //BEGIN FDR 24 Jan 2011
+                                                                //  IF (ValidateQuantity("Item No.","Location Code") = FALSE) THEN
+                                                                {FDR WMS 4 JUni 2011}
+                                                                IF Rec.Quantity<>0 THEN
+                                                                BEGIN
+                                                                    xRecQuantity := 0;
+
+                                                                    IF NOT cuCWM.CekQuantity(
+                                                                      5 { Trans Type 5 = P2B Line }
+                                                                      ,Rec."Item No."
+                                                                      ,Rec."Location Code"
+                                                                      ,Rec.Owner
+                                                                      ,Rec.Quantity
+                                                                      ,Rec."Unit of Measure"
+                                                                      ,xRecQuantity //xRec.Quantity
+                                                                      ,xRec."Unit of Measure"
+                                                                      ,tmpQtyAvailable
+                                                                      ,FALSE)
+                                                                    THEN
+                                                                      ERROR('Quantity ' + "Item No." + ' dengan lokasi : ' + "Location Code" + ' tidak cukup ... ');
+
+                                                                END;
+                                                                //END FDR 2 Feb 2011
+                                                                // D34.01
+                                                              END;
+
+                                                   OnLookup=VAR
+                                                              Rec_P2BLocOwner@1000 : Record 50051;
+                                                            BEGIN
+                                                              GetHeader;
+                                                              Rec_P2BLocOwner.RESET;
+                                                              Rec_P2BLocOwner.SETRANGE("Responsibility Center", gRec_P2BHdr.Owner);
+                                                              //Rec_P2BLocOwner.SETRANGE("Sub Dept.", "Sub Dept. Owner");
+                                                              Rec_P2BLocOwner.SETRANGE("Sub Dept.", gRec_P2BHdr."Variant Owner");
+                                                              Rec_P2BLocOwner.SETRANGE("Warehouse Code", gRec_P2BHdr."Warehouse Code");
+                                                              IF Rec_P2BLocOwner.FINDSET THEN;
+
+                                                              IF PAGE.RUNMODAL(50051,Rec_P2BLocOwner) = ACTION::LookupOK THEN BEGIN
+                                                                VALIDATE("Location Code", Rec_P2BLocOwner."Location Code");
+                                                                IF Rec_P2BLocOwner."Ownership Code" <> '' THEN
+                                                                  VALIDATE(Owner, Rec_P2BLocOwner."Ownership Code");
+                                                              END;
+                                                            END;
+
+                                                   Description=D34,<mpt - add property table relation to "Location"> 12012015 }
+    { 8   ;   ;Item Category Code  ;Code10        ;TableRelation="Item Category";
+                                                   Description=D34,T24.01 }
+    { 9   ;   ;Product Group Code  ;Code10        ;TableRelation="Product Group".Code WHERE (Item Category Code=FIELD(Item Category Code));
+                                                   Description=D34,T24.01 }
+    { 10  ;   ;User ID Responsibility;Code50      ;TableRelation="User Setup";
+                                                   Description=D34,T24.01 }
+    { 11  ;   ;Line Description    ;Text50        ;Description=D34 }
+    { 12  ;   ;Location Code Header;Code10        ;FieldClass=FlowField;
+                                                   CalcFormula=Lookup("P2B Header"."From Location" WHERE (No.=FIELD(Document No.)));
+                                                   Description=D34 }
+    { 13  ;   ;Line UserID         ;Code50        ;Description=D34 }
+    { 17  ;   ;Status              ;Option        ;OptionCaptionML=ENU=Open,Release,Cancel,Approve,Close;
+                                                   OptionString=Open,Release,Cancel,Approve,Close;
+                                                   Description=[D34; open,release,cancel,approve,close,T24.01] }
+    { 18  ;   ;Qty. Req. Cross Divisi;Decimal     ;DecimalPlaces=0:5;
+                                                   Description=D34 }
+    { 19  ;   ;Owner Dept          ;Code10        ;Description=D34 }
+    { 20  ;   ;Font Color          ;Decimal       ;Description=D34 }
+    { 21  ;   ;Sub Dept            ;Code10        ;Description=D34;
+                                                   Editable=No }
+    { 33  ;   ;Header Posting To   ;Option        ;OptionString=Item Journal,Transfer Order,Loan;
+                                                   Description=D34;
+                                                   Editable=No }
+    { 34  ;   ;Header From Location;Code10        ;TableRelation=Location;
+                                                   Description=[D34; Untuk lokasi dari gudang mana];
+                                                   Editable=No }
+    { 50035;  ;Owner               ;Code20        ;TableRelation="Dimension Value".Code WHERE (Dimension Code=CONST(OWNERSHIP));
+                                                   OnValidate=VAR
+                                                                cuCWM@1000000004 : Codeunit 50051;
+                                                                xRecQuantity@1000000001 : Decimal;
+                                                                tmpQtyAvailable@1000000000 : Decimal;
+                                                                Rec_P2BLocOwner@1000 : Record 50051;
+                                                              BEGIN
+                                                                // D34.01
+                                                                cuCWM.ValidateOwnerField("Location Code");
+
+                                                                IF "Location Code" = '' THEN BEGIN
+                                                                  VALIDATE(Owner, '');
+                                                                END ELSE BEGIN
+                                                                  GetHeader;
+                                                                  Rec_P2BLocOwner.RESET;
+                                                                  Rec_P2BLocOwner.SETRANGE("Responsibility Center", gRec_P2BHdr.Owner);
+                                                                  //Rec_P2BLocOwner.SETRANGE("Sub Dept.", "Sub Dept. Owner");
+                                                                  Rec_P2BLocOwner.SETRANGE("Sub Dept.", gRec_P2BHdr."Variant Owner");
+                                                                  Rec_P2BLocOwner.SETRANGE("Warehouse Code", gRec_P2BHdr."Warehouse Code");
+                                                                  Rec_P2BLocOwner.SETRANGE("Location Code", "Location Code");
+                                                                  Rec_P2BLocOwner.SETRANGE("Ownership Code", Owner);
+                                                                  IF NOT Rec_P2BLocOwner.FINDFIRST THEN
+                                                                    ERROR('Cannot use Owner %1', Owner);
+                                                                END;
+
+                                                                {FDR WMS 4 JUni 2011}
+                                                                IF Rec.Quantity <> 0 THEN
+                                                                BEGIN
+                                                                      xRecQuantity := 0;
+
+                                                                    IF NOT cuCWM.CekQuantity(
+                                                                      5 { Trans Type 5 = P2B Line }
+                                                                      ,Rec."Item No."
+                                                                      ,Rec."Location Code"
+                                                                      ,Rec.Owner
+                                                                      ,Rec.Quantity
+                                                                      ,Rec."Unit of Measure"
+                                                                      ,xRecQuantity //xRec.Quantity
+                                                                      ,xRec."Unit of Measure"
+                                                                      ,tmpQtyAvailable
+                                                                      ,FALSE)
+                                                                    THEN
+
+                                                                      ERROR('Quantity ' + "Item No." + ' dengan lokasi : ' + "Location Code" + ' tidak cukup ... ');
+                                                                END;
+                                                                // D34.01
+                                                              END;
+
+                                                   CaptionML=ENU=Ownership;
+                                                   Description=[D34;Ownership] }
+    { 50036;  ;Header From Location Ownership;Code20;
+                                                   Description=D34;
+                                                   Editable=No }
+    { 50051;  ;Bin Code            ;Code10        ;Description=T24.01 }
+  }
+  KEYS
+  {
+    {    ;Document No.,Line No.                   ;Clustered=Yes }
+    {    ;Item No.,Location Code,Status,Header Posting To,Owner;
+                                                   SumIndexFields=Quantity }
+    {    ;Item No.,Header From Location,Status,Header Posting To,Header From Location Ownership;
+                                                   SumIndexFields=Quantity }
+  }
+  FIELDGROUPS
+  {
+  }
+  CODE
+  {
+    VAR
+      Item@1000 : Record 50017;
+      P2BHeader@1002 : Record 50013;
+      P2BManagement@1001 : Codeunit 50100;
+      Rec_RespCenter@1003 : Record 5714;
+      gRec_P2BHdr@1004 : Record 50013;
+      gRec_UserSetup@1005 : Record 91;
+
+    PROCEDURE IsP2BNotificationBySubGroup@1000000002(PDeptCode@1000000000 : Code[20]) : Boolean;
+    VAR
+      LRespCenter@1000000001 : Record 5714;
+    BEGIN
+      // D34.01
+      {
+      LRespCenter.RESET;
+      LRespCenter.SETFILTER("Global Dimension 1 Code",PDeptCode);
+      IF LRespCenter.FIND('-') THEN
+      BEGIN
+         EXIT(LRespCenter."P2B Notification By Sub Group" = LRespCenter."P2B Notification By Sub Group"::Active);
+      END;
+      }
+
+      //FDR 2 Feb 2011
+      {
+      IF PDeptCode = '104' THEN
+         EXIT(TRUE)
+      ELSE
+         EXIT(FALSE);
+      }
+      //FDR 2 Feb 2011
+      // D34.01
+    END;
+
+    PROCEDURE ValidateQuantity@1000000009(PItemNo@1000000002 : Code[20];PLocationCode@1000000003 : Code[10]) RESULT@1000000006 : Boolean;
+    VAR
+      LItemLedgerEntry@1000000000 : Record 32;
+      LSalesLine@1000000001 : Record 37;
+      LPurchLine@1000000012 : Record 39;
+      LServiceInvLine@1000000009 : Record 5902;
+      LLoaner@1000000010 : Record 5913;
+      LTransferHeader@1000000014 : Record 5740;
+      LTransferLine@1000000015 : Record 5741;
+      LItemJurnalLine@1000000017 : Record 83;
+      TQtyItemLedgerEntry@1000000004 : Decimal;
+      TQtySalesLine@1000000005 : Decimal;
+      TQtyPurchLine@1000000013 : Decimal;
+      TQtyServiceInvLine@1000000008 : Decimal;
+      TQtyLoaner@1000000011 : Decimal;
+      TQtyTransferLine@1000000016 : Decimal;
+      TQtyItemJurnalLine@1000000018 : Decimal;
+      TQtyP2BLine@1000000023 : Decimal;
+      Total@1000000007 : Decimal;
+      QtyBase@1000000019 : Decimal;
+      xQtyBase@1000000021 : Decimal;
+      LItemUnitBase@1000000020 : Record 5404;
+      LP2BLine@1000000022 : Record 50014;
+      LP2BHeader@1000000025 : Record 50013;
+    BEGIN
+      // D34.01
+      RESULT := FALSE;
+      TQtyItemLedgerEntry := 0;
+      TQtySalesLine := 0;
+      TQtyPurchLine := 0;
+      TQtyServiceInvLine := 0;
+      TQtyLoaner := 0;
+      TQtyTransferLine := 0;
+      TQtyItemJurnalLine := 0;
+      TQtyP2BLine := 0;
+
+      LItemLedgerEntry.RESET;
+      LItemLedgerEntry.SETCURRENTKEY("Item No.","Location Code","Posting Date");
+      LItemLedgerEntry.SETFILTER("Item No.",PItemNo);
+      LItemLedgerEntry.SETFILTER("Location Code",PLocationCode);
+      IF LItemLedgerEntry.FIND('-') THEN
+      REPEAT
+         TQtyItemLedgerEntry += LItemLedgerEntry.Quantity;
+      UNTIL LItemLedgerEntry.NEXT = 0;
+
+      LSalesLine.RESET;
+      LSalesLine.SETCURRENTKEY("Document Type","Document No.","Location Code","No.");
+      LSalesLine.SETRANGE("Document Type",LSalesLine."Document Type"::Order);
+      LSalesLine.SETFILTER("No.",PItemNo);
+      LSalesLine.SETFILTER("Location Code",PLocationCode);
+      IF LSalesLine.FIND('-') THEN
+      REPEAT
+         TQtySalesLine += LSalesLine."Outstanding Qty. (Base)";
+      UNTIL LSalesLine.NEXT = 0;
+
+      LP2BHeader.RESET;
+      LP2BHeader.SETCURRENTKEY(Status,"Posting To","From Location","To Location");
+      //T24.01
+      //LP2BHeader.SETFILTER(Status,'%1|%2|%3',P2BManagement.GetTextStatusOpen,P2BManagement.GetTextStatusRelease,
+      //P2BManagement.GetTextStatusApprove);
+      LP2BHeader.SETFILTER(Status,'%1|%2|%3',LP2BHeader.Status::Open,LP2BHeader.Status::Release,LP2BHeader.Status::Approve);
+      //T24.01
+      LP2BHeader.SETRANGE("Posting To",LP2BHeader."Posting To"::"Item Journal");
+      IF LP2BHeader.FIND('-') THEN
+      REPEAT
+         LP2BLine.RESET;
+         LP2BLine.SETCURRENTKEY("Document No.","Item No.","Location Code");
+         LP2BLine.SETFILTER("Document No.",LP2BHeader."No.");
+         LP2BLine.SETFILTER("Item No.",PItemNo);
+         LP2BLine.SETFILTER("Location Code",PLocationCode);
+         IF LP2BLine.FIND('-') THEN
+         REPEAT
+            IF ("Document No." <> LP2BLine."Document No.") THEN
+               TQtyP2BLine += LP2BLine.Quantity
+            ELSE
+               IF ("Line No." <> LP2BLine."Line No.") THEN
+                  TQtyP2BLine += LP2BLine.Quantity;
+         UNTIL LP2BLine.NEXT = 0;
+      UNTIL LP2BHeader.NEXT = 0;
+
+      LP2BHeader.RESET;
+      LP2BHeader.SETCURRENTKEY(Status,"Posting To","From Location","To Location");
+      //T24.01
+      //LP2BHeader.SETFILTER(Status,'%1|%2|%3',P2BManagement.GetTextStatusOpen,P2BManagement.GetTextStatusRelease,
+      //P2BManagement.GetTextStatusApprove);
+      LP2BHeader.SETFILTER(Status,'%1|%2|%3',LP2BHeader.Status::Open,LP2BHeader.Status::Release,LP2BHeader.Status::Approve);
+      //T24.01
+      LP2BHeader.SETRANGE("Posting To",LP2BHeader."Posting To"::"Transfer Order",LP2BHeader."Posting To"::Loan);
+      LP2BHeader.SETFILTER("From Location",PLocationCode);
+      IF LP2BHeader.FIND('-') THEN
+      REPEAT
+         LP2BLine.RESET;
+         LP2BLine.SETCURRENTKEY("Document No.","Item No.","Location Code");
+         LP2BLine.SETFILTER("Document No.",LP2BHeader."No.");
+         LP2BLine.SETFILTER("Item No.",PItemNo);
+         IF LP2BLine.FIND('-') THEN
+         REPEAT
+            IF ("Document No." <> LP2BLine."Document No.") THEN
+               TQtyP2BLine += LP2BLine.Quantity
+            ELSE
+               IF ("Line No." <> LP2BLine."Line No.") THEN
+                  TQtyP2BLine += LP2BLine.Quantity;
+         UNTIL LP2BLine.NEXT = 0;
+      UNTIL LP2BHeader.NEXT = 0;
+
+      LPurchLine.RESET;
+      LPurchLine.SETCURRENTKEY("Document Type","Document No.","Location Code","No.");
+      LPurchLine.SETRANGE("Document Type",LPurchLine."Document Type"::"Return Order");
+      LPurchLine.SETFILTER("No.",PItemNo);
+      LPurchLine.SETFILTER("Location Code",PLocationCode);
+      IF LPurchLine.FIND('-') THEN
+      REPEAT
+         TQtyPurchLine += LPurchLine."Quantity (Base)";
+      UNTIL LPurchLine.NEXT = 0;
+
+      LServiceInvLine.RESET;
+      LServiceInvLine.SETCURRENTKEY(
+      "Document Type","Customer No.","No.","Location Code");
+      LServiceInvLine.SETFILTER("No.",PItemNo);
+      LServiceInvLine.SETFILTER("Location Code",PLocationCode);
+      IF LServiceInvLine.FIND('-') THEN
+      REPEAT
+            TQtyServiceInvLine += LServiceInvLine."Quantity (Base)";
+      UNTIL LServiceInvLine.NEXT = 0;
+
+      LLoaner.RESET;
+      //LLoaner.SETCURRENTKEY("Location Code","No.");
+      LLoaner.SETFILTER("Item No.",PItemNo);
+      //LLoaner.SETFILTER("Location Code",PLocationCode);
+      IF LLoaner.FIND('-') THEN
+      REPEAT
+         TQtyLoaner += 1;
+      UNTIL LLoaner.NEXT = 0;
+
+      LTransferLine.RESET;
+      LTransferLine.SETCURRENTKEY("Transfer-from Code",Status,
+      "Derived From Line No.","Item No.");
+      LTransferLine.SETRANGE("Derived From Line No.",0);
+      LTransferLine.SETFILTER("Item No.",PItemNo);
+      LTransferLine.SETFILTER("Transfer-from Code",PLocationCode);
+      IF LTransferLine.FIND('-') THEN
+      REPEAT
+         {LTransferHeader.RESET;
+         LTransferHeader.SETFILTER("No.",LTransferLine."Document No.");
+         LTransferHeader.SETFILTER("Transfer-from Code",PLocationCode);
+         IF LTransferHeader.FIND('-') THEN}
+            TQtyTransferLine += LTransferLine."Outstanding Qty. (Base)";
+      UNTIL LTransferLine.NEXT = 0;
+
+      LItemJurnalLine.RESET;
+      LItemJurnalLine.SETCURRENTKEY("Journal Template Name","Entry Type",
+      "Quantity (Base)","Item No.","Location Code");
+      LItemJurnalLine.SETFILTER("Journal Template Name",'<>PHYS. INVE');
+      LItemJurnalLine.SETFILTER("Quantity (Base)",'>0');
+      LItemJurnalLine.SETRANGE("Entry Type",LItemJurnalLine."Entry Type"::"Negative Adjmt.");
+      LItemJurnalLine.SETFILTER("Item No.",PItemNo);
+      LItemJurnalLine.SETFILTER("Location Code",PLocationCode);
+      IF LItemJurnalLine.FIND('-') THEN
+      REPEAT
+         TQtyItemJurnalLine += LItemJurnalLine."Quantity (Base)";
+      UNTIL LItemJurnalLine.NEXT = 0;
+
+      LItemUnitBase.SETRANGE("Item No.","Item No.");
+      LItemUnitBase.SETRANGE(Code,"Unit of Measure");
+      IF LItemUnitBase.FIND('-') THEN
+      BEGIN
+         QtyBase := Rec.Quantity*LItemUnitBase."Qty. per Unit of Measure";
+      END
+      ELSE
+         ERROR('Unit of Measure Code invalid ...');
+
+      {LItemUnitBase.SETRANGE("Item No.","Item No.");
+      LItemUnitBase.SETRANGE(Code,xRec."Unit of Measure");
+      IF LItemUnitBase.FIND('-') THEN
+      BEGIN
+         xQtyBase := xRec.Quantity*LItemUnitBase."Qty. per Unit of Measure";
+      END
+      ELSE
+         ERROR('Unit of Measure Code invalid ...');
+      }    //tutup FDR 2 Feb 2011
+
+      IF "Location Code"=xRec."Location Code" THEN     //FDR 24 Jan 2011
+      BEGIN
+         LItemUnitBase.SETRANGE("Item No.","Item No.");
+         LItemUnitBase.SETRANGE(Code,xRec."Unit of Measure");
+         IF LItemUnitBase.FIND('-') THEN
+         BEGIN
+             xQtyBase := xRec.Quantity*LItemUnitBase."Qty. per Unit of Measure";
+         END ELSE
+            ERROR('Unit of Measure Code invalid ...');
+      END
+      ELSE
+         xQtyBase := 0;           //FDR 2 Feb 2011
+
+
+      {MESSAGE('TQtyItemLedgerEntry : ' + FORMAT(TQtyItemLedgerEntry));
+      MESSAGE('TQtySalesLine : ' + FORMAT(TQtySalesLine));
+      MESSAGE('TQtyServiceInvLine : ' + FORMAT(TQtyServiceInvLine));
+      MESSAGE('TQtyPurchLine : ' + FORMAT(TQtyPurchLine));
+      MESSAGE('TQtyLoaner : ' + FORMAT(TQtyLoaner));
+      MESSAGE('TQtyTransferLine : ' + FORMAT(TQtyTransferLine));
+      MESSAGE('TQtyItemJurnalLine : ' + FORMAT(TQtyItemJurnalLine));
+      MESSAGE('xQtyBase : ' + FORMAT(xQtyBase));
+      MESSAGE('QtyBase : ' + FORMAT(QtyBase));}
+
+      IF ((QtyBase - xQtyBase) <= 0) THEN
+         RESULT := TRUE //Qty lebih kecil or sama dengan qty lama
+      ELSE
+      IF ((QtyBase - xQtyBase) > 0) AND
+      ((TQtyItemLedgerEntry-TQtySalesLine-TQtyServiceInvLine-TQtyPurchLine-TQtyLoaner-
+      TQtyTransferLine-TQtyItemJurnalLine-TQtyP2BLine-QtyBase) >= 0) THEN
+         RESULT := TRUE //Qty lebih besar dari qty lama dan stok cukup
+      ELSE
+      IF ((QtyBase - xQtyBase) > 0) AND
+      ((TQtyItemLedgerEntry-TQtySalesLine-TQtyServiceInvLine-TQtyPurchLine-TQtyLoaner-
+      TQtyTransferLine-TQtyItemJurnalLine-TQtyP2BLine-QtyBase) < 0) THEN
+         RESULT := FALSE; //Qty lebih besar dari qty lama dan stok tidak cukup
+
+      {LQtyAvailable := TQtyItemLedgerEntry-TQtySalesLine-TQtyServiceInvLine-TQtyPurchLine-TQtyLoaner-
+      TQtyTransferLine-TQtyItemJurnalLine;}
+
+      {IF ((Rec.Quantity - xRec.Quantity) <= 0) THEN
+         RESULT := TRUE //Qty lebih kecil or sama dengan qty lama
+      ELSE
+      IF ((Rec.Quantity - xRec.Quantity) > 0) AND
+      ((TQtyItemLedgerEntry-TQtySalesLine-TQtyServiceInvLine) >= (Rec.Quantity - xRec.Quantity)) THEN
+         RESULT := TRUE //Qty lebih besar dari qty lama dan stok cukup
+      ELSE
+      IF ((Rec.Quantity - xRec.Quantity) > 0) AND
+      ((TQtyItemLedgerEntry-TQtySalesLine-TQtyServiceInvLine) < (Rec.Quantity - xRec.Quantity)) THEN
+         RESULT := FALSE; //Qty lebih besar dari qty lama dan stok tidak cukup}
+
+      {IF ((Rec."Quantity (Base)" - xRec."Quantity (Base)") <= 0) THEN
+         RESULT := TRUE //Qty lebih kecil or sama dengan qty lama
+      ELSE
+      IF ((Rec."Quantity (Base)" - xRec."Quantity (Base)") > 0) AND
+      ((TQtyItemLedgerEntry-TQtySalesLine-TQtyServiceInvLine-TQtyPurchLine-TQtyLoaner-
+      TQtyTransferLine-TQtyItemJurnalLine-Rec.Quantity) >= 0) THEN
+         RESULT := TRUE //Qty lebih besar dari qty lama dan stok cukup
+      ELSE
+      IF ((Rec."Quantity (Base)" - xRec."Quantity (Base)") > 0) AND
+      ((TQtyItemLedgerEntry-TQtySalesLine-TQtyServiceInvLine-TQtyPurchLine-TQtyLoaner-
+      TQtyTransferLine-TQtyItemJurnalLine-Rec.Quantity) < 0) THEN
+         RESULT := FALSE; //Qty lebih besar dari qty lama dan stok tidak cukup}
+      // D34.01
+    END;
+
+    LOCAL PROCEDURE GetHeader@1();
+    BEGIN
+      gRec_P2BHdr.GET("Document No.");
+    END;
+
+    BEGIN
+    {
+      D34.01    29 Jul 2015   BNY   Buat table baru "P2B Line" dari Nav.5
+
+      D51.01    05 Aug 15     RFL   Penambahan Variable Item, P2BHeader, P2BManagement
+      T30.02    22 Sep 2015   SH    Add key for Table Item
+      T24.01    12 Oct 2015   SH    Add fields and fix codes
+                                    Add lookup table for "Item Category Code" and "Product Group Code"
+                                    change field "Status" from Code 10 to Option
+      T24.02    19 Nov 15     SH    Change codes lookup P2B Item
+      T24.03    07 Des 15     SH    change codes on validate Item No.
+    }
+    END.
+  }
+}

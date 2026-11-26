@@ -1,0 +1,504 @@
+OBJECT Page 50062 P2B Approval
+{
+  OBJECT-PROPERTIES
+  {
+    Date=12/09/25;
+    Time=08:19:28;
+    Modified=Yes;
+    Version List=DTS:T24;
+  }
+  PROPERTIES
+  {
+    LinksAllowed=No;
+    SourceTable=Table50013;
+    SourceTableView=SORTING(Posting Date,No.)
+                    ORDER(Ascending)
+                    WHERE(Status=FILTER(Open|Release|Approve));
+    PageType=Document;
+    SourceTableTemporary=Yes;
+    RefreshOnActivate=Yes;
+    PromotedActionCategoriesML=ENU=New,Process,Report,Functions,P2B Approval,P2B;
+    ShowFilter=No;
+    OnInit=BEGIN
+             gCod_USERID := USERID;
+           END;
+
+    OnOpenPage=BEGIN
+                 IF Rec.COUNT = 0 THEN
+                   tmpCuP2Bmgt.FromDirectFrom(Rec);
+                 NewOnFormLoad;
+               END;
+
+    OnAfterGetRecord=BEGIN
+                       gBol_SubPageEditable := ("User ID Requester" <> USERID);
+                       //CurrPage.P2BSubformLine.PAGE.EDITABLE := ("User ID Requester" <> USERID);
+                       CALCFIELDS(Comment);
+                     END;
+
+    OnAfterGetCurrRecord=BEGIN
+                           IF PermissionPosting THEN
+                           BEGIN
+                              gBol_PurchaserEditable := "Posting To" = "Posting To"::Loan;
+                              gBol_JnlTemplateEditable := "Posting To" = "Posting To"::"Item Journal";
+                              gBol_JnlBatchEditable := "Posting To" = "Posting To"::"Item Journal";
+                              gBol_GenBusEditable := "Posting To" = "Posting To"::"Item Journal";
+                           END;
+                         END;
+
+    ActionList=ACTIONS
+    {
+      { 52      ;    ;ActionContainer;
+                      ActionContainerType=RelatedInformation }
+      { 31      ;1   ;ActionGroup;
+                      CaptionML=ENU=P2B Transaction }
+      { 29      ;2   ;Action    ;
+                      CaptionML=ENU=Co&mments;
+                      RunObject=Page 124;
+                      RunPageLink=Table Name=CONST(P2B),
+                                  No.=FIELD(No.);
+                      Promoted=Yes;
+                      PromotedIsBig=Yes;
+                      Image=ViewComments;
+                      PromotedCategory=Category6 }
+      { 14      ;    ;ActionContainer;
+                      ActionContainerType=ActionItems }
+      { 53      ;1   ;ActionGroup;
+                      CaptionML=ENU=P2B Approval }
+      { 54      ;2   ;Action    ;
+                      CaptionML=ENU=Refresh List;
+                      Promoted=Yes;
+                      PromotedIsBig=Yes;
+                      PromotedCategory=Category5;
+                      OnAction=VAR
+                                 tmpCuP2Bmgt@1000 : Codeunit 50101;
+                               BEGIN
+                                 tmpCuP2Bmgt.FromDirectFrom(Rec);
+                                 NewOnFormLoad;
+                               END;
+                                }
+      { 44      ;1   ;ActionGroup;
+                      CaptionML=ENU=F&unctions;
+                      Visible=gBol_BtnFunction1 }
+      { 47      ;2   ;Action    ;
+                      CaptionML=ENU=Approve;
+                      Promoted=Yes;
+                      Visible=gBol_BtnFunction1;
+                      PromotedIsBig=Yes;
+                      PromotedCategory=Category4;
+                      OnAction=VAR
+                                 P2BLine@1000 : Record 50014;
+                               BEGIN
+                                 P2BLine.RESET;
+                                 P2BLine.SETRANGE("Document No.","No.");
+                                 P2BLine.SETRANGE("Item No.",'');
+                                 IF P2BLine.FINDFIRST THEN
+                                   ERROR('Please insert Item No.');
+
+                                 IF P2BHeader.GET("No.") THEN
+                                    P2BManagement.Approved(P2BHeader);
+                                 IF ((PermissionPosting) AND (P2BHeader.Status = P2BHeader.Status::Approve)) = FALSE THEN
+                                    DELETE;
+                                 CurrPage.P2BSubformLine.PAGE.EDITABLE := (COUNT > 0);
+                                 IF P2BHeader.Status = P2BHeader.Status::Approve THEN
+                                 BEGIN
+                                    Status := P2BHeader.Status::Approve;
+                                    "Current Step" := '';
+                                    MODIFY;
+                                 END;
+                               END;
+                                }
+      { 48      ;2   ;Action    ;
+                      CaptionML=ENU=Cancel;
+                      Promoted=Yes;
+                      Visible=gBol_BtnFunction1;
+                      PromotedIsBig=Yes;
+                      PromotedCategory=Category4;
+                      OnAction=BEGIN
+                                 IF NOT CONFIRM('This process will cancel the transaction, continue?') THEN
+                                    EXIT;
+
+                                 IF P2BHeader.GET("No.") THEN
+                                    P2BManagement.Canceled(P2BHeader);
+                                 IF ((PermissionPosting) AND (P2BHeader.Status = P2BHeader.Status::Cancel)) = FALSE THEN
+                                    DELETE;
+                                 CurrPage.P2BSubformLine.PAGE.EDITABLE := (COUNT > 0);
+                                 CurrPage.ACTIVATE;
+                               END;
+                                }
+      { 49      ;2   ;Action    ;
+                      CaptionML=ENU=Print;
+                      RunObject=Report 50137;
+                      Promoted=Yes;
+                      Visible=gBol_BtnFunction1;
+                      PromotedIsBig=Yes;
+                      PromotedCategory=Report }
+      { 46      ;1   ;ActionGroup;
+                      CaptionML=ENU=F&unctions;
+                      Visible=gBol_BtnFunction2 }
+      { 50      ;2   ;Action    ;
+                      CaptionML=ENU=Posting;
+                      Promoted=Yes;
+                      Visible=gBol_BtnFunction2;
+                      PromotedIsBig=Yes;
+                      PromotedCategory=Category4;
+                      OnAction=VAR
+                                 P2BLine@1000 : Record 50014;
+                                 Item@1001 : Record 27;
+                               BEGIN
+                                 P2BLine.RESET;
+                                 P2BLine.SETRANGE("Document No.","No.");
+                                 P2BLine.SETRANGE("Item No.",'');
+                                 IF P2BLine.FINDFIRST THEN
+                                   ERROR('Please insert Item No.');
+
+                                 // BNY 21.06.22
+                                 P2BLine.RESET;
+                                 P2BLine.SETRANGE("Document No.","No.");
+                                 IF P2BLine.FINDFIRST THEN
+                                   REPEAT
+                                     IF Item.GET(P2BLine."Item No.") THEN
+                                       IF Item.Blocked THEN
+                                         ERROR('Item '+ P2BLine."Item No." + ' blocked.');
+                                   UNTIL P2BLine.NEXT = 0;
+                                 // BNY 21.06.22
+
+                                 IF P2BHeader.GET("No.") THEN
+                                   P2BManagement.Posted(P2BHeader);
+
+                                 DELETE;
+                                 CurrPage.P2BSubformLine.PAGE.EDITABLE := (COUNT > 0);
+                               END;
+                                }
+      { 51      ;2   ;Action    ;
+                      CaptionML=ENU=Cancel;
+                      Visible=gBol_BtnFunction2;
+                      OnAction=BEGIN
+                                 IF NOT CONFIRM('This process will cancel the transaction, continue?') THEN
+                                    EXIT;
+
+                                 IF P2BHeader.GET("No.") THEN
+                                    P2BManagement.Canceled(P2BHeader);
+                                 IF ((PermissionPosting) AND (P2BHeader.Status = P2BHeader.Status::Cancel)) = FALSE THEN
+                                    DELETE;
+                                 CurrPage.P2BSubformLine.PAGE.EDITABLE := (COUNT > 0);
+                                 CurrPage.ACTIVATE;
+                               END;
+                                }
+      { 55      ;1   ;ActionGroup;
+                      CaptionML=ENU=P2B Order }
+      { 57      ;2   ;Action    ;
+                      CaptionML=ENU=P2B Approval Log;
+                      RunObject=Page 50056;
+                      RunPageLink=P2B No.=FIELD(No.),
+                                  Reason=FILTER(EMAIL) }
+      { 56      ;2   ;Action    ;
+                      CaptionML=ENU=P2B Order Log;
+                      RunObject=Page 50056;
+                      RunPageLink=P2B No.=FIELD(No.),
+                                  Reason=FILTER(STEP) }
+    }
+  }
+  CONTROLS
+  {
+    { 1   ;0   ;Container ;
+                ContainerType=ContentArea }
+
+    { 32  ;1   ;Group     ;
+                CaptionML=ENU=General;
+                GroupType=Group }
+
+    { 33  ;2   ;Group     ;
+                GroupType=Group }
+
+    { 35  ;3   ;Field     ;
+                SourceExpr="Posting To";
+                Editable=FALSE }
+
+    { 36  ;3   ;Field     ;
+                SourceExpr="Journal Template Name";
+                Editable=gBol_JnlTemplateEditable }
+
+    { 37  ;3   ;Field     ;
+                SourceExpr="Flag System";
+                Editable=FALSE }
+
+    { 38  ;3   ;Field     ;
+                SourceExpr="Flag Fisik";
+                Editable=FALSE }
+
+    { 39  ;3   ;Field     ;
+                CaptionML=ENU=Dept Code (Pembebanan);
+                SourceExpr="Department Code" }
+
+    { 68  ;3   ;Field     ;
+                SourceExpr="Ex Loan No." }
+
+    { 34  ;2   ;Group     ;
+                GroupType=Group }
+
+    { 40  ;3   ;Field     ;
+                SourceExpr="Gen. Bus. Posting Group";
+                Editable=gBol_GenBusEditable }
+
+    { 41  ;3   ;Field     ;
+                SourceExpr="Journal Batch Name";
+                Editable=gBol_JnlBatchEditable }
+
+    { 42  ;3   ;Field     ;
+                SourceExpr="Purchaser Code";
+                Editable=gBol_PurchaserEditable }
+
+    { 43  ;3   ;Field     ;
+                Name=CheckFilter;
+                CaptionML=ENU=Force Request Approval List;
+                SourceExpr=gBol_Filter;
+                Visible=gBol_LabelCheckFilterVisible;
+                OnValidate=BEGIN
+                             RESET;
+                             IF gBol_Filter THEN
+                                SETFILTER("View Font Color",'>0')
+                             ELSE
+                                SETFILTER("View Font Color",'<0');
+
+                             IF NOT FIND('-') THEN
+                                MESSAGE('Record not found');
+
+                             CheckFilterAfterGetRecord;
+                           END;
+                            }
+
+    { 15  ;3   ;Field     ;
+                CaptionML=ENU=Login User ID;
+                SourceExpr=gCod_USERID;
+                Editable=FALSE }
+
+    { 45  ;1   ;Group     ;
+                CaptionML=ENU=P2B Header;
+                GroupType=Group }
+
+    { 2   ;2   ;Group     ;
+                Name=Group;
+                Editable=FALSE;
+                GroupType=Repeater }
+
+    { 3   ;3   ;Field     ;
+                SourceExpr="No." }
+
+    { 5   ;3   ;Field     ;
+                SourceExpr="Posting Date" }
+
+    { 7   ;3   ;Field     ;
+                SourceExpr="Document Type" }
+
+    { 8   ;3   ;Field     ;
+                SourceExpr="Warehouse Code" }
+
+    { 9   ;3   ;Field     ;
+                SourceExpr=Requester }
+
+    { 58  ;3   ;Field     ;
+                Name=Sub Dept. Requester`;
+                CaptionML=ENU=Sub Dept. Requester;
+                SourceExpr=Variant }
+
+    { 10  ;3   ;Field     ;
+                SourceExpr=Owner }
+
+    { 11  ;3   ;Field     ;
+                SourceExpr="User ID Requester" }
+
+    { 12  ;3   ;Field     ;
+                SourceExpr="User ID Owner" }
+
+    { 13  ;3   ;Field     ;
+                SourceExpr="Salesperson Code" }
+
+    { 16  ;3   ;Field     ;
+                SourceExpr="From Location" }
+
+    { 17  ;3   ;Field     ;
+                SourceExpr="From Location Ownership" }
+
+    { 18  ;3   ;Field     ;
+                SourceExpr="To Location" }
+
+    { 19  ;3   ;Field     ;
+                SourceExpr="To Location Ownership" }
+
+    { 20  ;3   ;Field     ;
+                SourceExpr="Loan Type" }
+
+    { 21  ;3   ;Field     ;
+                SourceExpr="Loan-to Customer No." }
+
+    { 22  ;3   ;Field     ;
+                SourceExpr="Ship-to Code" }
+
+    { 23  ;3   ;Field     ;
+                SourceExpr="Loan Due Date" }
+
+    { 24  ;3   ;Field     ;
+                SourceExpr="Area Code" }
+
+    { 25  ;3   ;Field     ;
+                SourceExpr=Status }
+
+    { 26  ;3   ;Field     ;
+                SourceExpr="Next Approval" }
+
+    { 27  ;3   ;Field     ;
+                SourceExpr="Current Approval" }
+
+    { 28  ;3   ;Field     ;
+                SourceExpr="Current Step" }
+
+    { 30  ;3   ;Field     ;
+                SourceExpr="Create Date & Time" }
+
+    { 4   ;3   ;Field     ;
+                SourceExpr="WorkFlow ID" }
+
+    { 66  ;1   ;Group     ;
+                CaptionML=ENU=Ship-To;
+                GroupType=Group }
+
+    { 65  ;2   ;Field     ;
+                SourceExpr="Ship-to Name" }
+
+    { 64  ;2   ;Field     ;
+                SourceExpr="Ship-to Name 2" }
+
+    { 63  ;2   ;Field     ;
+                SourceExpr="Ship-to Address 1" }
+
+    { 62  ;2   ;Field     ;
+                SourceExpr="Ship-to Address 2" }
+
+    { 61  ;2   ;Field     ;
+                SourceExpr="Ship-to Address 3" }
+
+    { 60  ;2   ;Field     ;
+                SourceExpr="Ship-to City" }
+
+    { 59  ;2   ;Field     ;
+                SourceExpr="Ship-to Post Code" }
+
+    { 6   ;1   ;Part      ;
+                Name=P2BSubformLine;
+                CaptionML=ENU=P2B Lines;
+                SubPageLink=Document No.=FIELD(No.);
+                PagePartID=Page50063;
+                Editable=gBol_SubPageEditable;
+                PartType=Page }
+
+  }
+  CODE
+  {
+    VAR
+      P2BHeader@1014 : Record 50013;
+      UserSetup@1013 : Record 91;
+      gBol_Filter@1000 : Boolean;
+      P2BManagement@1001 : Codeunit 50100;
+      gBol_BtnFunction1@1002 : Boolean;
+      gBol_BtnFunction2@1003 : Boolean;
+      gBol_BtnPosting@1004 : Boolean;
+      gBol_JnlTemplateEditable@1005 : Boolean;
+      gBol_JnlBatchEditable@1006 : Boolean;
+      gBol_GenBusEditable@1007 : Boolean;
+      gBol_PurchaserEditable@1008 : Boolean;
+      gBol_LabelCheckFilterVisible@1012 : Boolean;
+      PermissionPosting@1011 : Boolean;
+      PermissionApprove@1010 : Boolean;
+      PermissionSkipApprove@1009 : Boolean;
+      gBol_SubPageEditable@1015 : Boolean;
+      gCod_USERID@1016 : Code[50];
+      tmpCuP2Bmgt@1017 : Codeunit 50101;
+
+    PROCEDURE NewOnFormLoad@1000000005();
+    BEGIN
+      P2BManagement.InitializeUserLevel();
+      P2BManagement.InitializeGlobalLevel();
+      P2BManagement.InitializeSubGroupLevel();
+      P2BManagement.InitializeSupervisorLevel();
+      P2BManagement.InitializeSkipApproveLevel();
+      P2BManagement.InitializeApproveLevel();
+      P2BManagement.InitializePostingLevel();
+      P2BManagement.InitializeStepSubstitution();
+
+      GetPermissionPosting;
+      GetPermissionApprove;
+      GetPermissionSkipApprove;
+
+      //T24.01
+      //CurrForm.BtnPosting.VISIBLE := FALSE;
+      //CurrForm.BtnFunction1.VISIBLE := NOT PermissionPosting;
+      //CurrForm.BtnFunction2.VISIBLE := PermissionPosting;
+      //CurrForm."Journal Template Name".EDITABLE := PermissionPosting;
+      //CurrForm."Journal Batch Name".EDITABLE := PermissionPosting;
+      //CurrForm."Gen. Bus. Posting Group".EDITABLE := PermissionPosting;
+      //CurrForm."Purchaser Code".EDITABLE := PermissionPosting;
+
+      gBol_BtnPosting := FALSE;
+      gBol_BtnFunction1 := NOT PermissionPosting;
+      gBol_BtnFunction2 := PermissionPosting;
+      gBol_JnlTemplateEditable := PermissionPosting;
+      gBol_JnlBatchEditable := PermissionPosting;
+      gBol_GenBusEditable := PermissionPosting;
+      gBol_PurchaserEditable := PermissionPosting;
+      //T24.01
+
+      IF PermissionApprove THEN
+         P2BManagement.SetUserAdministrator(USERID);
+
+      //T24.01
+      //CurrForm.LabelCheckFilter.VISIBLE := PermissionSkipApprove;
+      //CurrForm.CheckFilter.VISIBLE := PermissionSkipApprove;
+      //CurrForm.P2BSubFormLine.FORM.EDITABLE := (COUNT > 0);
+      //CurrForm.P2BSubFormLine.FORM.SetCreateLog(TRUE);
+
+      gBol_LabelCheckFilterVisible := PermissionSkipApprove;
+      gBol_SubPageEditable := (COUNT > 0);
+      //CurrPage.P2BSubformLine.PAGE.EDITABLE := (COUNT > 0);
+      CurrPage.P2BSubformLine.PAGE.SetCreateLog(TRUE);
+      //T24.01
+
+      gBol_Filter := FALSE;
+      SETFILTER("View Font Color",'<0');
+    END;
+
+    PROCEDURE GetPermissionPosting@1000000001();
+    BEGIN
+      UserSetup.RESET;
+      UserSetup.SETRANGE("User ID",USERID);
+      IF UserSetup.FINDFIRST THEN
+         PermissionPosting := P2BManagement.IsPostingLevel(UserSetup."P2B User Level");
+    END;
+
+    PROCEDURE GetPermissionApprove@1000000002();
+    BEGIN
+      UserSetup.RESET;
+      UserSetup.SETRANGE("User ID",USERID);
+      IF UserSetup.FINDFIRST THEN
+         PermissionApprove := P2BManagement.IsApproveLevel(UserSetup."P2B User Level");
+    END;
+
+    PROCEDURE GetPermissionSkipApprove@1000000003();
+    BEGIN
+      UserSetup.RESET;
+      UserSetup.SETRANGE("User ID",USERID);
+      IF UserSetup.FINDFIRST THEN
+         PermissionSkipApprove := P2BManagement.IsSkipApproveLevel(UserSetup."P2B User Level");
+    END;
+
+    LOCAL PROCEDURE CheckFilterAfterGetRecord@2();
+    BEGIN
+      CurrPage.UPDATE(FALSE);
+    END;
+
+    BEGIN
+    {
+      D00.01    15 Sept 2017    BNY   Add Group "Ship-To"
+    }
+    END.
+  }
+}

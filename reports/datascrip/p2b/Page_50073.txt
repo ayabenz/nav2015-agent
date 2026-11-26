@@ -1,0 +1,373 @@
+OBJECT Page 50073 P2B Transaction Posted
+{
+  OBJECT-PROPERTIES
+  {
+    Date=03/22/21;
+    Time=08:49:14;
+    Modified=Yes;
+    Version List=DTS:T24;
+  }
+  PROPERTIES
+  {
+    Editable=No;
+    CaptionML=ENU=P2B Posted Transaction;
+    LinksAllowed=No;
+    SourceTable=Table50013;
+    SourceTableView=WHERE(Status=FILTER(Close|Cancel));
+    PageType=Document;
+    RefreshOnActivate=Yes;
+    PromotedActionCategoriesML=ENU=New,Process,Report,Functions,P2B Order;
+    OnOpenPage=VAR
+                 Rec_KPCZone@1000 : Record 50022;
+               BEGIN
+                 {IF UserMgt.GetP2BFilter() <> '' THEN BEGIN
+                   FILTERGROUP(2);
+                   RespCenterCode := UserMgt.GetP2BFilter();
+                   SETRANGE(Requester,RespCenterCode);
+                 END;
+
+                 IF UserSetup.GET(USERID) THEN
+                 BEGIN
+                    UserIDLevel := UserSetup."P2B User Level";
+                    IF UserSetup."KPC Zone Filter" <> '' THEN
+                    BEGIN
+                       Rec_KPCZone.GET(UserSetup."KPC Zone Filter");
+                       UserIDVariant := Rec_KPCZone.City;
+                    END ELSE
+                       UserIDVariant := '';
+                 END;
+
+                 IF RespCenter.GET(RespCenterCode) THEN
+                    DeptCode := RespCenter."Global Dimension 1 Code";
+
+                 P2BManagement.InitializeFirstStepMandatory;
+                 P2BManagement.InitializeUserLevel;
+                 P2BManagement.InitializeGlobalLevel;
+                 P2BManagement.InitializeSubGroupLevel;
+                 P2BManagement.InitializeSupervisorLevel;
+                 P2BManagement.InitializeStepSubstitution;
+                 P2BManagement.InitializeUserID(UserIDRequester,UserIDGlobalLevel,UserIDLevel,RespCenterCode);
+                 TextStatusOpen := P2BManagement.GetTextStatusOpen();
+
+                 IF UserIDRequester = '' THEN
+                    ERROR('User ID Requester not defined');
+
+                 SETFILTER("User ID Requester",SetFilterUserID(UserIDLevel,RespCenterCode));
+                 FILTERGROUP(0);
+                 }
+
+                 CurrPage.P2BLines.PAGE.SetReadOnly(TRUE);
+               END;
+
+    OnAfterGetRecord=BEGIN
+                       Noshp:='';
+                       StatusTr:='';
+                       GetNoWhseShipment(Noshp,StatusTr);
+                     END;
+
+    ActionList=ACTIONS
+    {
+      { 44      ;    ;ActionContainer;
+                      ActionContainerType=RelatedInformation }
+      { 34      ;1   ;ActionGroup;
+                      CaptionML=ENU=P2B Transaction }
+      { 33      ;2   ;Action    ;
+                      CaptionML=ENU=Co&mments;
+                      RunObject=Page 124;
+                      RunPageLink=Table Name=CONST(P2B),
+                                  No.=FIELD(No.);
+                      Image=ViewComments }
+      { 32      ;    ;ActionContainer;
+                      ActionContainerType=ActionItems }
+      { 35      ;1   ;ActionGroup;
+                      CaptionML=ENU=P2B Order }
+      { 39      ;2   ;Action    ;
+                      CaptionML=ENU=P2B Approval Log;
+                      RunObject=Page 50056;
+                      RunPageLink=P2B No.=FIELD(No.),
+                                  Reason=FILTER(EMAIL) }
+      { 36      ;2   ;Action    ;
+                      CaptionML=ENU=P2B Order Log;
+                      RunObject=Page 50056;
+                      RunPageLink=P2B No.=FIELD(No.),
+                                  Reason=FILTER(STEP) }
+      { 37      ;2   ;Action    ;
+                      CaptionML=ENU=P2B User Email }
+      { 38      ;2   ;Action    ;
+                      CaptionML=ENU=P2B Log Item }
+    }
+  }
+  CONTROLS
+  {
+    { 1   ;0   ;Container ;
+                ContainerType=ContentArea }
+
+    { 2   ;1   ;Group     ;
+                Name=General;
+                GroupType=Group }
+
+    { 3   ;2   ;Field     ;
+                SourceExpr="No." }
+
+    { 4   ;2   ;Field     ;
+                DrillDown=Yes;
+                SourceExpr="Document Type";
+                Editable=gBol_FilterEditable }
+
+    { 5   ;2   ;Field     ;
+                SourceExpr=Requester;
+                Editable=gBol_FilterEditable }
+
+    { 6   ;2   ;Field     ;
+                CaptionML=ENU=Sub Dept. Requester;
+                SourceExpr=Variant;
+                Editable=gBol_FilterEditable }
+
+    { 7   ;2   ;Field     ;
+                SourceExpr=Owner;
+                Editable=gBol_FilterEditable }
+
+    { 8   ;2   ;Field     ;
+                CaptionML=ENU=Sub Dept. Owner;
+                SourceExpr="Variant Owner";
+                Editable=gBol_FilterEditable }
+
+    { 41  ;2   ;Field     ;
+                SourceExpr=Confirmation;
+                Editable=gBol_FilterEditable }
+
+    { 15  ;2   ;Field     ;
+                CaptionML=ENU=Sales Admin Gudang;
+                SourceExpr="Warehouse Code";
+                Editable=gBol_FilterEditable }
+
+    { 9   ;2   ;Field     ;
+                SourceExpr="From Location";
+                Editable=gBol_FromLocEditable }
+
+    { 12  ;2   ;Field     ;
+                SourceExpr="From Location Ownership";
+                Editable=gBol_FromLocOwnerEditable }
+
+    { 10  ;2   ;Field     ;
+                SourceExpr="To Location";
+                Editable=gBol_ToLocEditable }
+
+    { 13  ;2   ;Field     ;
+                SourceExpr="To Location Ownership";
+                Editable=gBol_ToLocOwnerEditable }
+
+    { 11  ;2   ;Field     ;
+                SourceExpr="Transit Location";
+                Editable=gBol_TransitLocEditable }
+
+    { 46  ;2   ;Field     ;
+                SourceExpr="Ship-to Address 1" }
+
+    { 47  ;2   ;Field     ;
+                SourceExpr="Ship-to Address 2" }
+
+    { 48  ;2   ;Field     ;
+                SourceExpr="Ship-to Address 3" }
+
+    { 49  ;2   ;Field     ;
+                SourceExpr="Ship-to Name" }
+
+    { 50  ;2   ;Field     ;
+                SourceExpr="Ship-to Name 2" }
+
+    { 51  ;2   ;Field     ;
+                SourceExpr="Ship-to City" }
+
+    { 14  ;2   ;Field     ;
+                SourceExpr="Gen. Bus. Posting Group";
+                Editable=gBol_GenBusEditable;
+                OnValidate=VAR
+                             Rec_GBPG@1000 : Record 250;
+                           BEGIN
+                             //comment old codes - move codes to table
+                             {
+                             IF "Gen. Bus. Posting Group" = '' THEN BEGIN
+                               GenBusDescription := '';
+                               EXIT;
+                             END;
+
+                             Rec_GBPG.RESET;
+                             Rec_GBPG.SETFILTER(Code, FilterGenBus);
+                             Rec_GBPG.FILTERGROUP := 2;
+                             Rec_GBPG.SETRANGE(Code,"Gen. Bus. Posting Group");
+                             IF Rec_GBPG.FINDFIRST THEN BEGIN
+                               GenBusDescription := Rec_GBPG.Description;
+                               "Journal Batch Name":= Rec_GBPG."Def. Journal Batch P2B";
+                               IF "Department Code" ='' THEN
+                                 "Department Code" := Rec_GBPG."Def. Divisi P2B";
+                             END ELSE
+                               ERROR('');
+                             }
+                             //comment old codes - move codes to table
+                           END;
+                            }
+
+    { 28  ;2   ;Field     ;
+                CaptionML=ENU=Gen. Bus. Desc;
+                SourceExpr="Gen Bus Description" }
+
+    { 16  ;2   ;Field     ;
+                SourceExpr=Status }
+
+    { 17  ;2   ;Field     ;
+                SourceExpr="Current Step" }
+
+    { 18  ;2   ;Field     ;
+                SourceExpr="Current Approval" }
+
+    { 19  ;2   ;Field     ;
+                SourceExpr="Create Date & Time" }
+
+    { 31  ;2   ;Field     ;
+                SourceExpr="WorkFlow ID";
+                Enabled=FALSE;
+                Editable=FALSE }
+
+    { 40  ;2   ;Field     ;
+                SourceExpr="User ID Requester";
+                Enabled=FALSE;
+                Editable=FALSE }
+
+    { 29  ;2   ;Field     ;
+                CaptionML=ENU=Proses System;
+                SourceExpr="Flag System" }
+
+    { 30  ;2   ;Field     ;
+                CaptionML=ENU=Proses Fisik;
+                SourceExpr="Flag Fisik" }
+
+    { 20  ;2   ;Field     ;
+                SourceExpr="Loan Due Date";
+                Editable=gBol_LoanDueDateEditable }
+
+    { 21  ;2   ;Field     ;
+                SourceExpr="Loan Type";
+                Editable=gBol_LoanTypeEditable }
+
+    { 22  ;2   ;Field     ;
+                SourceExpr="Loan-to Customer No.";
+                Editable=gBol_LoanToCustEditable }
+
+    { 52  ;2   ;Field     ;
+                SourceExpr="Tipe Franco" }
+
+    { 23  ;2   ;Field     ;
+                SourceExpr="Ship-to Code";
+                Editable=gBol_ShipToCodeEditable }
+
+    { 24  ;2   ;Field     ;
+                SourceExpr="Department Code";
+                OnValidate=VAR
+                             DimVal@1000 : Record 349;
+                           BEGIN
+                           END;
+
+                OnLookup=VAR
+                           DimVal@1000 : Record 349;
+                         BEGIN
+                         END;
+                          }
+
+    { 25  ;2   ;Field     ;
+                SourceExpr="Area Code" }
+
+    { 26  ;2   ;Field     ;
+                SourceExpr="Salesperson Code";
+                Editable=gBol_SalespersonEditable }
+
+    { 42  ;2   ;Field     ;
+                CaptionML=ENU=Whse. Shipment No.;
+                SourceExpr=Noshp;
+                Editable=false }
+
+    { 45  ;2   ;Field     ;
+                SourceExpr="Posted Doc No." }
+
+    { 53  ;2   ;Field     ;
+                SourceExpr="Flag Interdivision" }
+
+    { 54  ;2   ;Field     ;
+                SourceExpr="No. PO Interdivision" }
+
+    { 43  ;2   ;Field     ;
+                CaptionML=ENU=Status Truck;
+                SourceExpr=StatusTr;
+                Editable=false }
+
+    { 27  ;1   ;Part      ;
+                Name=P2BLines;
+                SubPageLink=Document No.=FIELD(No.);
+                PagePartID=Page50078;
+                PartType=Page }
+
+  }
+  CODE
+  {
+    VAR
+      RespCenter@1005 : Record 5714;
+      UserSetup@1002 : Record 91;
+      P2BLine@1022 : Record 50014;
+      UserMgt@1000 : Codeunit 5700;
+      P2BManagement@1007 : Codeunit 50100;
+      RespCenterCode@1001 : Code[10];
+      UserIDLevel@1003 : Code[50];
+      UserIDVariant@1004 : Code[50];
+      UserIDRequester@1008 : Code[50];
+      DeptCode@1006 : Code[10];
+      UserIDGlobalLevel@1009 : Boolean;
+      TextStatusOpen@1010 : Code[10];
+      gBol_FromLocEditable@1011 : Boolean;
+      gBol_ToLocEditable@1012 : Boolean;
+      gBol_FromLocOwnerEditable@1013 : Boolean;
+      gBol_ToLocOwnerEditable@1014 : Boolean;
+      gBol_TransitLocEditable@1015 : Boolean;
+      gBol_ShipToCodeEditable@1016 : Boolean;
+      gBol_SalespersonEditable@1017 : Boolean;
+      gBol_LoanTypeEditable@1018 : Boolean;
+      gBol_LoanToCustEditable@1019 : Boolean;
+      gBol_LoanDueDateEditable@1020 : Boolean;
+      gBol_GenBusEditable@1021 : Boolean;
+      P2BHeader@1024 : Record 50013;
+      gBol_FilterEditable@1023 : Boolean;
+      Noshp@1026 : Code[20];
+      StatusTr@1025 : Text[30];
+
+    PROCEDURE GetNoWhseShipment@1000000000(VAR NoShipment@1000000004 : Code[20];VAR StatusDok@1000000003 : Text[30]) : Code[20];
+    VAR
+      Tsh@1000000000 : Record 5744;
+      Th@1000000001 : Record 5740;
+      WSL@1000000002 : Record 7321;
+      WSH@1000000005 : Record 7320;
+    BEGIN
+      Tsh.SETRANGE(Tsh."P2B Document No.","No.");
+      IF Tsh.FINDFIRST THEN BEGIN
+        NoShipment:=Tsh."Shipment No.";
+        StatusDok:=FORMAT(Tsh."Truck Status")
+      END
+      ELSE IF Th.GET("Posted Doc No.") THEN BEGIN
+        WSL.SETRANGE(WSL."Source Document",WSL."Source Document"::"Outbound Transfer");
+        WSL.SETRANGE(WSL."Source No.",Th."No.");
+        IF WSL.FINDLAST THEN BEGIN
+          WSH.GET(WSL."No.");
+          WSH.CALCFIELDS(WSH."Completely Picked");
+          NoShipment:=WSL."No.";
+          IF WSH."Completely Picked" THEN
+            StatusDok:='Completely Picked'
+          ELSE IF WSH."Pick Created" THEN
+            StatusDok:='Pick Created'
+          ELSE
+            StatusDok:='Belum diPick';
+        END;
+      END;
+    END;
+
+    BEGIN
+    END.
+  }
+}

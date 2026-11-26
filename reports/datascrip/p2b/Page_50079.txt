@@ -1,0 +1,155 @@
+OBJECT Page 50079 P2B List Posted
+{
+  OBJECT-PROPERTIES
+  {
+    Date=03/22/21;
+    Time=08:49:29;
+    Modified=Yes;
+    Version List=DTS:T24;
+  }
+  PROPERTIES
+  {
+    Editable=No;
+    CaptionML=ENU=P2B Posted Transactions;
+    SourceTable=Table50013;
+    SourceTableView=WHERE(Status=FILTER(Close|Cancel));
+    PageType=List;
+    CardPageID=P2B Transaction Posted;
+    OnOpenPage=BEGIN
+                 IF UserMgt.GetP2BFilter() <> '' THEN BEGIN
+                   FILTERGROUP(2);
+                   RespCenterCode := UserMgt.GetP2BFilter();
+                   SETRANGE(Requester,RespCenterCode);
+                   FILTERGROUP(0);
+                 END;
+               END;
+
+  }
+  CONTROLS
+  {
+    { 1   ;0   ;Container ;
+                ContainerType=ContentArea }
+
+    { 2   ;1   ;Group     ;
+                Name=Group;
+                GroupType=Repeater }
+
+    { 3   ;2   ;Field     ;
+                SourceExpr="No." }
+
+    { 4   ;2   ;Field     ;
+                SourceExpr="Document Type" }
+
+    { 5   ;2   ;Field     ;
+                SourceExpr="Posted Doc No." }
+
+    { 6   ;2   ;Field     ;
+                SourceExpr="Warehouse Code" }
+
+    { 7   ;2   ;Field     ;
+                SourceExpr=Requester }
+
+    { 8   ;2   ;Field     ;
+                SourceExpr=Owner }
+
+    { 9   ;2   ;Field     ;
+                SourceExpr="User ID Requester" }
+
+    { 10  ;2   ;Field     ;
+                SourceExpr="User ID Owner" }
+
+    { 11  ;2   ;Field     ;
+                SourceExpr="Posting To" }
+
+    { 12  ;2   ;Field     ;
+                SourceExpr="Location Code" }
+
+    { 13  ;2   ;Field     ;
+                SourceExpr="From Location" }
+
+    { 14  ;2   ;Field     ;
+                SourceExpr="To Location" }
+
+    { 15  ;2   ;Field     ;
+                SourceExpr="Transit Location" }
+
+    { 16  ;2   ;Field     ;
+                SourceExpr="Loan Type" }
+
+    { 17  ;2   ;Field     ;
+                SourceExpr="Loan-to Customer No." }
+
+    { 18  ;2   ;Field     ;
+                SourceExpr="Ship-to Code" }
+
+    { 19  ;2   ;Field     ;
+                SourceExpr="Area Code" }
+
+    { 20  ;2   ;Field     ;
+                SourceExpr="Posting Date" }
+
+    { 21  ;2   ;Field     ;
+                SourceExpr=Status }
+
+    { 22  ;2   ;Field     ;
+                SourceExpr="P2B Notification" }
+
+    { 23  ;2   ;Field     ;
+                SourceExpr="Next Approval" }
+
+    { 24  ;2   ;Field     ;
+                SourceExpr="Current Approval" }
+
+    { 25  ;2   ;Field     ;
+                SourceExpr="Current Step" }
+
+    { 26  ;2   ;Field     ;
+                SourceExpr="No. Series" }
+
+    { 27  ;2   ;Field     ;
+                SourceExpr="Create Date & Time" }
+
+    { 28  ;2   ;Field     ;
+                SourceExpr="User Global Level" }
+
+    { 29  ;2   ;Field     ;
+                SourceExpr="Journal Template Name" }
+
+    { 30  ;2   ;Field     ;
+                SourceExpr="Journal Batch Name" }
+
+    { 31  ;2   ;Field     ;
+                SourceExpr="Gen. Bus. Posting Group" }
+
+    { 32  ;2   ;Field     ;
+                SourceExpr="Department Code" }
+
+    { 33  ;2   ;Field     ;
+                SourceExpr="Salesperson Code" }
+
+    { 34  ;2   ;Field     ;
+                SourceExpr="Purchaser Code" }
+
+    { 35  ;2   ;Field     ;
+                SourceExpr=Variant }
+
+    { 36  ;2   ;Field     ;
+                SourceExpr="Tipe Franco" }
+
+    { 37  ;2   ;Field     ;
+                SourceExpr="Flag Interdivision" }
+
+    { 38  ;2   ;Field     ;
+                SourceExpr="No. PO Interdivision" }
+
+  }
+  CODE
+  {
+    VAR
+      UserMgt@1000 : Codeunit 5700;
+      RespCenterCode@1001 : Code[10];
+
+    BEGIN
+    END.
+  }
+}

@@ -1,0 +1,28 @@
+OBJECT Codeunit 50102 P2B Posted Transactions
+{
+  OBJECT-PROPERTIES
+  {
+    Date=12/02/15;
+    Time=01:00:00;
+    Modified=Yes;
+    Version List=DTS:T24;
+  }
+  PROPERTIES
+  {
+    OnRun=BEGIN
+            CLEAR(P2BMgt);
+            P2BMgt.GetHistoryRecordByUserID(P2BHeaderTemp);
+            PAGE.RUN(50079,P2BHeaderTemp);
+          END;
+
+  }
+  CODE
+  {
+    VAR
+      P2BHeaderTemp@1001 : TEMPORARY Record 50013;
+      P2BMgt@1000 : Codeunit 50100;
+
+    BEGIN
+    END.
+  }
+}

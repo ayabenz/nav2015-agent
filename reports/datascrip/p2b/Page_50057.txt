@@ -1,0 +1,203 @@
+OBJECT Page 50057 P2B List
+{
+  OBJECT-PROPERTIES
+  {
+    Date=11/28/18;
+    Time=09:40:43;
+    Modified=Yes;
+    Version List=DTS:T24;
+  }
+  PROPERTIES
+  {
+    Editable=No;
+    SourceTable=Table50013;
+    SourceTableView=WHERE(Status=FILTER(Open|Release|Approve));
+    PageType=List;
+    CardPageID=P2B Transaction;
+    OnOpenPage=BEGIN
+                 RespCenterCode := UserMgt.GetP2BFilter();
+                 IF RespCenterCode <> '' THEN BEGIN
+                   FILTERGROUP(2);
+                   SETRANGE(Requester,RespCenterCode);
+                   //T24.01
+                   gCod_SubDeptFilter := UserMgt.GetP2BSubDeptFilter(USERID);
+                   IF gCod_SubDeptFilter <> '' THEN
+                     SETRANGE(Variant, gCod_SubDeptFilter);
+                   //T24.01
+                   //FILTERGROUP(0);
+                 END;
+
+                 IF UserSetup.GET(USERID) THEN BEGIN
+                   UserIDLevel := UserSetup."P2B User Level";
+                   IF UserSetup."P2B Sub Dept. Filter" <> '' THEN
+                     UserIDVariant := UserSetup."P2B Sub Dept. Filter"
+                   ELSE
+                     UserIDVariant := '';
+                 END;
+                 //T24.03
+
+                 IF RespCenter.GET(RespCenterCode) THEN
+                    DeptCode := RespCenter."Global Dimension 1 Code";
+
+                 P2BManagement.InitializeFirstStepMandatory;
+                 P2BManagement.InitializeUserLevel;
+                 P2BManagement.InitializeGlobalLevel;
+                 P2BManagement.InitializeSubGroupLevel;
+                 P2BManagement.InitializeSupervisorLevel;
+                 P2BManagement.InitializeStepSubstitution;
+                 P2BManagement.InitializeUserID(UserIDRequester,UserIDGlobalLevel,UserIDLevel,RespCenterCode);
+                 TextStatusOpen := P2BManagement.GetTextStatusOpen();
+
+                 IF UserIDRequester = '' THEN
+                    ERROR('User ID Requester not defined');
+
+                 SETFILTER("User ID Requester",SetFilterUserID(UserIDLevel,RespCenterCode));
+                 FILTERGROUP(0);
+               END;
+
+  }
+  CONTROLS
+  {
+    { 1   ;0   ;Container ;
+                ContainerType=ContentArea }
+
+    { 2   ;1   ;Group     ;
+                Name=Group;
+                GroupType=Repeater }
+
+    { 20  ;2   ;Field     ;
+                SourceExpr="Posting Date" }
+
+    { 3   ;2   ;Field     ;
+                SourceExpr="No." }
+
+    { 4   ;2   ;Field     ;
+                SourceExpr="Document Type" }
+
+    { 6   ;2   ;Field     ;
+                SourceExpr="Warehouse Code" }
+
+    { 7   ;2   ;Field     ;
+                SourceExpr=Requester }
+
+    { 36  ;2   ;Field     ;
+                CaptionML=ENU=Sub Dept. Requester;
+                SourceExpr=Variant }
+
+    { 8   ;2   ;Field     ;
+                SourceExpr=Owner }
+
+    { 37  ;2   ;Field     ;
+                CaptionML=ENU=Sub Dept. Owner;
+                SourceExpr="Variant Owner" }
+
+    { 9   ;2   ;Field     ;
+                SourceExpr="User ID Requester" }
+
+    { 11  ;2   ;Field     ;
+                SourceExpr="Posting To" }
+
+    { 13  ;2   ;Field     ;
+                SourceExpr="From Location" }
+
+    { 5   ;2   ;Field     ;
+                SourceExpr="From Location Ownership" }
+
+    { 14  ;2   ;Field     ;
+                SourceExpr="To Location" }
+
+    { 10  ;2   ;Field     ;
+                SourceExpr="To Location Ownership" }
+
+    { 16  ;2   ;Field     ;
+                SourceExpr="Loan Type" }
+
+    { 17  ;2   ;Field     ;
+                SourceExpr="Loan-to Customer No." }
+
+    { 18  ;2   ;Field     ;
+                SourceExpr="Ship-to Code" }
+
+    { 19  ;2   ;Field     ;
+                SourceExpr="Area Code" }
+
+    { 21  ;2   ;Field     ;
+                SourceExpr=Status }
+
+    { 23  ;2   ;Field     ;
+                SourceExpr="Next Approval" }
+
+    { 24  ;2   ;Field     ;
+                SourceExpr="Current Approval" }
+
+    { 25  ;2   ;Field     ;
+                SourceExpr="Current Step" }
+
+    { 27  ;2   ;Field     ;
+                SourceExpr="Create Date & Time" }
+
+    { 29  ;2   ;Field     ;
+                SourceExpr="Journal Template Name" }
+
+    { 30  ;2   ;Field     ;
+                SourceExpr="Journal Batch Name" }
+
+    { 31  ;2   ;Field     ;
+                SourceExpr="Gen. Bus. Posting Group" }
+
+    { 32  ;2   ;Field     ;
+                SourceExpr="Department Code" }
+
+    { 33  ;2   ;Field     ;
+                SourceExpr="Salesperson Code" }
+
+    { 34  ;2   ;Field     ;
+                SourceExpr="Purchaser Code" }
+
+    { 12  ;2   ;Field     ;
+                SourceExpr="WorkFlow ID" }
+
+  }
+  CODE
+  {
+    VAR
+      RespCenter@1006 : Record 5714;
+      UserSetup@1003 : Record 91;
+      UserMgt@1000 : Codeunit 5700;
+      RespCenterCode@1001 : Code[10];
+      gCod_SubDeptFilter@1002 : Code[50];
+      UserIDLevel@1004 : Code[50];
+      UserIDVariant@1005 : Code[50];
+      UserIDRequester@1009 : Code[50];
+      DeptCode@1007 : Code[10];
+      P2BManagement@1008 : Codeunit 50100;
+      UserIDGlobalLevel@1010 : Boolean;
+      TextStatusOpen@1011 : Code[10];
+
+    PROCEDURE SetFilterUserID@1000000002(PLevelUserID@1000000000 : Code[50];PRespCtrUserID@1000000001 : Code[10]) RESULT : Text[1000];
+    VAR
+      LUserSetup@1000000002 : Record 91;
+    BEGIN
+      RESULT := '';
+      IF PRespCtrUserID<>'' THEN
+      BEGIN
+         LUserSetup.RESET;
+         LUserSetup.SETFILTER("P2B User Level",PLevelUserID);
+         LUserSetup.SETFILTER("P2B Resp. Ctr. Filter",PRespCtrUserID);
+         IF LUserSetup.FINDFIRST THEN
+            REPEAT
+               IF RESULT = '' THEN
+                  RESULT := LUserSetup."User ID"
+               ELSE
+                  RESULT := RESULT + '|' + LUserSetup."User ID";
+            UNTIL LUserSetup.NEXT = 0;
+      END;
+    END;
+
+    BEGIN
+    {
+      T24.01    11 Des 2015   SH    Add codes to filter sub dept requester
+    }
+    END.
+  }
+}

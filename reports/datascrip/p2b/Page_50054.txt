@@ -1,0 +1,1057 @@
+OBJECT Page 50054 P2B Transaction
+{
+  OBJECT-PROPERTIES
+  {
+    Date=10/06/26;
+    Time=13:28:17;
+    Modified=Yes;
+    Version List=DTS:T24;
+  }
+  PROPERTIES
+  {
+    LinksAllowed=No;
+    SourceTable=Table50013;
+    SourceTableView=WHERE(Status=FILTER(Open|Release|Approve));
+    PageType=Document;
+    RefreshOnActivate=Yes;
+    PromotedActionCategoriesML=ENU=New,Process,Report,Functions,P2B Order;
+    OnOpenPage=VAR
+                 Rec_KPCZone@1000 : Record 50022;
+               BEGIN
+                 RespCenterCode := UserMgt.GetP2BFilter();
+                 IF RespCenterCode <> '' THEN BEGIN
+                   FILTERGROUP(2);
+                   SETRANGE(Requester,RespCenterCode);
+                   //T24.03
+                   gCod_SubDeptFilter := UserMgt.GetP2BSubDeptFilter(USERID);
+                   IF gCod_SubDeptFilter <> '' THEN
+                     SETRANGE(Variant, gCod_SubDeptFilter);
+                   //T24.03
+                 END;
+
+                 //T24.03
+                 //Comment sudah tidak dipakai lagi
+                 {IF UserSetup.GET(USERID) THEN
+                 BEGIN
+                    UserIDLevel := UserSetup."P2B User Level";
+                    IF UserSetup."KPC Zone Filter" <> '' THEN
+                    BEGIN
+                       Rec_KPCZone.GET(UserSetup."KPC Zone Filter");
+                       UserIDVariant := Rec_KPCZone.City;
+                    END ELSE
+                       UserIDVariant := '';
+                 END;}
+
+                 IF UserSetup.GET(USERID) THEN BEGIN
+                   UserIDLevel := UserSetup."P2B User Level";
+                   IF UserSetup."P2B Sub Dept. Filter" <> '' THEN
+                     UserIDVariant := UserSetup."P2B Sub Dept. Filter"
+                   ELSE
+                     UserIDVariant := '';
+                 END;
+                 //T24.03
+
+                 IF RespCenter.GET(RespCenterCode) THEN
+                    DeptCode := RespCenter."Global Dimension 1 Code";
+
+                 P2BManagement.InitializeFirstStepMandatory;
+                 P2BManagement.InitializeUserLevel;
+                 P2BManagement.InitializeGlobalLevel;
+                 P2BManagement.InitializeSubGroupLevel;
+                 P2BManagement.InitializeSupervisorLevel;
+                 P2BManagement.InitializeStepSubstitution;
+                 P2BManagement.InitializeUserID(UserIDRequester,UserIDGlobalLevel,UserIDLevel,RespCenterCode);
+                 TextStatusOpen := P2BManagement.GetTextStatusOpen();
+
+                 IF UserIDRequester = '' THEN
+                    ERROR('User ID Requester not defined');
+
+                 SETFILTER("User ID Requester",SetFilterUserID(UserIDLevel,RespCenterCode));
+                 FILTERGROUP(0);
+               END;
+
+    OnAfterGetRecord=BEGIN
+                       IF Status = Status::Open THEN
+                         CurrPage.P2BLines.PAGE.EDITABLE := TRUE
+                       ELSE
+                         CurrPage.P2BLines.PAGE.EDITABLE := FALSE;
+
+                       SetOptionPostingTo;
+                       SetGenBusEnabled;
+                       gBol_FilterEditable := FALSE;
+
+                       isInterdivisionEnabled := "Document Type" IN ['HRO40-PROMOSI','HRO40-PROMOSI LAIN'];// BNY 2021.02.10
+                     END;
+
+    OnNewRecord=VAR
+                  Rec_RespCenter@1001 : Record 5714;
+                BEGIN
+                  Requester := RespCenterCode;
+                  Variant := gCod_SubDeptFilter;  //T24.03
+                  "Department Code" := DeptCode;
+                  "User ID Requester" := UserIDRequester;
+                  "User Global Level" := UserIDGlobalLevel;
+                  IF Rec_RespCenter.GET(Requester) THEN
+                    "P2B Job Title Requester" := Rec_RespCenter."P2B Job Title";
+                END;
+
+    ActionList=ACTIONS
+    {
+      { 42      ;    ;ActionContainer;
+                      ActionContainerType=RelatedInformation }
+      { 43      ;1   ;ActionGroup;
+                      CaptionML=ENU=P2B Transaction }
+      { 44      ;2   ;Action    ;
+                      CaptionML=ENU=Co&mments;
+                      RunObject=Page 124;
+                      RunPageLink=Table Name=CONST(P2B),
+                                  No.=FIELD(No.);
+                      Image=ViewComments }
+      { 32      ;    ;ActionContainer;
+                      ActionContainerType=ActionItems }
+      { 33      ;1   ;ActionGroup;
+                      CaptionML=ENU=F&unctions }
+      { 34      ;2   ;Action    ;
+                      CaptionML=ENU=Request Approval;
+                      Promoted=Yes;
+                      PromotedCategory=Category4;
+                      OnAction=VAR
+                                 ErrorText@1000 : Boolean;
+                                 P2BComment@1001 : Record 97;
+                               BEGIN
+                                 // BNY 2021.02.10
+                                 IF ("Document Type" IN ['HRO40-PROMOSI','HRO40-PROMOSI LAIN']) THEN
+                                  BEGIN
+                                    IF NOT "Flag Interdivision" THEN
+                                     "Flag Interdivision" := DIALOG.CONFIRM('Apakah P2B ini merupakan Proses PO Interdivision ?');
+
+                                   IF "Flag Interdivision" AND ("No. PO Interdivision" = '') THEN
+                                     BEGIN
+                                       "No. PO Interdivision" := Window.InputBox('Input No. PO Interdivision :', 'PO Interdivision', '', 500, 400);
+                                       IF "No. PO Interdivision" = '' THEN
+                                         BEGIN
+                                          "Flag Interdivision" := FALSE;
+                                          ERROR('No. PO Interdivision harus diisi.');
+                                         END
+                                     END;
+                                  END;
+                                 // BNY 2021.02.10
+
+                                 //ERROR('Heheee...');
+                                 IF (STRPOS("Document Type",'PROMOSI') <> 0) THEN
+                                   TESTFIELD("Gen. Bus. Posting Group");
+
+                                 TESTFIELD(Status, Status::Open);
+
+                                 //ONGKIR
+                                 TESTFIELD("Ship-to Post Code");
+
+                                 IF("Dept/Div Beban Ongkir" = '') THEN
+                                   ERROR('Maaf, Dept/Div Beban Ongkir masih kosong ');
+                                 IF("Tipe Franco" = "Tipe Franco"::" ") THEN
+                                   ERROR('Maaf, Silakan pilih Tipe Franco Tujuan atau Gudang ');
+
+
+                                 CheckTipeFranco;
+
+                                 //P2BHeader.RESET;
+                                 //P2BHeader.SETRANGE("No.", "No.");
+                                 //P2BHeader.FINDFIRST;
+                                 P2BHeader.GET("No.");
+                                 P2BLine.RESET;
+                                 P2BLine.SETRANGE("Document No.", "No.");
+                                 IF NOT P2BLine.FINDSET THEN
+                                   ERROR('There is no P2B Lines. Process cannot continue.');
+
+                                 ErrorText := FALSE;
+                                 IF P2BHeader."Posting To" = P2BHeader."Posting To"::"Item Journal" THEN BEGIN
+                                   IF P2BLine.FINDSET THEN
+                                     REPEAT IF (P2BHeader.Requester='DIVISI V') AND (P2BHeader.Owner='DIVISI V') THEN
+                                       IF (P2BLine."Location Code"='MN') AND
+                                         (NOT (P2BLine."Product Group Code" IN
+                                         ['105-021110',
+                                         '105-021120',
+                                         '105-021130',
+                                         '105-021180',
+                                         '105-021210',
+                                         '105-021220',
+                                         '105-021230',
+                                         '105-021280',
+                                         '105-021900',
+                                         '105-031100']))
+                                         THEN BEGIN
+                                         MESSAGE('Item on line no. %1 must in sub group Asus',P2BLine."Line No.");
+                                         ErrorText := TRUE;
+                                       END;
+                                     UNTIL P2BLine.NEXT = 0;
+                                   IF ErrorText THEN
+                                     ERROR('Process cannot continue.');
+                                 END;
+
+                                 P2BLine.RESET;
+                                 P2BLine.SETRANGE("Document No.","No.");
+                                 P2BLine.SETFILTER("Product Group Code",'%1','');
+                                 P2BLine.SETFILTER("Item No.",'<>%1','');
+                                 IF P2BLine.FINDFIRST THEN
+                                     ERROR('Product Group Code must be selected');
+
+                                 P2BLine.RESET;
+                                 P2BLine.SETRANGE("Document No.","No.");
+                                 P2BLine.SETRANGE("Item No.",'');
+                                 IF P2BLine.FINDFIRST THEN
+                                   ERROR('Please insert Item No.');
+
+                                 P2BManagement.Released(Rec);
+
+                                 // BNY 2021.02.10
+                                 IF "Flag Interdivision" THEN
+                                   BEGIN
+                                     CommentLineNo := 10000;
+                                     P2BComment.RESET;
+                                     P2BComment.SETRANGE("Table Name", P2BComment."Table Name"::P2B);
+                                     P2BComment.SETRANGE("No.", "No.");
+                                     IF P2BComment.FINDLAST THEN
+                                        CommentLineNo := P2BComment."Line No." + 10000;
+
+                                     CommentLine.INIT;
+                                     CommentLine."Table Name" := CommentLine."Table Name"::P2B;
+                                     CommentLine."No." := "No.";
+                                     CommentLine."Line No." := CommentLineNo;
+                                     CommentLine."User ID" := 'SYSTEM';
+                                     CommentLine.Date := TODAY;
+                                     CommentLine."Time Log" := TIME;
+                                     CommentLine.Comment := 'PO Interdivision : '+"No. PO Interdivision";
+                                     CommentLine.INSERT;
+                                   END;
+                                 // BNY 2021.02.10
+                               END;
+                                }
+      { 35      ;1   ;ActionGroup;
+                      CaptionML=ENU=P2B Order }
+      { 39      ;2   ;Action    ;
+                      CaptionML=ENU=P2B Approval Log;
+                      RunObject=Page 50056;
+                      RunPageLink=P2B No.=FIELD(No.),
+                                  Reason=FILTER(EMAIL) }
+      { 36      ;2   ;Action    ;
+                      CaptionML=ENU=P2B Order Log;
+                      RunObject=Page 50056;
+                      RunPageLink=P2B No.=FIELD(No.),
+                                  Reason=FILTER(STEP) }
+      { 37      ;2   ;Action    ;
+                      CaptionML=ENU=P2B User Email }
+      { 38      ;2   ;Action    ;
+                      CaptionML=ENU=P2B Log Item }
+    }
+  }
+  CONTROLS
+  {
+    { 1   ;0   ;Container ;
+                ContainerType=ContentArea }
+
+    { 2   ;1   ;Group     ;
+                Name=General;
+                GroupType=Group }
+
+    { 3   ;2   ;Field     ;
+                SourceExpr="No.";
+                OnAssistEdit=BEGIN
+                               IF AssistEdit(xRec) THEN
+                                 CurrPage.UPDATE;
+                             END;
+                              }
+
+    { 4   ;2   ;Field     ;
+                DrillDown=Yes;
+                SourceExpr="Document Type";
+                Editable=gBol_FilterEditable;
+                OnValidate=BEGIN
+                             //T24.02
+                             //DocumentTypeAfterValidate;
+                             //UpdateP2BHeader;
+                             //T24.02
+                             isInterdivisionEnabled := "Document Type" IN ['HRO40-PROMOSI','HRO40-PROMOSI LAIN']; // BNY 2021.02.10
+                           END;
+
+                OnLookup=BEGIN
+                           UpdateP2BHeader;  //T24.02
+                         END;
+                          }
+
+    { 5   ;2   ;Field     ;
+                SourceExpr=Requester;
+                Editable=gBol_FilterEditable;
+                OnValidate=BEGIN
+                             //UpdateP2BHeader;  //T24.02
+                           END;
+                            }
+
+    { 6   ;2   ;Field     ;
+                CaptionML=ENU=Sub Dept. Requester;
+                SourceExpr=Variant;
+                Editable=gBol_FilterEditable;
+                OnValidate=BEGIN
+                             //UpdateP2BHeader;  //T24.02
+                           END;
+                            }
+
+    { 7   ;2   ;Field     ;
+                SourceExpr=Owner;
+                Editable=gBol_FilterEditable;
+                OnValidate=BEGIN
+                             //UpdateP2BHeader;  //T24.02
+                           END;
+                            }
+
+    { 8   ;2   ;Field     ;
+                CaptionML=ENU=Sub Dept. Owner;
+                SourceExpr="Variant Owner";
+                Editable=gBol_FilterEditable;
+                OnValidate=BEGIN
+                             //UpdateP2BHeader;  //T24.02
+                           END;
+                            }
+
+    { 41  ;2   ;Field     ;
+                SourceExpr=Confirmation;
+                Editable=gBol_FilterEditable;
+                OnValidate=BEGIN
+                             //UpdateP2BHeader;  //T24.02
+                           END;
+                            }
+
+    { 15  ;2   ;Field     ;
+                CaptionML=ENU=Sales Admin Gudang;
+                SourceExpr="Warehouse Code";
+                Editable=gBol_FilterEditable;
+                OnValidate=BEGIN
+                             //UpdateP2BHeader;  //T24.02
+                           END;
+                            }
+
+    { 9   ;2   ;Field     ;
+                SourceExpr="From Location";
+                Editable=gBol_FromLocEditable;
+                OnValidate=BEGIN
+                             IF "From Location" IN ['PD','PC'] THEN
+                              ERROR('Location PD & PC tidak bisa dipilih.');
+
+                             TESTFIELD(Status,Status::Open);
+                             ModifyTesting;
+                           END;
+                            }
+
+    { 12  ;2   ;Field     ;
+                SourceExpr="From Location Ownership";
+                Editable=gBol_FromLocOwnerEditable;
+                OnValidate=BEGIN
+                             ModifyTesting;
+                           END;
+                            }
+
+    { 10  ;2   ;Field     ;
+                SourceExpr="To Location";
+                Editable=gBol_ToLocEditable;
+                OnValidate=BEGIN
+                             TESTFIELD(Status,Status::Open);
+                             ModifyTesting;
+                           END;
+                            }
+
+    { 13  ;2   ;Field     ;
+                SourceExpr="To Location Ownership";
+                Editable=gBol_ToLocOwnerEditable;
+                OnValidate=BEGIN
+                             ModifyTesting;
+                           END;
+                            }
+
+    { 11  ;2   ;Field     ;
+                SourceExpr="Transit Location";
+                Editable=gBol_TransitLocEditable;
+                OnValidate=BEGIN
+                             TESTFIELD(Status,Status::Open);
+                             ModifyTesting;
+                           END;
+                            }
+
+    { 14  ;2   ;Field     ;
+                SourceExpr="Gen. Bus. Posting Group";
+                Editable=gBol_GenBusEditable;
+                OnValidate=VAR
+                             Rec_GBPG@1000 : Record 250;
+                           BEGIN
+                             //comment old codes - move codes to table
+                             {
+                             IF "Gen. Bus. Posting Group" = '' THEN BEGIN
+                               GenBusDescription := '';
+                               EXIT;
+                             END;
+
+                             Rec_GBPG.RESET;
+                             Rec_GBPG.SETFILTER(Code, FilterGenBus);
+                             Rec_GBPG.FILTERGROUP := 2;
+                             Rec_GBPG.SETRANGE(Code,"Gen. Bus. Posting Group");
+                             IF Rec_GBPG.FINDFIRST THEN BEGIN
+                               GenBusDescription := Rec_GBPG.Description;
+                               "Journal Batch Name":= Rec_GBPG."Def. Journal Batch P2B";
+                               IF "Department Code" ='' THEN
+                                 "Department Code" := Rec_GBPG."Def. Divisi P2B";
+                             END ELSE
+                               ERROR('');
+                             }
+                             //comment old codes - move codes to table
+                           END;
+                            }
+
+    { 28  ;2   ;Field     ;
+                CaptionML=ENU=Gen. Bus. Desc;
+                SourceExpr="Gen Bus Description" }
+
+    { 16  ;2   ;Field     ;
+                SourceExpr=Status;
+                Editable=FALSE }
+
+    { 17  ;2   ;Field     ;
+                SourceExpr="Current Steps" }
+
+    { 18  ;2   ;Field     ;
+                SourceExpr="Current Approval";
+                Editable=FALSE }
+
+    { 19  ;2   ;Field     ;
+                SourceExpr="Create Date & Time";
+                Editable=FALSE }
+
+    { 31  ;2   ;Field     ;
+                SourceExpr="WorkFlow ID";
+                Enabled=FALSE;
+                Editable=FALSE;
+                OnLookup=BEGIN
+                           UpdateP2BHeader;  //T24.02
+                         END;
+                          }
+
+    { 40  ;2   ;Field     ;
+                SourceExpr="User ID Requester";
+                Enabled=FALSE;
+                Editable=FALSE }
+
+    { 29  ;2   ;Field     ;
+                CaptionML=ENU=Proses System;
+                SourceExpr="Flag System" }
+
+    { 30  ;2   ;Field     ;
+                CaptionML=ENU=Proses Fisik;
+                SourceExpr="Flag Fisik" }
+
+    { 53  ;2   ;Field     ;
+                SourceExpr="Tipe Franco";
+                OnValidate=BEGIN
+                             //ONGKIR
+                             CheckTipeFranco();
+                           END;
+                            }
+
+    { 54  ;2   ;Field     ;
+                SourceExpr="Dept/Div Beban Ongkir" }
+
+    { 20  ;2   ;Field     ;
+                SourceExpr="Loan Due Date";
+                Editable=gBol_LoanDueDateEditable }
+
+    { 21  ;2   ;Field     ;
+                SourceExpr="Loan Type";
+                Editable=gBol_LoanTypeEditable;
+                OnValidate=BEGIN
+                             TESTFIELD(Status,Status::Open);
+                             ModifyTesting;
+                           END;
+                            }
+
+    { 22  ;2   ;Field     ;
+                SourceExpr="Loan-to Customer No.";
+                Editable=gBol_LoanToCustEditable;
+                OnValidate=BEGIN
+                             TESTFIELD(Status,Status::Open);
+                           END;
+                            }
+
+    { 23  ;2   ;Field     ;
+                SourceExpr="Ship-to Code";
+                Editable=gBol_ShipToCodeEditable }
+
+    { 24  ;2   ;Field     ;
+                SourceExpr="Department Code";
+                OnValidate=VAR
+                             DimVal@1000 : Record 349;
+                           BEGIN
+                             TESTFIELD(Status,Status::Open);
+
+                             DimVal.RESET;
+                             DimVal.SETRANGE(DimVal."Dimension Code",'DEPARTMENT');
+                             DimVal.SETFILTER(Code, FilterDept);
+                             DimVal.SETRANGE(DimVal."Dimension Value Type", DimVal."Dimension Value Type"::Standard);
+                             DimVal.FILTERGROUP := 2;
+                             DimVal.SETRANGE(Code, "Department Code");
+                             IF NOT DimVal.FIND('-') THEN
+                               ERROR('Dept Code %1 tidak diperbolehkan',"Department Code");
+                           END;
+
+                OnLookup=VAR
+                           DimVal@1000 : Record 349;
+                         BEGIN
+                           DimVal.RESET;
+                           DimVal.FILTERGROUP := 2;
+                           DimVal.SETRANGE("Dimension Code",'DEPARTMENT');
+                           DimVal.SETFILTER(Code, FilterDept);
+                           DimVal.SETRANGE(DimVal."Dimension Value Type", DimVal."Dimension Value Type"::Standard);
+                           DimVal.FILTERGROUP := 0;
+                           IF PAGE.RUNMODAL(0, DimVal) = ACTION::LookupOK THEN
+                           BEGIN
+                             "Department Code" := DimVal.Code;
+                           END;
+                         END;
+                          }
+
+    { 25  ;2   ;Field     ;
+                SourceExpr="Area Code";
+                OnValidate=BEGIN
+                             TESTFIELD(Status,Status::Open);
+                           END;
+                            }
+
+    { 26  ;2   ;Field     ;
+                SourceExpr="Salesperson Code";
+                Editable=gBol_SalespersonEditable;
+                OnValidate=BEGIN
+                             TESTFIELD(Status,Status::Open);
+                           END;
+                            }
+
+    { 50  ;2   ;Field     ;
+                SourceExpr="Flag Interdivision";
+                Editable=isInterdivisionEnabled;
+                OnValidate=BEGIN
+                             // BNY 2021.02.10
+                             IF NOT "Flag Interdivision" THEN
+                               "No. PO Interdivision" := '';
+                           END;
+                            }
+
+    { 55  ;2   ;Field     ;
+                SourceExpr="No. PO Interdivision";
+                Editable=isInterdivisionEnabled;
+                ShowMandatory="Flag Interdivision" }
+
+    { 57  ;2   ;Field     ;
+                SourceExpr="Ex Loan No." }
+
+    { 52  ;1   ;Group     ;
+                CaptionML=ENU=Ship-To;
+                GroupType=Group }
+
+    { 51  ;2   ;Field     ;
+                SourceExpr="Ship-to Name" }
+
+    { 49  ;2   ;Field     ;
+                SourceExpr="Ship-to Address 1" }
+
+    { 48  ;2   ;Field     ;
+                SourceExpr="Ship-to Address 2" }
+
+    { 47  ;2   ;Field     ;
+                SourceExpr="Ship-to Address 3" }
+
+    { 46  ;2   ;Field     ;
+                SourceExpr="Ship-to City" }
+
+    { 45  ;2   ;Field     ;
+                SourceExpr="Ship-to Post Code" }
+
+    { 27  ;1   ;Part      ;
+                Name=P2BLines;
+                SubPageLink=Document No.=FIELD(No.);
+                PagePartID=Page50055;
+                PartType=Page }
+
+  }
+  CODE
+  {
+    VAR
+      RespCenter@1005 : Record 5714;
+      UserSetup@1002 : Record 91;
+      P2BLine@1022 : Record 50014;
+      UserMgt@1000 : Codeunit 5700;
+      P2BManagement@1007 : Codeunit 50100;
+      RespCenterCode@1001 : Code[10];
+      UserIDLevel@1003 : Code[50];
+      UserIDVariant@1004 : Code[50];
+      UserIDRequester@1008 : Code[50];
+      DeptCode@1006 : Code[10];
+      UserIDGlobalLevel@1009 : Boolean;
+      TextStatusOpen@1010 : Code[10];
+      gBol_FromLocEditable@1011 : Boolean;
+      gBol_ToLocEditable@1012 : Boolean;
+      gBol_FromLocOwnerEditable@1013 : Boolean;
+      gBol_ToLocOwnerEditable@1014 : Boolean;
+      gBol_TransitLocEditable@1015 : Boolean;
+      gBol_ShipToCodeEditable@1016 : Boolean;
+      gBol_SalespersonEditable@1017 : Boolean;
+      gBol_LoanTypeEditable@1018 : Boolean;
+      gBol_LoanToCustEditable@1019 : Boolean;
+      gBol_LoanDueDateEditable@1020 : Boolean;
+      gBol_GenBusEditable@1021 : Boolean;
+      P2BHeader@1024 : Record 50013;
+      gBol_FilterEditable@1023 : Boolean;
+      gCod_SubDeptFilter@1025 : Code[50];
+      isInterdivisionEnabled@1026 : Boolean;
+      Window@1038 : DotNet "'Microsoft.VisualBasic, Version=10.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a'.Microsoft.VisualBasic.Interaction" RUNONCLIENT;
+      CommentLine@1029 : Record 97;
+      CommentLineNo@1028 : Integer;
+
+    PROCEDURE SetFilterUserID@1000000002(PLevelUserID@1000000000 : Code[50];PRespCtrUserID@1000000001 : Code[10]) RESULT : Text[1000];
+    VAR
+      LUserSetup@1000000002 : Record 91;
+    BEGIN
+      RESULT := '';
+      IF PRespCtrUserID<>'' THEN
+      BEGIN
+         LUserSetup.RESET;
+         LUserSetup.SETFILTER("P2B User Level",PLevelUserID);
+         LUserSetup.SETFILTER("P2B Resp. Ctr. Filter",PRespCtrUserID);
+         IF LUserSetup.FINDFIRST THEN
+            REPEAT
+               IF RESULT = '' THEN
+                  RESULT := LUserSetup."User ID"
+               ELSE
+                  RESULT := RESULT + '|' + LUserSetup."User ID";
+            UNTIL LUserSetup.NEXT = 0;
+      END;
+    END;
+
+    PROCEDURE SetOptionPostingTo@1000000000();
+    BEGIN
+      IF "Posting To" = "Posting To"::"Item Journal" THEN BEGIN
+        gBol_FromLocEditable := FALSE;
+        gBol_ToLocEditable := FALSE;
+        gBol_FromLocOwnerEditable := FALSE;
+        gBol_ToLocOwnerEditable := FALSE;
+        gBol_TransitLocEditable := FALSE;
+        gBol_ShipToCodeEditable := FALSE;
+        gBol_SalespersonEditable := TRUE;
+        gBol_LoanTypeEditable := FALSE;
+        gBol_LoanToCustEditable := FALSE;
+        gBol_LoanDueDateEditable := FALSE;
+      END ELSE BEGIN
+        gBol_FromLocEditable := TRUE;
+        gBol_ToLocEditable := TRUE;
+        gBol_FromLocOwnerEditable := TRUE;
+        gBol_ToLocOwnerEditable := TRUE;
+        gBol_TransitLocEditable := TRUE;
+        IF "Posting To" = "Posting To"::Loan THEN BEGIN
+          gBol_ShipToCodeEditable := TRUE;
+          gBol_SalespersonEditable := TRUE;
+          gBol_LoanTypeEditable := FALSE;
+          gBol_LoanToCustEditable := TRUE;
+          gBol_LoanDueDateEditable := TRUE;
+        END ELSE BEGIN
+          gBol_ShipToCodeEditable := FALSE;
+          gBol_SalespersonEditable := FALSE;
+          gBol_LoanTypeEditable := FALSE;
+          gBol_LoanToCustEditable := FALSE;
+          gBol_LoanDueDateEditable := FALSE;
+         END;
+      END;
+    END;
+
+    PROCEDURE SetGenBusEnabled@1000000006();
+    BEGIN
+      IF "Posting To" <> 0 THEN
+        gBol_GenBusEditable := FALSE
+      ELSE BEGIN
+        IF ("Document Type"= 'HRO40-PROMOSI') OR ("Document Type"='HRO40-PROMOSI LAIN') OR ("Document Type"='HRO40-LAIN') THEN BEGIN
+          //IF (RespCenter."P2B Back Office") AND ("Gen. Bus. Posting Group"='RELASI MGT') THEN
+          IF (RespCenter."P2B Job Title" = RespCenter."P2B Job Title"::"Back Office") AND ("Gen. Bus. Posting Group"='RELASI MGT') THEN
+            gBol_GenBusEditable := FALSE
+          ELSE
+            gBol_GenBusEditable := TRUE;
+        END ELSE IF ("Document Type"= 'HRO40-ATK-DIPAKAIHBS') OR ("Document Type"= 'HRO40-INV-IT') OR
+          ("Document Type"= 'HRO40-INV-NON-IT') OR ("Document Type"='HRO40-INV-PEM')THEN
+          gBol_GenBusEditable := FALSE
+        ELSE
+          gBol_GenBusEditable := TRUE
+      END;
+
+      //gBol_GenBusEditable := TRUE;
+    END;
+
+    LOCAL PROCEDURE DocumentTypeAfterValidate@8();
+    BEGIN
+      SetGenBusEnabled;
+      IF "Warehouse Code"='PLG' THEN
+        "Journal Template Name":='P2B-S'
+      ELSE IF "Warehouse Code" = 'CIKARANG' THEN
+        "Journal Template Name":='P2B-C'
+      ELSE IF "Warehouse Code" = 'CKG' THEN
+        "Journal Template Name":='P2B-C'
+      ELSE IF "Warehouse Code"='18 BD' THEN
+        "Journal Template Name":='P2B-18BD'
+      ELSE IF "Warehouse Code"='STR' THEN
+        "Journal Template Name":='P2B-STR';
+    END;
+
+    PROCEDURE ModifyTesting@1000000001();
+    BEGIN
+      P2BLine.RESET;
+      P2BLine.SETFILTER("Document No.","No.");
+      IF P2BLine.FINDFIRST THEN
+         ERROR('Line Must Be Empty..');
+    END;
+
+    PROCEDURE FilterGenBus@1000000004() : Text[1024];
+    VAR
+      tmpText@1000000000 : Text[1024];
+    BEGIN
+      IF ("Document Type"= 'HRO40-PROMOSI') OR ("Document Type"='HRO40-PROMOSI LAIN') OR ("Document Type"='HRO40-LAIN') THEN
+        IF RespCenter.Code='HRO' THEN
+          tmpText:='RELASI-MGT'+'|'+ 'JOBFAIR'
+        ELSE IF RespCenter."P2B Job Title" = RespCenter."P2B Job Title"::"Back Office" THEN
+          tmpText:='RELASI-MGT'
+        ELSE
+          tmpText :=
+          'GTH-LNC-PC'
+          +'|'+ 'GTH-PRESCN'
+          +'|'+ 'HDH-INCENT'
+      //    +'|'+ 'PROMOSI'
+          +'|'+ 'RB-SUB-BNS'
+      //    +'|'+ 'SPSR-GA'
+      //    +'|'+ 'SPSRSHIP'
+          +'|'+ 'SPSR-GA AL'
+          +'|'+ 'SPSR-GA C4'
+          +'|'+ 'SPSR-GA GI'
+          +'|'+ 'SPSR-GA HP'
+          +'|'+ 'SPSR-GA MA'
+          +'|'+ 'SPSR-GA OT'
+          +'|'+ 'HPP'
+          +'|'+ 'RPLACEMENT' //CRN 23 Jan non modif
+          +'|'+ 'ASURANSI'  //CRN 24 Feb non modif
+      //    +'|'+ 'HT.BIAYA'
+      ELSE IF "Document Type"= 'HRO40-ATK-DIPAKAIHBS' THEN
+      tmpText :=
+      'ATK-MGM'
+      +'|'+ 'ATK-DIV'
+      ELSE IF ("Document Type"= 'HRO40-INV-IT') OR ("Document Type"= 'HRO40-INV-NON-IT')THEN
+      tmpText :=
+      'INVENTARIS'
+      ELSE IF ("Document Type"='HRO40-INV-PEM') THEN
+      tmpText :='PEM. INVEN|PEM. INV-D'
+      ;
+      EXIT(tmpText);
+    END;
+
+    PROCEDURE FilterDept@1000000003() : Text[1024];
+    VAR
+      tmpText@1000000000 : Text[1024];
+    BEGIN
+      IF ("Document Type"= 'HRO40-ATK-DIPAKAIHBS') AND (RespCenter.Code='HRO') AND ("Gen. Bus. Posting Group"='ATK-MGM')THEN
+         tmpText:='010'+'|'+ '020'
+      ELSE IF "Gen. Bus. Posting Group"='Relasi MGT' THEN
+        tmpText:='010'
+      ELSE IF "Gen. Bus. Posting Group"='JOBFAIR' THEN
+        tmpText:='020'
+      ELSE IF ("Document Type"='HRO40-PROMOSI') OR ("Document Type"='HRO40-PROMOSI LAIN') OR ("Document Type"='HRO40-LAIN') THEN BEGIN
+        IF RespCenter."P2B Job Title" IN [RespCenter."P2B Job Title"::"Back Office", RespCenter."P2B Job Title"::HRO] THEN
+          tmpText:='010|020|121|123|131|132|133|134|135|190|210|220|230|314|118-B'
+        ELSE
+          tmpText :='101|102|103-A|103-B|104-A|105-A|105-B|106|107|108|109-A|109-B|112|118-A|118-B|113|320..324|330|340|311..315|361..365|371..374|354|999|352|389|400..499';
+      END
+      ELSE BEGIN
+        IF RespCenter."P2B Job Title" IN [RespCenter."P2B Job Title"::"Back Office", RespCenter."P2B Job Title"::HRO] THEN
+          tmpText:='010|020|121|123|131|132|133|134|135|190|210|220|230|314|118-B'
+        ELSE
+          tmpText :='101|102|103|103-A|103-B|103-N|104-A|104-B|105-A|105-B|106|107|108|109-A|109-B|113|118-A|118-B|320..324|330|340|311..315|361..365|371..374|354|999|352|389|400..499'; //AGC tambahh deptcode 108 - 10feb2022
+          //tmpText := '';
+      END;
+      EXIT(tmpText);
+    END;
+
+    LOCAL PROCEDURE UpdateP2BHeader@12();
+    VAR
+      LWorkflowP2BTemp@1003 : TEMPORARY Record 50055;
+      GenBusPosting@1002 : Record 250;
+      tP2BH@1001 : Record 50013;
+      Rec_P2BWorkflowSetupLine@1000 : Record 50056;
+      Rec_P2bJnlBatchNameSetup@1004 : Record 50053;
+    BEGIN
+      //T24.02
+      TESTFIELD(Status,Status::Open);
+
+      P2BLine.RESET;
+      P2BLine.SETFILTER("Document No.","No.");
+      IF NOT P2BLine.ISEMPTY THEN
+         ERROR('Line Must Be Empty..');
+
+      //change code to get p2b workflow id
+      //IF ("Document Type" <> xRec."Document Type") OR (Owner <> xRec.Owner) OR ("Warehouse Code" <> xRec."Warehouse Code")
+      //  OR (Requester <> xRec.Requester) OR ("Variant Owner" <> xRec."Variant Owner") OR (Variant <> xRec.Variant)
+      //  OR (Confirmation <> xRec.Confirmation) THEN BEGIN
+
+        //IF ("Document Type" <> '') AND (Owner <> '') AND ("Warehouse Code" <> '') AND (Requester <> '') AND
+        //  (Confirmation <> '') THEN BEGIN
+      P2BManagement.SetViewWorkflow(LWorkflowP2BTemp,RespCenterCode,UserIDVariant);
+      LWorkflowP2BTemp.FINDSET;
+      IF PAGE.RUNMODAL(50060,LWorkflowP2BTemp) = ACTION::LookupOK THEN BEGIN
+
+          {
+          Rec_P2BWorkflowSetupHdr.RESET;
+          Rec_P2BWorkflowSetupHdr.SETRANGE("Document Type", "Document Type");
+          Rec_P2BWorkflowSetupHdr.SETRANGE(Requester, Requester);
+          Rec_P2BWorkflowSetupHdr.SETRANGE("Sub Dept. Requester", Variant);
+          Rec_P2BWorkflowSetupHdr.SETRANGE(Owner, Owner);
+          Rec_P2BWorkflowSetupHdr.SETRANGE("Sub Dept. Owner", "Variant Owner");
+          Rec_P2BWorkflowSetupHdr.SETRANGE(Confirmation, Confirmation);
+          Rec_P2BWorkflowSetupHdr.SETRANGE("Warehouse Code", "Warehouse Code");
+          IF Rec_P2BWorkflowSetupHdr.FINDFIRST THEN BEGIN
+          }
+            tP2BH.GET("No.");
+            tP2BH."WorkFlow ID" := LWorkflowP2BTemp."P2B Workflow ID";
+            tP2BH."Document Type" := LWorkflowP2BTemp."Document Type";
+            tP2BH.VALIDATE(Requester, LWorkflowP2BTemp.Requester);
+
+            IF (tP2BH."Document Type" = 'HRO40-PROMOSI')
+            OR (tP2BH."Document Type" = 'HRO40-PROMOSI LAIN')
+            OR (tP2BH."Document Type" = 'HRO40-LAIN') THEN BEGIN
+              IF (RespCenter."P2B Job Title" = RespCenter."P2B Job Title"::"Back Office") AND (tP2BH.Requester <> 'HRO') THEN BEGIN
+                tP2BH."Gen. Bus. Posting Group" := 'RELASI-MGT';
+                tP2BH."Department Code" := '010';
+              END ELSE BEGIN
+                tP2BH."Department Code" := DeptCode;
+                tP2BH."Gen. Bus. Posting Group" := '';
+                IF (RespCenter."P2B Job Title" = RespCenter."P2B Job Title"::"Back Office") AND (tP2BH.Requester = 'HRO') THEN BEGIN
+                  tP2BH."Gen. Bus. Posting Group" := 'JOBFAIR';
+                  tP2BH."Department Code" := DeptCode;
+                END;
+              END
+            END ELSE BEGIN
+              tP2BH."Department Code" := DeptCode;
+              tP2BH."Gen. Bus. Posting Group" := '';
+
+              {
+              IF (RespCenter."P2B Job Title" = RespCenter."P2B Job Title"::"Back Office") AND (tP2BH."Document Type" = 'HRO40-ATK-DIPAKAIHBS') THEN
+                tP2BH."Gen. Bus. Posting Group" := 'ATK-MGM'
+              ELSE IF tP2BH."Document Type" = 'HRO40-ATK-DIPAKAIHBS' THEN
+                tP2BH."Gen. Bus. Posting Group" := 'ATK-DIV'
+              ELSE IF (tP2BH."Document Type" = 'HRO40-INV-IT') OR (tP2BH."Document Type" = 'HRO40-INV-NON-IT') THEN
+                tP2BH."Gen. Bus. Posting Group" := 'INVENTARIS'
+              ELSE IF (tP2BH."Document Type"='HRO40-INV-PEM') AND (RespCenter."P2B Job Title" = RespCenter."P2B Job Title"::"Back Office") THEN
+                 tP2BH."Gen. Bus. Posting Group":='PEM. INVEN'
+              ELSE IF (tP2BH."Document Type"='HRO40-INV-PEM') AND NOT(RespCenter."P2B Job Title" = RespCenter."P2B Job Title"::"Back Office") THEN
+                 tP2BH."Gen. Bus. Posting Group":='PEM. INV-D';
+              }
+              Rec_P2bJnlBatchNameSetup.RESET;
+              Rec_P2bJnlBatchNameSetup.SETRANGE("Document Type", tP2BH."Document Type");
+              Rec_P2bJnlBatchNameSetup.SETRANGE("P2B Job Title", tP2BH."P2B Job Title Requester");
+              IF Rec_P2bJnlBatchNameSetup.FINDFIRST THEN
+                tP2BH."Gen. Bus. Posting Group" := Rec_P2bJnlBatchNameSetup."Gen. Bus. Posting Group";
+
+            END;
+            IF  GenBusPosting.GET(tP2BH."Gen. Bus. Posting Group") THEN
+              tP2BH."Journal Batch Name" := GenBusPosting."Def. Journal Batch P2B";
+
+            tP2BH."Posting To" := LWorkflowP2BTemp."Posting To";
+            tP2BH.Variant := LWorkflowP2BTemp."Sub Dept. Requester";
+            tP2BH.Owner := LWorkflowP2BTemp.Owner;
+            tP2BH."Variant Owner" := LWorkflowP2BTemp."Sub Dept. Owner";
+            tP2BH.Confirmation := LWorkflowP2BTemp.Confirmation;
+            tP2BH."Warehouse Code" := LWorkflowP2BTemp."Warehouse Code";
+
+            Rec_P2BWorkflowSetupLine.RESET;
+            Rec_P2BWorkflowSetupLine.SETRANGE("P2B Workflow ID", tP2BH."WorkFlow ID");
+            IF Rec_P2BWorkflowSetupLine.FINDFIRST THEN BEGIN
+              tP2BH."Current Step" := Rec_P2BWorkflowSetupLine."User Level";
+              tP2BH."Current Steps" := Rec_P2BWorkflowSetupLine."User Level";
+              tP2BH."Current Sequence No." := Rec_P2BWorkflowSetupLine."Sequence No.";
+            END;
+
+            IF tP2BH."Current Step" <> UserSetup."P2B User Level" THEN
+              ERROR('Current Step must be the same as User Setup.P2B User Level.');
+
+            tP2BH."Consumables/Inventaris" := 0;
+            tP2BH."From Location" := '';
+            tP2BH."To Location" := '';
+            tP2BH."From Location Ownership" := '';
+            tP2BH."To Location Ownership" := '';
+
+            IF (tP2BH."Posting To" = tP2BH."Posting To"::Loan) OR (tP2BH."Posting To" = tP2BH."Posting To"::"Transfer Order") THEN
+              tP2BH."Transit Location" := 'TRANSIT'
+            ELSE
+              tP2BH."Transit Location" := '';
+
+            tP2BH."Loan Type" := 0;
+            tP2BH."Loan-to Customer No." := '';
+            tP2BH."Area Code" := '';
+            tP2BH."Purchaser Code" := '';
+            tP2BH."Salesperson Code" := '';
+
+            P2BManagement.InitializeWorkflow(tP2BH);
+            SetOptionPostingTo();
+
+            IF tP2BH."Warehouse Code"='PLG' THEN
+              tP2BH."Journal Template Name":='P2B-S'
+            ELSE IF tP2BH."Warehouse Code" = 'CIKARANG' THEN
+              tP2BH."Journal Template Name":='P2B-C'
+            ELSE IF tP2BH."Warehouse Code" = 'CKG' THEN
+              tP2BH."Journal Template Name":='P2B-C'
+            ELSE IF tP2BH."Warehouse Code"='18 BD' THEN
+              tP2BH."Journal Template Name":='P2B-18BD'
+            ELSE IF tP2BH."Warehouse Code"='STR' THEN
+              tP2BH."Journal Template Name":='P2B-STR';
+
+
+
+            tP2BH.MODIFY;
+            CurrPage.UPDATE(FALSE);
+
+          //END ELSE
+          //  ERROR('P2B Workflow tidak ditemukan.');
+        //END;
+      END;
+      SetGenBusEnabled;
+
+      //DVZ - NEW CODE - memindahkan Variable Rec ke variable local agar modifikasi tidak langsung terupdate jika terjadi error
+      //comment old codes - START
+      {
+      P2BManagement.SetViewWorkflow(LWorkflowP2BTemp,RespCenterCode,UserIDVariant);
+      IF PAGE.RUNMODAL(50060,LWorkflowP2BTemp) = ACTION::LookupOK THEN BEGIN
+        tP2BH.SETRANGE("No.", "No.");
+        tP2BH.FINDFIRST;
+
+        tP2BH."WorkFlow ID" := LWorkflowP2BTemp."P2B Workflow ID";
+        tP2BH."Document Type" := LWorkflowP2BTemp."Document Type";
+
+        IF (tP2BH."Document Type" = 'HRO40-PROMOSI')
+        OR (tP2BH."Document Type" = 'HRO40-PROMOSI LAIN')
+        OR (tP2BH."Document Type" = 'HRO40-LAIN') THEN BEGIN
+          IF (RespCenter."P2B Back Office") AND (tP2BH.Requester <> 'HRO') THEN BEGIN
+            tP2BH."Gen. Bus. Posting Group" := 'RELASI-MGT';
+            tP2BH."Department Code" := '010';
+          END ELSE BEGIN
+            tP2BH."Department Code" := DeptCode;
+            tP2BH."Gen. Bus. Posting Group" := '';
+            IF (RespCenter."P2B Back Office") AND (tP2BH.Requester = 'HRO') THEN BEGIN
+              tP2BH."Gen. Bus. Posting Group" := 'JOBFAIR';
+              tP2BH."Department Code" := DeptCode;
+            END;
+          END
+        END ELSE BEGIN
+          tP2BH."Department Code" := DeptCode;
+          tP2BH."Gen. Bus. Posting Group" := '';
+
+          IF (RespCenter."P2B Back Office") AND (tP2BH."Document Type" = 'HRO40-ATK-DIPAKAIHBS') THEN
+            tP2BH."Gen. Bus. Posting Group" := 'ATK-MGM'
+          ELSE IF tP2BH."Document Type" = 'HRO40-ATK-DIPAKAIHBS' THEN
+            tP2BH."Gen. Bus. Posting Group" := 'ATK-DIV'
+          ELSE IF (tP2BH."Document Type" = 'HRO40-INV-IT') OR (tP2BH."Document Type" = 'HRO40-INV-NON-IT') THEN
+            tP2BH."Gen. Bus. Posting Group" := 'INVENTARIS'
+          ELSE IF (tP2BH."Document Type"='HRO40-INV-PEM') AND (RespCenter."P2B Back Office") THEN
+             tP2BH."Gen. Bus. Posting Group":='PEM. INVEN'
+          ELSE IF (tP2BH."Document Type"='HRO40-INV-PEM') AND NOT(RespCenter."P2B Back Office") THEN
+             tP2BH."Gen. Bus. Posting Group":='PEM. INV-D';
+        END;
+        IF  GenBusPosting.GET(tP2BH."Gen. Bus. Posting Group") THEN
+          tP2BH."Journal Batch Name" := GenBusPosting."Def. Journal Batch P2B";
+
+        tP2BH.Owner := LWorkflowP2BTemp.Owner;
+        tP2BH."Variant Owner" := LWorkflowP2BTemp."Sub Dept. Owner";
+        tP2BH."Warehouse Code" := LWorkflowP2BTemp."Warehouse Code";
+        tP2BH."Posting To" := LWorkflowP2BTemp."Posting To";
+        tP2BH.Variant := LWorkflowP2BTemp."Sub Dept. Requester";
+
+        //T24.01
+        Rec_P2BWorkflowSetupLine.RESET;
+        Rec_P2BWorkflowSetupLine.SETRANGE("P2B Workflow ID", tP2BH."WorkFlow ID");
+        IF Rec_P2BWorkflowSetupLine.FINDFIRST THEN
+          tP2BH."Current Step" := Rec_P2BWorkflowSetupLine."User Level";
+        //tP2BH."Current Step" := LWorkflowP2BTemp."Step 01";
+        //tP2BH.Description := LWorkflowP2BTemp.Description;
+        //T24.01
+
+        tP2BH."Consumables/Inventaris" := 0;
+        tP2BH."From Location" := '';
+        tP2BH."To Location" := '';
+        tP2BH."From Location Ownership" := '';
+        tP2BH."To Location Ownership" := '';
+
+        IF (tP2BH."Posting To" = tP2BH."Posting To"::Loan) OR (tP2BH."Posting To" = tP2BH."Posting To"::"Transfer Order") THEN
+          tP2BH."Transit Location" := 'TRANSIT'
+        ELSE
+          tP2BH."Transit Location" := '';
+
+        tP2BH."Loan Type" := 0;
+        tP2BH."Loan-to Customer No." := '';
+        tP2BH."Area Code" := '';
+        tP2BH."Purchaser Code" := '';
+        tP2BH."Salesperson Code" := '';
+
+        P2BManagement.InitializeWorkflow(tP2BH);
+        SetOptionPostingTo();
+
+        IF tP2BH."Warehouse Code"='PLG' THEN
+          tP2BH."Journal Template Name":='P2B-S'
+        ELSE IF tP2BH."Warehouse Code" = 'CIKARANG' THEN
+          tP2BH."Journal Template Name":='P2B-C'
+        ELSE IF tP2BH."Warehouse Code" = 'CKG' THEN
+          tP2BH."Journal Template Name":='P2B-C'
+        ELSE IF tP2BH."Warehouse Code"='18BD' THEN
+          tP2BH."Journal Template Name":='P2B-18BD'
+        ELSE IF tP2BH."Warehouse Code"='STR' THEN
+          tP2BH."Journal Template Name":='P2B-STR';
+
+
+        tP2BH.MODIFY;
+        CurrPage.UPDATE(FALSE);
+      END;
+      SetGenBusEnabled;
+      }
+      //comment old codes - END
+      //T24.02
+    END;
+
+    LOCAL PROCEDURE CheckDeptMAS@10();
+    VAR
+      p2b_header@1000 : Record 50013;
+      DateAkhir@1001 : Date;
+      DateLama@1002 : Date;
+    BEGIN
+      IF ("Department Code" = '') THEN
+         ERROR('Dept. Code masih kosong');
+
+      DateAkhir := 010117D;
+      DateLama := 12319999D;
+
+      p2b_header.RESET;
+      p2b_header.SETFILTER("Department Code",'%1..%2','301','399');
+      p2b_header.SETRANGE("No.","No.");
+
+      IF p2b_header.COUNT > 0 THEN
+         ERROR('Dept Code kepala 3 sudah tidak boleh digunakan mulai 2 Jan 2017');
+    END;
+
+    LOCAL PROCEDURE CheckTipeFranco@13();
+    BEGIN
+      IF("Tipe Franco" = "Tipe Franco"::Jabodetabek) OR ("Tipe Franco" = "Tipe Franco"::"Franco Jkt") THEN
+        ERROR('Maaf, Tipe Franco Jabodetabek dan Franco JKT tidak boleh dipilih');
+    END;
+
+    BEGIN
+    {
+      T24.01    28 Oct 15   SH    Fix some code changes
+      T24.02    13 Nov 15   SH    Fix codes to get Workflow ID, add function : UpdateP2BHeader, UpdateJnlTemplateName
+      T24.03    11 Des 2015   SH    Add codes to filter sub dept requester
+
+      D00.01    15 Sept 2017    BNY   Add Group "Ship-To"
+    }
+    END.
+  }
+}

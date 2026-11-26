@@ -1,0 +1,41 @@
+OBJECT Table 50054 P2B Approval Log
+{
+  OBJECT-PROPERTIES
+  {
+    Date=12/26/15;
+    Time=16:02:49;
+    Modified=Yes;
+    Version List=DTS:T24;
+  }
+  PROPERTIES
+  {
+    LookupPageID=Page50056;
+  }
+  FIELDS
+  {
+    { 1   ;   ;P2B No.             ;Code20         }
+    { 2   ;   ;Line No.            ;Integer        }
+    { 3   ;   ;User ID             ;Code50        ;TableRelation="User Setup" }
+    { 4   ;   ;Current Step        ;Code50         }
+    { 5   ;   ;Next Step           ;Code50         }
+    { 6   ;   ;Status              ;Option        ;OptionCaptionML=ENU=Open,Release,Cancel,Approve,Close;
+                                                   OptionString=Open,Release,Cancel,Approve,Close }
+    { 7   ;   ;Change Date & Time  ;DateTime       }
+    { 8   ;   ;Reason              ;Text250       ;CaptionML=ENU=Type }
+    { 50000;  ;User Email          ;Text80         }
+    { 50001;  ;Sequence No.        ;Integer        }
+  }
+  KEYS
+  {
+    {    ;P2B No.,Line No.,Reason                 ;Clustered=Yes }
+  }
+  FIELDGROUPS
+  {
+  }
+  CODE
+  {
+
+    BEGIN
+    END.
+  }
+}

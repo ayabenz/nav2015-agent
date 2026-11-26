@@ -1,0 +1,79 @@
+OBJECT Table 50055 P2B Workflow Setup Header
+{
+  OBJECT-PROPERTIES
+  {
+    Date=12/23/25;
+    Time=16:50:00;
+    Modified=Yes;
+    Version List=DTS:T24;
+  }
+  PROPERTIES
+  {
+    OnInsert=BEGIN
+               TESTFIELD("Document Type");
+
+               IF "P2B Workflow ID" = 0 THEN BEGIN
+                 gRec_P2BWorkflow.RESET;
+                 gRec_P2BWorkflow.SETCURRENTKEY("P2B Workflow ID");
+                 IF gRec_P2BWorkflow.FINDLAST THEN
+                   "P2B Workflow ID" := gRec_P2BWorkflow."P2B Workflow ID" + 1
+                 ELSE
+                   "P2B Workflow ID" := 1;
+               END;
+             END;
+
+    OnModify=BEGIN
+               P2BHeader.RESET;
+               P2BHeader.SETCURRENTKEY("WorkFlow ID");
+               P2BHeader.SETRANGE("WorkFlow ID", "P2B Workflow ID");
+               IF P2BHeader.FINDFIRST THEN
+                 ERROR('Workflow tidak bisa diedit..');
+             END;
+
+    OnDelete=BEGIN
+               P2BHeader.RESET;
+               P2BHeader.SETCURRENTKEY("WorkFlow ID");
+               P2BHeader.SETRANGE("WorkFlow ID", "P2B Workflow ID");
+               IF P2BHeader.FINDFIRST THEN
+                 ERROR('Workflow tidak bisa didelete.. Ada P2B Transaction No. %1', P2BHeader."No.");
+             END;
+
+    LookupPageID=Page50060;
+    DrillDownPageID=Page50060;
+  }
+  FIELDS
+  {
+    { 1   ;   ;P2B Workflow ID     ;Integer       ;AutoIncrement=Yes;
+                                                   MinValue=1;
+                                                   NotBlank=Yes;
+                                                   Editable=No }
+    { 2   ;   ;Document Type       ;Code50        ;TableRelation="P2B Setup".Code WHERE (Type=FILTER(Document Type));
+                                                   NotBlank=Yes }
+    { 3   ;   ;Owner               ;Code10        ;TableRelation="Responsibility Center" }
+    { 4   ;   ;Sub Dept. Owner     ;Code50        ;TableRelation="P2B Setup".Code WHERE (Type=FILTER(Sub Dept.)) }
+    { 5   ;   ;Requester           ;Code10        ;TableRelation="Responsibility Center" }
+    { 6   ;   ;Sub Dept. Requester ;Code50        ;TableRelation="P2B Setup".Code WHERE (Type=FILTER(Sub Dept.)) }
+    { 7   ;   ;Confirmation        ;Code10        ;TableRelation="Responsibility Center" }
+    { 8   ;   ;Warehouse Code      ;Code50        ;TableRelation="P2B Setup".Code WHERE (Type=FILTER(Warehouse)) }
+    { 9   ;   ;Posting To          ;Option        ;OptionCaptionML=ENU=Item Journal,Transfer Order,Loan;
+                                                   OptionString=Item Journal,Transfer Order,Loan }
+  }
+  KEYS
+  {
+    {    ;Document Type,Requester,Sub Dept. Requester,Owner,Sub Dept. Owner,Confirmation,Warehouse Code;
+                                                   Clustered=Yes }
+    {    ;P2B Workflow ID                          }
+  }
+  FIELDGROUPS
+  {
+  }
+  CODE
+  {
+    VAR
+      P2BHeader@1000 : Record 50013;
+      gRec_P2BWorkflow@1001 : Record 50055;
+
+    BEGIN
+    END.
+  }
+}

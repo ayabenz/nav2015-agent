@@ -1,0 +1,214 @@
+OBJECT Codeunit 50101 P2B Page Approval
+{
+  OBJECT-PROPERTIES
+  {
+    Date=11/02/22;
+    Time=17:18:42;
+    Modified=Yes;
+    Version List=DTS:T24;
+  }
+  PROPERTIES
+  {
+    OnRun=BEGIN
+            P2BManagement.InitializeSkipApproveLevel();
+            P2BManagement.InitializeApproveLevel();
+            P2BManagement.InitializePostingLevel();
+            UserSetup.RESET;
+            UserSetup.SETFILTER("User ID",USERID);
+
+            IF UserSetup.FINDFIRST THEN
+            BEGIN
+               IF UserSetup."P2B User Level"='' THEN
+                  ERROR('Anda belum terdaftar sebagai User P2B...');
+
+               UserCanPostingP2B := P2BManagement.IsPostingLevel(UserSetup."P2B User Level");
+               UserCanApproveP2B := P2BManagement.IsApproveLevel(UserSetup."P2B User Level");
+               UserCanSkipApproveP2B := P2BManagement.IsSkipApproveLevel(UserSetup."P2B User Level");
+               EVALUATE(ValueColorSkipApproval,P2BManagement.GetTextValueColor());
+            END;
+
+            IF UserCanPostingP2B THEN
+               P2BHeader.SETFILTER(Status,'%1|%2',P2BHeader.Status::Release,P2BHeader.Status::Approve)
+            ELSE
+               P2BHeader.SETFILTER(Status,'%1',P2BHeader.Status::Release);
+
+            IF UserCanApproveP2B AND (UserSetup."P2B User Level" = 'SA ADMINISTRATOR') THEN
+               P2BHeader.SETFILTER("Current Step",'%1|%2|%3','SALES ADMIN PLG','SALES ADMIN CIKARANG','SALES ADMIN 18BD');
+
+            IF P2BHeader.FIND('-') THEN
+            BEGIN
+               P2BHeaderTemp.DELETEALL;
+               REPEAT
+                  ValueColor := -1;
+                  AppendData := FALSE;
+                  IF (UserCanApproveP2B) THEN
+                     AppendData := TRUE
+                  ELSE
+                  IF (UserCanSkipApproveP2B) THEN
+                  BEGIN
+                     IF (P2BHeader."Next Approval" = USERID) THEN
+                        AppendData := TRUE
+                     ELSE
+                     IF P2BHeader."No." = 'P2B-KPC-22-01232' THEN
+                      AppendData := AppendData;
+                     //IF ExistCurrentApproval(USERID,P2BHeader."Next Approval") THEN  //T24.01
+                     IF ExistCurrentApproval(USERID,P2BHeader."Next Approval" + P2BHeader."Next Approval2" + P2BHeader."Next Approval3" + P2BHeader."Next Approval4") THEN  //T24.01
+                        AppendData := TRUE;
+                     IF (AppendData) THEN
+                        ValueColor := ValueColorSkipApproval;
+                  END;
+
+                  IF (AppendData = FALSE) THEN
+                     IF (P2BHeader."Current Approval" = USERID) THEN
+                        AppendData := TRUE
+                     ELSE
+                     //IF ExistCurrentApproval(USERID,P2BHeader."Current Approval") THEN  //T24.01
+                     IF ExistCurrentApproval(USERID,P2BHeader."Current Approval" + P2BHeader."Current Approval2" + P2BHeader."Current Approval3" + P2BHeader."Current Approval4") THEN  //T24.01
+                        AppendData := TRUE;
+
+                  IF AppendData THEN
+                  BEGIN
+                     P2BHeaderTemp.INIT;
+                     P2BHeaderTemp.TRANSFERFIELDS(P2BHeader);
+                     P2BHeaderTemp."View Font Color" := ValueColor;
+                     P2BHeaderTemp.INSERT;
+                  END;
+               UNTIL P2BHeader.NEXT = 0;
+            END;
+
+            IF P2BHeaderTemp.COUNT > 0 THEN
+              PAGE.RUN(50062,P2BHeaderTemp)
+            ELSE
+              ERROR('There is no P2B Documents to Approve.');
+          END;
+
+  }
+  CODE
+  {
+    VAR
+      P2BManagement@1013 : Codeunit 50100;
+      P2BHeader@1012 : Record 50013;
+      P2BHeaderTemp@1011 : TEMPORARY Record 50013;
+      UserSetup@1010 : Record 91;
+      FrmP2BApproval@1006 : Page 50062;
+      ValueColorSkipApproval@1005 : Decimal;
+      ValueColor@1004 : Decimal;
+      AppendData@1003 : Boolean;
+      UserCanPostingP2B@1002 : Boolean;
+      UserCanApproveP2B@1001 : Boolean;
+      UserCanSkipApproveP2B@1000 : Boolean;
+
+    PROCEDURE ExistCurrentApproval@1000000000(PUserID@1000000000 : Code[50];PCurrentApprovals@1000000001 : Code[1024]) : Boolean;
+    VAR
+      LVi_Counter@1000000002 : Integer;
+      LVi_Count@1000000003 : Integer;
+    BEGIN
+      LVi_Count := P2BManagement.GetCountSeparator(PCurrentApprovals,',');
+      FOR LVi_Counter := 1 TO LVi_Count DO
+         IF SELECTSTR(LVi_Counter,PCurrentApprovals) = PUserID THEN
+            EXIT(TRUE);
+      EXIT(FALSE);
+    END;
+
+    PROCEDURE FromDirectFrom@1000000001(VAR tmpP2BHeader@1000000000 : TEMPORARY Record 50013);
+    VAR
+      L_UserSetup@1000000001 : Record 91;
+    BEGIN
+      P2BManagement.InitializeSkipApproveLevel();
+      P2BManagement.InitializeApproveLevel();
+      P2BManagement.InitializePostingLevel();
+      UserSetup.RESET;
+      UserSetup.SETFILTER("User ID",USERID);
+      IF UserSetup.FINDFIRST THEN
+      BEGIN
+         UserCanPostingP2B := P2BManagement.IsPostingLevel(UserSetup."P2B User Level");
+         UserCanApproveP2B := P2BManagement.IsApproveLevel(UserSetup."P2B User Level");
+         UserCanSkipApproveP2B := P2BManagement.IsSkipApproveLevel(UserSetup."P2B User Level");
+         //EVALUATE(ValueColorSkipApproval,P2BManagement.GetTextValueColor());  //SH comment temporary
+      END;
+
+      IF UserCanPostingP2B THEN
+         P2BHeader.SETFILTER(Status,'%1|%2',P2BHeader.Status::Release,P2BHeader.Status::Approve)
+      ELSE
+         P2BHeader.SETRANGE(Status,P2BHeader.Status::Release);
+
+      IF UserCanApproveP2B AND (UserSetup."P2B User Level" = 'SA ADMINISTRATOR') THEN
+         P2BHeader.SETFILTER("Current Step",'%1|%2|%3','SALES ADMIN PLG','SALES ADMIN CIKARANG','SALES ADMIN 18BD');
+
+      IF (UserSetup."P2B User Level" = 'ADMINISTRATOR') AND (UserSetup."P2B Resp. Ctr. Filter"<>'') THEN
+      BEGIN
+         tmpP2BHeader.DELETEALL;
+         ValueColor := -1;
+         L_UserSetup.RESET;
+         L_UserSetup.SETFILTER("P2B Resp. Ctr. Filter",UserSetup."P2B Resp. Ctr. Filter");
+         IF L_UserSetup.FINDSET THEN BEGIN
+            REPEAT
+               IF P2BHeader.FINDSET THEN BEGIN
+                  REPEAT
+                     //IF ExistCurrentApproval(L_UserSetup."User ID",P2BHeader."Current Approval") THEN  //T24.01
+                     IF ExistCurrentApproval(L_UserSetup."User ID",P2BHeader."Current Approval"+P2BHeader."Current Approval2"+P2BHeader."Current Approval3"+P2BHeader."Current Approval4") THEN   //T24.01
+                     BEGIN
+                        IF NOT tmpP2BHeader.GET(P2BHeader."No.") THEN
+                        BEGIN
+                           tmpP2BHeader.INIT;
+                           tmpP2BHeader.TRANSFERFIELDS(P2BHeader);
+                           tmpP2BHeader."View Font Color" := ValueColor;
+                           tmpP2BHeader.INSERT;
+                        END;
+                     END;
+                  UNTIL P2BHeader.NEXT = 0;
+               END;
+            UNTIL L_UserSetup.NEXT = 0;
+         END;
+      END ELSE IF P2BHeader.FINDSET THEN
+      BEGIN
+         tmpP2BHeader.DELETEALL;
+         REPEAT
+            ValueColor := -1;
+            AppendData := FALSE;
+            IF (UserCanApproveP2B) THEN
+               AppendData := TRUE
+            ELSE
+            IF (UserCanSkipApproveP2B) THEN
+            BEGIN
+               IF (P2BHeader."Next Approval" = USERID) THEN
+                  AppendData := TRUE
+               ELSE
+               IF P2BHeader."No." = 'P2B-KPC-22-01232' THEN
+                AppendData := AppendData;
+               //IF ExistCurrentApproval(USERID,P2BHeader."Next Approval") THEN
+               IF ExistCurrentApproval(USERID,P2BHeader."Next Approval"+P2BHeader."Next Approval2"+P2BHeader."Next Approval3"+P2BHeader."Next Approval4") THEN
+                  AppendData := TRUE;
+               //SH comment temporary
+               //IF (AppendData) THEN
+               //   ValueColor := ValueColorSkipApproval;
+               //SH
+            END;
+
+            IF (AppendData = FALSE) THEN
+               IF (P2BHeader."Current Approval" = USERID) THEN
+                  AppendData := TRUE
+               ELSE
+               //IF ExistCurrentApproval(USERID,P2BHeader."Current Approval") THEN  //T24.01
+               IF ExistCurrentApproval(USERID,P2BHeader."Current Approval"+P2BHeader."Current Approval2"+P2BHeader."Current Approval3"+P2BHeader."Current Approval4") THEN    //T24.01
+                  AppendData := TRUE;
+
+            IF AppendData THEN
+            BEGIN
+               tmpP2BHeader.INIT;
+               tmpP2BHeader.TRANSFERFIELDS(P2BHeader);
+               tmpP2BHeader."View Font Color" := ValueColor;
+               tmpP2BHeader.INSERT;
+            END
+
+         UNTIL P2BHeader.NEXT = 0;
+      END;
+    END;
+
+    BEGIN
+    {
+      T24.01    30 Des 2015     SH    Add codes to insert Current Approval 2-4 and Next Approval 2-4
+    }
+    END.
+  }
+}

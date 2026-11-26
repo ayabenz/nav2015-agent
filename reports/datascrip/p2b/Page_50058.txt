@@ -1,0 +1,58 @@
+OBJECT Page 50058 P2B MEX Approvals
+{
+  OBJECT-PROPERTIES
+  {
+    Date=11/06/15;
+    Time=01:00:00;
+    Modified=Yes;
+    Version List=DTS:T24;
+  }
+  PROPERTIES
+  {
+    SourceTable=Table50057;
+    PageType=List;
+  }
+  CONTROLS
+  {
+    { 1   ;0   ;Container ;
+                ContainerType=ContentArea }
+
+    { 2   ;1   ;Group     ;
+                Name=Group;
+                GroupType=Repeater }
+
+    { 3   ;2   ;Field     ;
+                SourceExpr="Responsibility Center" }
+
+    { 4   ;2   ;Field     ;
+                SourceExpr="User Level" }
+
+    { 5   ;2   ;Field     ;
+                SourceExpr="Sub Department" }
+
+    { 6   ;2   ;Field     ;
+                SourceExpr="User Responsibility" }
+
+    { 7   ;2   ;Field     ;
+                SourceExpr=Approval }
+
+    { 8   ;2   ;Field     ;
+                SourceExpr="Approval 2" }
+
+    { 9   ;2   ;Field     ;
+                SourceExpr="Approval 3" }
+
+    { 10  ;2   ;Field     ;
+                SourceExpr="Approval 4" }
+
+    { 11  ;2   ;Field     ;
+                SourceExpr="Approval 5" }
+
+  }
+  CODE
+  {
+
+    BEGIN
+    END.
+  }
+}

@@ -1,0 +1,42 @@
+OBJECT Table 50053 P2B Journal Batch Name Setup
+{
+  OBJECT-PROPERTIES
+  {
+    Date=12/22/15;
+    Time=01:00:00;
+    Modified=Yes;
+    Version List=DTS:T24;
+  }
+  PROPERTIES
+  {
+    LookupPageID=Page50053;
+    DrillDownPageID=Page50053;
+  }
+  FIELDS
+  {
+    { 1   ;   ;Line No.            ;Integer        }
+    { 2   ;   ;Document Type       ;Code50        ;TableRelation="P2B Setup".Code WHERE (Type=FILTER(Document Type)) }
+    { 3   ;   ;P2B Job Title       ;Option        ;OptionCaptionML=ENU=Divisi,Back Office,KPC,HRO,Sales Dept.;
+                                                   OptionString=Divisi,Back Office,KPC,HRO,Sales Dept. }
+    { 4   ;   ;Gen. Bus. Posting Group;Code10     ;TableRelation="Gen. Business Posting Group" }
+    { 5   ;   ;Journal Batch Name  ;Code10        ;TableRelation="Item Journal Batch".Name WHERE (Journal Template Name=FILTER(P2B*));
+                                                   Editable=No }
+  }
+  KEYS
+  {
+    {    ;Document Type,P2B Job Title,Gen. Bus. Posting Group;
+                                                   Clustered=Yes }
+  }
+  FIELDGROUPS
+  {
+  }
+  CODE
+  {
+
+    BEGIN
+    {
+      T24.01    06 Nov 2015   SH    Change field "Requester" rubah jadi "P2B Job Title" tipe Option
+    }
+    END.
+  }
+}

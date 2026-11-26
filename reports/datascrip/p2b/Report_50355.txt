@@ -1,0 +1,237 @@
+OBJECT Report 50355 P2B List Detail to Excel
+{
+  OBJECT-PROPERTIES
+  {
+    Date=01/20/22;
+    Time=09:59:00;
+    Modified=Yes;
+    Version List=DTS:MPT2022;
+  }
+  PROPERTIES
+  {
+    OnPreReport=BEGIN
+                  P2BHeaderFilter := "P2B Header".GETFILTERS;
+                END;
+
+    OnPostReport=BEGIN
+                   ExcelBuffer.CreateBookAndOpenExcel('Data','P2B List Detail to Excel',COMPANYNAME,USERID);
+                 END;
+
+  }
+  DATASET
+  {
+    { 1   ;    ;DataItem;                    ;
+               DataItemTable=Table50013;
+               DataItemTableView=SORTING(Posting Date,No.);
+               OnPreDataItem=BEGIN
+                               SETFILTER(Status,'%1|%2',Status::Close,Status::Cancel); //setefilter for status cancel and close
+
+                               IF UserSetup.GET(USERID) THEN
+                                 IF UserSetup."P2B Resp. Ctr. Filter" <> '' THEN
+                                   SETFILTER(Requester, UserSetup."P2B Resp. Ctr. Filter");
+
+
+                               ExcelBuffer.NewRow;
+                               ExcelBuffer.AddColumn('No.',FALSE,'',TRUE,FALSE,FALSE,'',ExcelBuffer."Cell Type"::Text);
+                               ExcelBuffer.AddColumn('Document Type',FALSE,'',TRUE,FALSE,FALSE,'',ExcelBuffer."Cell Type"::Text);
+                               ExcelBuffer.AddColumn('Posted Doc No.',FALSE,'',TRUE,FALSE,FALSE,'',ExcelBuffer."Cell Type"::Text);
+                               ExcelBuffer.AddColumn('Whse. Shipment No.',FALSE,'',TRUE,FALSE,FALSE,'',ExcelBuffer."Cell Type"::Text);
+                               ExcelBuffer.AddColumn('Item Journal No.',FALSE,'',TRUE,FALSE,FALSE,'',ExcelBuffer."Cell Type"::Text);
+                               ExcelBuffer.AddColumn('Warehouse Code',FALSE,'',TRUE,FALSE,FALSE,'',ExcelBuffer."Cell Type"::Text);
+                               ExcelBuffer.AddColumn('Requester',FALSE,'',TRUE,FALSE,FALSE,'',ExcelBuffer."Cell Type"::Text);
+                               ExcelBuffer.AddColumn('Variant',FALSE,'',TRUE,FALSE,FALSE,'',ExcelBuffer."Cell Type"::Text);
+                               ExcelBuffer.AddColumn('Owner',FALSE,'',TRUE,FALSE,FALSE,'',ExcelBuffer."Cell Type"::Text);
+                               ExcelBuffer.AddColumn('User ID Requester',FALSE,'',TRUE,FALSE,FALSE,'',ExcelBuffer."Cell Type"::Text);
+                               ExcelBuffer.AddColumn('From Location',FALSE,'',TRUE,FALSE,FALSE,'',ExcelBuffer."Cell Type"::Text);
+                               ExcelBuffer.AddColumn('From Location Ownership',FALSE,'',TRUE,FALSE,FALSE,'',ExcelBuffer."Cell Type"::Text);
+                               ExcelBuffer.AddColumn('To Location',FALSE,'',TRUE,FALSE,FALSE,'',ExcelBuffer."Cell Type"::Text);
+                               ExcelBuffer.AddColumn('To Location Ownership',FALSE,'',TRUE,FALSE,FALSE,'',ExcelBuffer."Cell Type"::Text);
+                               ExcelBuffer.AddColumn('Loan Type',FALSE,'',TRUE,FALSE,FALSE,'',ExcelBuffer."Cell Type"::Text);
+                               ExcelBuffer.AddColumn('Loan-to Customer No.',FALSE,'',TRUE,FALSE,FALSE,'',ExcelBuffer."Cell Type"::Text);
+                               ExcelBuffer.AddColumn('Ship-to Code',FALSE,'',TRUE,FALSE,FALSE,'',ExcelBuffer."Cell Type"::Text);
+                               ExcelBuffer.AddColumn('Area Code',FALSE,'',TRUE,FALSE,FALSE,'',ExcelBuffer."Cell Type"::Text);
+                               ExcelBuffer.AddColumn('Posting Date',FALSE,'',TRUE,FALSE,FALSE,'',ExcelBuffer."Cell Type"::Text);
+                               ExcelBuffer.AddColumn('Status',FALSE,'',TRUE,FALSE,FALSE,'',ExcelBuffer."Cell Type"::Text);
+                               ExcelBuffer.AddColumn('Create Date & Time',FALSE,'',TRUE,FALSE,FALSE,'',ExcelBuffer."Cell Type"::Text);
+                               ExcelBuffer.AddColumn('Department Code',FALSE,'',TRUE,FALSE,FALSE,'',ExcelBuffer."Cell Type"::Text);
+                               ExcelBuffer.AddColumn('Salesperson Code',FALSE,'',TRUE,FALSE,FALSE,'',ExcelBuffer."Cell Type"::Text);
+                               ExcelBuffer.AddColumn('Tipe Franco',FALSE,'',TRUE,FALSE,FALSE,'',ExcelBuffer."Cell Type"::Text);
+                               ExcelBuffer.AddColumn('Flag Interdivision',FALSE,'',TRUE,FALSE,FALSE,'',ExcelBuffer."Cell Type"::Text);
+                               ExcelBuffer.AddColumn('No. PO Interdivision',FALSE,'',TRUE,FALSE,FALSE,'',ExcelBuffer."Cell Type"::Text);
+                               ExcelBuffer.AddColumn('Item No.',FALSE,'',TRUE,FALSE,FALSE,'',ExcelBuffer."Cell Type"::Text);
+                               ExcelBuffer.AddColumn('Description',FALSE,'',TRUE,FALSE,FALSE,'',ExcelBuffer."Cell Type"::Text);
+                               ExcelBuffer.AddColumn('Unit of Measure',FALSE,'',TRUE,FALSE,FALSE,'',ExcelBuffer."Cell Type"::Text);
+                               ExcelBuffer.AddColumn('Qty. Req. Cross Divisi',FALSE,'',TRUE,FALSE,FALSE,'',ExcelBuffer."Cell Type"::Text);
+                               ExcelBuffer.AddColumn('Quantity',FALSE,'',TRUE,FALSE,FALSE,'',ExcelBuffer."Cell Type"::Text);
+                               ExcelBuffer.AddColumn('Ownership',FALSE,'',TRUE,FALSE,FALSE,'',ExcelBuffer."Cell Type"::Text);
+                               ExcelBuffer.AddColumn('Item Category Code',FALSE,'',TRUE,FALSE,FALSE,'',ExcelBuffer."Cell Type"::Text);
+                               ExcelBuffer.AddColumn('Product Group Code',FALSE,'',TRUE,FALSE,FALSE,'',ExcelBuffer."Cell Type"::Text);
+                               ExcelBuffer.AddColumn('Sub Dept',FALSE,'',TRUE,FALSE,FALSE,'',ExcelBuffer."Cell Type"::Text);
+                             END;
+
+               ReqFilterFields=Document Type,Posting Date }
+
+    { 2   ;1   ;DataItem;                    ;
+               DataItemTable=Table50014;
+               DataItemTableView=SORTING(Document No.,Line No.)
+                                 ORDER(Ascending);
+               OnAfterGetRecord=BEGIN
+                                  WhseShipmentNo := '';
+                                  ItemJournalNo := '';
+
+                                  P2BHeader.RESET();
+                                  P2BHeader.SETRANGE("No.","Document No.");
+                                  P2BHeader.FINDFIRST;
+
+                                  TransferShipmentHeader.RESET();
+                                  TransferShipmentHeader.SETRANGE(TransferShipmentHeader."P2B Document No.","Document No.");
+                                  IF (TransferShipmentHeader.FINDFIRST) THEN
+                                  BEGIN
+                                    WhseShipmentNo := TransferShipmentHeader."Shipment No.";
+                                  END;
+
+                                  ItemLedgerEntry.RESET();
+                                  ItemLedgerEntry.SETRANGE(ItemLedgerEntry."P2B Document No.","Document No.");
+                                  ItemLedgerEntry.SETRANGE(ItemLedgerEntry."Entry Type",3);
+                                  IF (ItemLedgerEntry.FINDFIRST) THEN
+                                  BEGIN
+                                    ItemJournalNo := ItemLedgerEntry."Document No.";
+                                  END;
+
+                                  ExcelBuffer.NewRow;
+                                  ExcelBuffer.AddColumn(P2BHeader."No.",FALSE,'',FALSE,FALSE,FALSE,'',ExcelBuffer."Cell Type"::Text);
+                                  ExcelBuffer.AddColumn(P2BHeader."Document Type",FALSE,'',FALSE,FALSE,FALSE,'',ExcelBuffer."Cell Type"::Text);
+                                  ExcelBuffer.AddColumn(P2BHeader."Posted Doc No.",FALSE,'',FALSE,FALSE,FALSE,'',ExcelBuffer."Cell Type"::Text);
+                                  ExcelBuffer.AddColumn(WhseShipmentNo,FALSE,'',FALSE,FALSE,FALSE,'',ExcelBuffer."Cell Type"::Text);
+                                  ExcelBuffer.AddColumn(ItemJournalNo,FALSE,'',FALSE,FALSE,FALSE,'',ExcelBuffer."Cell Type"::Text);
+                                  ExcelBuffer.AddColumn(P2BHeader."Warehouse Code",FALSE,'',FALSE,FALSE,FALSE,'',ExcelBuffer."Cell Type"::Text);
+                                  ExcelBuffer.AddColumn(P2BHeader.Requester,FALSE,'',FALSE,FALSE,FALSE,'',ExcelBuffer."Cell Type"::Text);
+                                  ExcelBuffer.AddColumn(P2BHeader.Variant,FALSE,'',FALSE,FALSE,FALSE,'',ExcelBuffer."Cell Type"::Text);
+                                  ExcelBuffer.AddColumn(P2BHeader.Owner,FALSE,'',FALSE,FALSE,FALSE,'',ExcelBuffer."Cell Type"::Text);
+                                  ExcelBuffer.AddColumn(P2BHeader."User ID Requester",FALSE,'',FALSE,FALSE,FALSE,'',ExcelBuffer."Cell Type"::Text);
+                                  ExcelBuffer.AddColumn(P2BHeader."From Location",FALSE,'',FALSE,FALSE,FALSE,'',ExcelBuffer."Cell Type"::Text);
+                                  ExcelBuffer.AddColumn(P2BHeader."From Location Ownership",FALSE,'',FALSE,FALSE,FALSE,'',ExcelBuffer."Cell Type"::Text);
+                                  ExcelBuffer.AddColumn(P2BHeader."To Location",FALSE,'',FALSE,FALSE,FALSE,'',ExcelBuffer."Cell Type"::Text);
+                                  ExcelBuffer.AddColumn(P2BHeader."To Location Ownership",FALSE,'',FALSE,FALSE,FALSE,'',ExcelBuffer."Cell Type"::Text);
+                                  ExcelBuffer.AddColumn(P2BHeader."Loan Type",FALSE,'',FALSE,FALSE,FALSE,'',ExcelBuffer."Cell Type"::Text);
+                                  ExcelBuffer.AddColumn(P2BHeader."Loan-to Customer No.",FALSE,'',FALSE,FALSE,FALSE,'',ExcelBuffer."Cell Type"::Text);
+                                  ExcelBuffer.AddColumn(P2BHeader."Ship-to Code",FALSE,'',FALSE,FALSE,FALSE,'',ExcelBuffer."Cell Type"::Text);
+                                  ExcelBuffer.AddColumn(P2BHeader."Area Code",FALSE,'',FALSE,FALSE,FALSE,'',ExcelBuffer."Cell Type"::Text);
+                                  ExcelBuffer.AddColumn(P2BHeader."Posting Date",FALSE,'',FALSE,FALSE,FALSE,'',ExcelBuffer."Cell Type"::Date);
+                                  ExcelBuffer.AddColumn(P2BHeader.Status,FALSE,'',FALSE,FALSE,FALSE,'',ExcelBuffer."Cell Type"::Text);
+                                  ExcelBuffer.AddColumn(P2BHeader."Create Date & Time",FALSE,'',FALSE,FALSE,FALSE,'',ExcelBuffer."Cell Type"::Time);
+                                  ExcelBuffer.AddColumn(P2BHeader."Department Code",FALSE,'',FALSE,FALSE,FALSE,'',ExcelBuffer."Cell Type"::Text);
+                                  ExcelBuffer.AddColumn(P2BHeader."Salesperson Code",FALSE,'',FALSE,FALSE,FALSE,'',ExcelBuffer."Cell Type"::Text);
+                                  ExcelBuffer.AddColumn(P2BHeader."Tipe Franco",FALSE,'',FALSE,FALSE,FALSE,'',ExcelBuffer."Cell Type"::Text);
+                                  ExcelBuffer.AddColumn(P2BHeader."Flag Interdivision",FALSE,'',FALSE,FALSE,FALSE,'',ExcelBuffer."Cell Type"::Text);
+                                  ExcelBuffer.AddColumn(P2BHeader."No. PO Interdivision",FALSE,'',FALSE,FALSE,FALSE,'',ExcelBuffer."Cell Type"::Text);
+                                  ExcelBuffer.AddColumn("Item No.",FALSE,'',FALSE,FALSE,FALSE,'',ExcelBuffer."Cell Type"::Text);
+                                  ExcelBuffer.AddColumn(Description,FALSE,'',FALSE,FALSE,FALSE,'',ExcelBuffer."Cell Type"::Text);
+                                  ExcelBuffer.AddColumn("Unit of Measure",FALSE,'',FALSE,FALSE,FALSE,'',ExcelBuffer."Cell Type"::Text);
+                                  ExcelBuffer.AddColumn("Qty. Req. Cross Divisi",FALSE,'',FALSE,FALSE,FALSE,'',ExcelBuffer."Cell Type"::Text);
+                                  ExcelBuffer.AddColumn(Quantity,FALSE,'',FALSE,FALSE,FALSE,'',ExcelBuffer."Cell Type"::Text);
+                                  ExcelBuffer.AddColumn(Owner,FALSE,'',FALSE,FALSE,FALSE,'',ExcelBuffer."Cell Type"::Text);
+                                  ExcelBuffer.AddColumn("Item Category Code",FALSE,'',FALSE,FALSE,FALSE,'',ExcelBuffer."Cell Type"::Text);
+                                  ExcelBuffer.AddColumn("Product Group Code",FALSE,'',FALSE,FALSE,FALSE,'',ExcelBuffer."Cell Type"::Text);
+                                  ExcelBuffer.AddColumn("Sub Dept",FALSE,'',FALSE,FALSE,FALSE,'',ExcelBuffer."Cell Type"::Text);
+                                END;
+
+               ReqFilterFields=Item No.,Item Category Code,Product Group Code;
+               DataItemLink=Document No.=FIELD(No.) }
+
+  }
+  REQUESTPAGE
+  {
+    PROPERTIES
+    {
+    }
+    CONTROLS
+    {
+    }
+  }
+  LABELS
+  {
+  }
+  CODE
+  {
+    VAR
+      PrintExcel@1000 : Boolean;
+      ExcelBuffer@1001 : TEMPORARY Record 370;
+      WhseShipmentNo@1005 : Text[250];
+      ItemJournalNo@1002 : Text[250];
+      TransferShipmentHeader@1003 : Record 5744;
+      ItemLedgerEntry@1004 : Record 32;
+      P2BHeaderFilter@1006 : Text[350];
+      P2BHeader@1007 : Record 50013;
+      UserSetup@1008 : Record 91;
+
+    BEGIN
+    END.
+  }
+  RDLDATA
+  {
+    <?xml version="1.0" encoding="utf-8"?>
+<Report xmlns:rd="http://schemas.microsoft.com/SQLServer/reporting/reportdesigner" xmlns:cl="http://schemas.microsoft.com/sqlserver/reporting/2010/01/componentdefinition" xmlns="http://schemas.microsoft.com/sqlserver/reporting/2010/01/reportdefinition">
+  <DataSources>
+    <DataSource Name="DataSource">
+      <ConnectionProperties>
+        <DataProvider>SQL</DataProvider>
+        <ConnectString />
+      </ConnectionProperties>
+    </DataSource>
+  </DataSources>
+  <ReportSections>
+    <ReportSection>
+      <Body>
+        <Height>2in</Height>
+        <Style />
+      </Body>
+      <Width>6.5in</Width>
+      <Page>
+        <Style />
+      </Page>
+    </ReportSection>
+  </ReportSections>
+  <Code>Public Function BlankZero(ByVal Value As Decimal)
+    if Value = 0 then
+        Return ""
+    end if
+    Return Value
+End Function
+
+Public Function BlankPos(ByVal Value As Decimal)
+    if Value &gt; 0 then
+        Return ""
+    end if
+    Return Value
+End Function
+
+Public Function BlankZeroAndPos(ByVal Value As Decimal)
+    if Value &gt;= 0 then
+        Return ""
+    end if
+    Return Value
+End Function
+
+Public Function BlankNeg(ByVal Value As Decimal)
+    if Value &lt; 0 then
+        Return ""
+    end if
+    Return Value
+End Function
+
+Public Function BlankNegAndZero(ByVal Value As Decimal)
+    if Value &lt;= 0 then
+        Return ""
+    end if
+    Return Value
+End Function
+</Code>
+  <Language>=User!Language</Language>
+  <ConsumeContainerWhitespace>true</ConsumeContainerWhitespace>
+  <rd:ReportID>0eeb6585-38ae-40f1-885b-8d50088d51b4</rd:ReportID>
+  <rd:ReportUnitType>Inch</rd:ReportUnitType>
+</Report>
+    END_OF_RDLDATA
+  }
+}

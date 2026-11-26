@@ -1,0 +1,37 @@
+OBJECT Table 50052 P2B Setup
+{
+  OBJECT-PROPERTIES
+  {
+    Date=11/30/15;
+    Time=01:00:00;
+    Modified=Yes;
+    Version List=DTS:T24;
+  }
+  PROPERTIES
+  {
+    LookupPageID=Page50052;
+    DrillDownPageID=Page50052;
+  }
+  FIELDS
+  {
+    { 1   ;   ;Type                ;Option        ;OptionCaptionML=ENU=Document Type,Sub Dept.,Warehouse,User Level;
+                                                   OptionString=Document Type,Sub Dept.,Warehouse,User Level }
+    { 2   ;   ;Code                ;Code50         }
+    { 3   ;   ;Description         ;Text50         }
+    { 50052;  ;P2B Notification by Prod. Grp;Boolean;
+                                                   Description=T24.01 }
+  }
+  KEYS
+  {
+    {    ;Type,Code                               ;Clustered=Yes }
+  }
+  FIELDGROUPS
+  {
+  }
+  CODE
+  {
+
+    BEGIN
+    END.
+  }
+}

@@ -1,0 +1,48 @@
+OBJECT Table 50017 P2B Item
+{
+  OBJECT-PROPERTIES
+  {
+    Date=10/26/15;
+    Time=01:00:00;
+    Modified=Yes;
+    Version List=DTS:D51;
+  }
+  PROPERTIES
+  {
+    LookupPageID=Page50017;
+  }
+  FIELDS
+  {
+    { 1   ;   ;No.                 ;Code20        ;CaptionML=ENU=No. }
+    { 3   ;   ;Description         ;Text50        ;CaptionML=ENU=Description;
+                                                   Description=UG-DTS-00-151008: length 30 mjd 50 }
+    { 8   ;   ;Base Unit of Measure;Code10        ;TableRelation="Item Unit of Measure".Code WHERE (Item No.=FIELD(No.));
+                                                   CaptionML=ENU=Base Unit of Measure }
+    { 105 ;   ;Global Dimension 1 Code;Code20     ;TableRelation="Dimension Value".Code WHERE (Global Dimension No.=CONST(1));
+                                                   CaptionML=ENU=Global Dimension 1 Code;
+                                                   CaptionClass='1,2,1' }
+    { 5702;   ;Item Category Code  ;Code10        ;TableRelation="Item Category".Code;
+                                                   CaptionML=ENU=Item Category Code;
+                                                   Description=UG-DTS-00-151008: ubah table relasi }
+    { 5704;   ;Product Group Code  ;Code10        ;TableRelation="Product Group".Code WHERE (Item Category Code=FIELD(Item Category Code));
+                                                   CaptionML=ENU=Sub Group Code;
+                                                   Description=UG-DTS-00-151008: ubah caption }
+  }
+  KEYS
+  {
+    {    ;No.                                     ;Clustered=Yes }
+  }
+  FIELDGROUPS
+  {
+    { 1   ;DropDown            ;No.,Description,Item Category Code,Product Group Code,Global Dimension 1 Code }
+  }
+  CODE
+  {
+
+    BEGIN
+    {
+      D51.01    05 Agust 15   RFL   Buat table 50017|P2B Item
+    }
+    END.
+  }
+}

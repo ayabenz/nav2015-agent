@@ -300,9 +300,9 @@ Page 42 action
 
 The general Post action on Page 42 may have a different route and should be kept distinct from these named wrappers.
 
-## 11. Ownership Table 50035 — evidence gap and next required source
+## 11. Ownership Table 50035 — schema and lifecycle
 
-The current GitHub tree for branch `datascrip` contains Codeunit 22 references to Table 50035, but **does not contain a standalone `Table_50035.txt` file**. The complete company archive does contain this object, as confirmed by the inventory (see Section 13); it needs to be extracted before its source can be inspected. Therefore the following cannot yet be source-verified:
+The object has now been extracted to `reports/datascrip/ownership/Table_50035.txt`. Its schema and keys are therefore source-verified. The remaining lifecycle gap is identifying every other writer/reader across the complete object set.
 
 - exact field IDs, types, captions and validation triggers;
 - primary key and secondary keys;
@@ -311,7 +311,7 @@ The current GitHub tree for branch `datascrip` contains Codeunit 22 references t
 - whether there are additional filters, FlowFilters, or relations;
 - whether other codeunits/pages/reports mutate the Ownership table.
 
-The Codeunit 22 source does prove the fields it attempts to read/write: `Entry No.`, `Description`, `Posting Date`, `Entry Type`, `Document No.`, `Item No.`, `Owner`, `Location Code`, `Document Type`, `Item Ledger Entry No.`, `User ID`, and `Quantity`. It also proves the key selected by `CheckRemainingQty`: Item No., Location Code, Owner, Posting Date. This does not replace the missing table definition.
+Table 50035 has 16 fields and these important definitions: `Quantity` is a stored Decimal; `Owner` (Code20) relates to Dimension Value where Dimension Code is `OWNERSHIP`; `Location Code` relates to Location; `Item Ledger Entry No.` relates to Table 32 and is non-editable; `Total` is a FlowField summing Quantity by Item No. + Location Code, without Owner. Its keys are Entry No. (clustered), Item No. + Location Code (SumIndex Quantity), Item No. + Location Code + Owner + Posting Date (SumIndex Quantity), and P2B Doc No.\n\nThe Codeunit 22 source does prove the fields it attempts to read/write: `Entry No.`, `Description`, `Posting Date`, `Entry Type`, `Document No.`, `Item No.`, `Owner`, `Location Code`, `Document Type`, `Item Ledger Entry No.`, `User ID`, and `Quantity`. It also proves the key selected by `CheckRemainingQty`: Item No., Location Code, Owner, Posting Date. This does not replace the missing table definition.
 
 The code's object change history comments in Codeunit 22 record:
 - T30.01 — 18 Sep 2015: add `InsertOwnership`.
@@ -320,7 +320,7 @@ The code's object change history comments in Codeunit 22 record:
 
 These comments are evidence of the developers' stated intent, not proof of all current table constraints or runtime behavior.
 
-**Next source required:** extract Table 50035 from the company archive and search the full company object set for `Record 50035` / `RecordRef` / table ID 50035. Extract the corresponding original-baseline objects where they exist. Until the individual source texts are available for inspection, the table schema and complete lifecycle remain open questions.
+**Remaining source task:** search the complete object set for every writer/reader of Table 50035 (`Record 50035`, table ID references, and dynamic RecordRef use). Compare against a matching NAVW18 baseline before declaring the ownership feature fully custom.
 
 ## 12. Version and provenance warning
 
@@ -342,3 +342,119 @@ python scripts/export_nav_objects.py --input data/input/original/original.zip --
 ```
 
 The original export may be from a different NAV build; use it as a comparison candidate, not as a trusted same-version baseline until the version headers are reconciled.
+
+
+## 15. Ownership and stocktake source inspection — 26 Nov 2026
+
+The previously missing company objects have now been extracted and inspected:
+
+- `reports/datascrip/ownership/Table_50035.txt`
+- `reports/datascrip/ownership/Table_14.txt`
+- `reports/datascrip/ownership/Codeunit_50107.txt`
+- `reports/datascrip/ownership/Codeunit_50035.txt`
+
+### 15.1 Table 50035 — Ownership Ledger Entry schema
+
+The table contains 16 fields. Relevant fields and definitions:
+
+| Field | Definition |
+|---|---|
+| 1 | Entry No. — Integer |
+| 2 | Document No. — Code20 |
+| 3 | Item No. — Code20, relation to Item |
+| 4 | Quantity — stored Decimal, 0:5 decimal places |
+| 5 | Owner — Code20, relation to Dimension Value where Dimension Code = OWNERSHIP |
+| 6 | Location Code — Code10, relation to Location |
+| 7 | Total — FlowField summing Quantity by Item No. + Location Code; it does not filter Owner |
+| 8 | Entry Type — Purchase, Sale, Positive Adjmt., Negative Adjmt., Transfer, Consumption, Output, Transfer Ownership, P2B |
+| 9 | Description — Text50 |
+| 10 | Posting Date — Date |
+| 11 | Item Ledger Entry No. — Integer, relation to Item Ledger Entry, non-editable |
+| 12 | Document Type — includes Sales Shipment/Invoice, Sales Return Receipt/Credit Memo, Purchase Receipt/Invoice, Transfer Shipment/Receipt, and other types |
+| 13 | User ID — Code50, non-editable |
+| 50000 | Original Doc No. — Code20 |
+| 50001 | P2B Doc No. — Code20 |
+| 50002 | Qty2 — Decimal |
+
+Keys:
+- Entry No. (clustered)
+- Item No. + Location Code, SumIndexFields=Quantity
+- Item No. + Location Code + Owner + Posting Date, SumIndexFields=Quantity
+- P2B Doc No.
+
+There are no table-level CODE triggers in this object export. The table's `Total` FlowField is **not an owner balance**: it aggregates every owner at the location for the item. The owner-specific balance is calculated by Codeunit 22 `CheckRemainingQty`.
+
+### 15.2 Location.Ownership gate
+
+Table 14 field 50035 is Boolean `Ownership`. Its OnValidate trigger checks whether any Table 32 Item Ledger Entry exists for the Location with `Open=TRUE`. If any exists, changing the flag raises `Text50000` and is blocked.
+
+This is a location-level switch, not a per-item or per-owner switch. The validation checks open ILE rows, not the Ownership Ledger table.
+
+### 15.3 Ownership posting rules in Codeunit 22
+
+The posting call is in Codeunit 22 `Code` before normal item quantity posting (lines 178–195). It runs when Value Entry Type is not Revaluation and Source Code is not `RECLASSJNL` or `WHRCLSSJNL`. For Transfer Receipt, the location argument is `New Location Code`; otherwise it is `Location Code`.
+
+`InsertOwnership` then:
+- exits if `Location.Ownership=FALSE`;
+- excludes source codes `INVTADJMT` and `INVTPCOST`;
+- excludes zero base quantity;
+- allocates the next Ownership Entry No. under table lock;
+- records item, owner, location, document, posting date, entry type, user and linked ILE number;
+- posts negative Ownership Quantity for Sale, Negative Adjmt., Consumption and Transfer Shipment after checking owner balance;
+- posts positive Quantity for other applicable entry types, including Transfer Receipt.
+
+The owner-balance check filters Item No., Location Code and Owner, then sums Quantity. Although the selected key includes Posting Date, there is no Posting Date range, nor Entry Type range. Thus it sums all historical rows for that item/location/owner.
+
+**Important data-quality implication:** Owner is a Code20 dimension value. The source does not show a fallback owner assignment in `InsertOwnership`; blank Owner can therefore form its own balance bucket unless upstream validation prevents it. Confirm whether Sales Line / Item Journal Line always supplies a valid Owner when Location.Ownership is enabled.
+
+### 15.4 Transfer Receipt +2 Item Ledger Entry reference — refined conclusion
+
+The Ownership record is inserted before the standard posting branch increments the Item Ledger Entry sequence. The code assigns:
+- normal case: `ItemLedgEntryNo + 1`;
+- Transfer Receipt: `ItemLedgEntryNo + 2`.
+
+The standard posting code explains why a second ILE can be created during a Transfer:
+- `ItemQtyPosting` initializes the main ILE through `InitItemLedgEntry` (line 937);
+- during application of a Transfer entry, `ApplyItemLedgEntry` can call `InsertTransferEntry` when the applied quantity is negative and the application was not itself caused by a transfer (lines 1719–1729);
+- `InsertTransferEntry` calls `InitItemLedgEntry` again and inserts a second ILE (lines 1757–1811);
+- `InitItemLedgEntry` increments the shared ItemLedgEntryNo each time (line 1821).
+
+This makes the +2 offset plausible for the transfer-receipt flow where that transfer counterpart is generated. However, it is **not yet proven for every Transfer Receipt scenario**: the additional `InsertTransferEntry` call depends on the application path and quantities, and AverageTransfer has its own call path at lines 960–961. A definitive result requires tracing actual Transfer Receipt posting with and without matching in-transit applications and with Average costing. Do not treat +2 as universally correct or as a confirmed defect based only on static source.
+
+### 15.5 Codeunit 50107 — Block Stocktake
+
+`BlockStocktakeSalesHeader(SalesHeader, CreateWhseShipment)` applies these gates:
+
+1. Select Sales Lines for the document and Item type.
+2. If creating a warehouse shipment, require Qty. To Whse. Shipment > 0. Otherwise:
+   - Sales Order: Qty. to Ship <> 0;
+   - Return Order: Return Qty. to Receive <> 0.
+3. If there are no matching item lines, exit without blocking.
+4. Find stocktake records in Table 50063 where Start Date <= CURRENTDATETIME and End Date >= CURRENTDATETIME.
+5. For Sales Order/Invoice, filter transaction type `OUT|ALL`; for Credit Memo/Return Order, filter `IN|ALL`.
+6. For each active stocktake record, filter Sales Line by Location and then by the configured Block Type: Item Category, Product Group, or Item.
+7. If a matching line exists, raise an error naming the blocked Item.
+
+The same Codeunit contains analogous gates for Purchase, Transfer, Warehouse Receipt and other flows. This is a time-window + transaction-direction + location + item-scope block, not a global sales lock.
+
+**Evidence limitation:** the Table 50063 definition was not part of the four extracted objects in this pass. The code proves which fields are read, but field types, defaults, table validation and maintenance UI still need inspection.
+
+### 15.6 Codeunit 50035 — Item Tracking Lines
+
+This is a **Codeunit**, not Table 50035. It must not be conflated with the Ownership Ledger Entry table despite sharing object ID 50035.
+
+Its `CollectPostedTransferEntries` procedure:
+- exits unless Tracking Specification Source Type is Transfer Line;
+- filters Item Entry Relation by Transfer Order No. and Order Line No.;
+- uses Source Type Transfer Shipment Line for outbound subtype 0 and Transfer Receipt Line for inbound subtype 1;
+- retrieves the linked Item Ledger Entry and copies entry no., item, serial no., lot no., quantity, handled/invoiced quantities and UOM into the temporary Tracking Specification.
+
+This procedure reconstructs posted transfer tracking from the actual Item Entry Relation and ILE rows; it does not write to the Ownership ledger.
+
+### 15.7 Remaining investigation
+
+1. Extract and inspect Table 50063 (Stocktake) and its maintenance page(s).
+2. Search all company objects for writes to Table 50035, including direct `Record 50035` references and dynamic RecordRef access.
+3. Trace Transfer Receipt runtime-equivalent paths with different costing methods and application states to validate the +2 link.
+4. Confirm Owner mandatory rules and dimension validation upstream.
+5. Reconcile the NAVW18 object headers against the actual installed NAV build and a matching original baseline.

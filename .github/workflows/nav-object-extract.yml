@@ -14,7 +14,7 @@ on:
         default: "reports/datascrip/stocktake_entrypoints"
         type: string
       objects:
-        description: "Space-separated selectors, e.g. Page:43 Report:296 Codeunit:98"
+        description: "Space-separated selectors, e.g. Page:43 Report:296 Report:297 Codeunit:81 Codeunit:82 Codeunit:98"
         required: true
         default: "Page:43 Report:296 Codeunit:98"
         type: string

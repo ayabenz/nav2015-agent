@@ -627,3 +627,17 @@ Key result:
 - Therefore, the inspected regular Transfer Order routes have stocktake checks both at warehouse source creation and again immediately before actual posting.
 
 The company-approved stocktake design and its intentional Sales Return Order / Credit Memo behavior are recorded in [Issue #3](https://github.com/ayabenz/nav2015-agent/issues/3). Do not treat the absence of a duplicate check in every wrapper as a defect when the actual posting codeunit performs the required pre-posting check or the company has explicitly accepted the route behavior.
+
+### 23. Loan and Return Loan variants
+
+Loan and Return Loan are separate Transfer Type variants stored in Table 5740. Their pages and posting behavior are documented in [Loan and Return Loan — Stocktake and Posting Flow](../transfer_flow/LOAN_AND_RETURN_LOAN_POSTING_FLOW.md).
+
+Key result:
+- Pages 50000/50004 use Codeunits 5706/5707, which delegate to the same Codeunits 5704/5705.
+- Codeunit 5704 checks stocktake OUT before shipment; Codeunit 5705 checks stocktake IN before receipt.
+- Warehouse creation uses Codeunits 5752/5751; warehouse posting routes back through 5763→5704 and 5760→5705, retaining posting-time checks.
+- Loan has source-side ownership and Salesperson/Purchaser requirements.
+- Return Loan has destination-side ownership and special original-item/lot application checks before shipment.
+- The Loan page contains a legacy hard-coded cutoff procedure using Record 39 (Purchase Line), which is inconsistent with the Transfer Header/Line source. It is not the primary stocktake control; the active transfer-specific checks are in Codeunits 5752 and 5704.
+
+No missing pre-posting stocktake check was identified in the inspected Loan / Return Loan routes. Potential legacy/application-rule concerns are documented separately for runtime validation.

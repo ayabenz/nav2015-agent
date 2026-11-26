@@ -641,3 +641,11 @@ Key result:
 - The Loan page contains a legacy hard-coded cutoff procedure using Record 39 (Purchase Line), which is inconsistent with the Transfer Header/Line source. It is not the primary stocktake control; the active transfer-specific checks are in Codeunits 5752 and 5704.
 
 No missing pre-posting stocktake check was identified in the inspected Loan / Return Loan routes. Potential legacy/application-rule concerns are documented separately for runtime validation.
+
+### 24. Ownership Transfer journal
+
+The separate Ownership Transfer journal is documented in [Ownership Transfer Journal — Posting and Stocktake Relationship](../ownership_transfer/OWNERSHIP_TRANSFER_POSTING_AND_STOCKTAKE.md).
+
+This is not a physical Transfer Order. Codeunit 50051 redistributes quantity between Owner balances at one Ownership-enabled Location by inserting paired negative/positive rows into Table 50035. The inspected procedure does not create Item Ledger Entries or move inventory between locations.
+
+No Codeunit 50107 stocktake call was found in this journal path. Its stocktake applicability is therefore recorded as a business-policy question, not a confirmed bypass: the company needs to decide whether stocktake freezes ownership reclassification as well as physical inventory movement. The report also records a balance-validation grouping risk where Location Code is not included in the grouping filters.

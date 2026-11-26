@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Find and export NAV objects that reference a target Codeunit."""
+# Keep this extractor reusable for transfer posting and other posting-engine audits.
 from __future__ import annotations
 
 import argparse

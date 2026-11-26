@@ -52,6 +52,8 @@ def main():
         23: "Item Jnl.-Post Batch",
         90: "Purch.-Post",
         241: "Item Jnl.-Post",
+        5704: "TransferOrder-Post Shipment",
+        5705: "TransferOrder-Post Receipt",
     }
     if target_id in symbols:
         symbol = re.escape(symbols[target_id])

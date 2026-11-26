@@ -157,7 +157,7 @@ The two directions are distinct: shipment is checked as OUT; receipt is checked 
 1. Confirm the legacy Page 50000 `CheckBlockStockTake` (Record 39) is still required and whether it was intended to inspect Purchase Lines. The active transfer-specific checks do not depend on it.
 2. Confirm that Return Loan's applies-to requirement is intentionally enforced for both tracked and non-tracked items.
 3. Runtime-test partial Loan and Return Loan shipments/receipts, including split lots, existing reservation entries, and a Return Loan with no Applies-to Item Entry.
-4. Confirm whether any report, job queue, integration, or custom page posts Loan/Return Loan directly without Codeunit 5704/5705.
+4. The full static caller scan of the company export found only Codeunits 5706/5707, 5760/5763, and 7324 as callers of Codeunit 5704/5705. These are the UI and warehouse routes already inspected; no alternate Loan/Return Loan posting route was found in the export. External integrations or source omitted from the export remain outside this conclusion.
 5. Validate the loan-to customer, salesperson/purchaser, due-date, and owner values in posted shipment/receipt records and the resulting Item Ledger / Ownership Ledger entries.
 
 ## 9. Source files
@@ -178,3 +178,21 @@ The two directions are distinct: shipment is checked as OUT; receipt is checked 
 - `reports/datascrip/sales_return_warehouse/Codeunit_5763.txt`
 
 Related decision: [Issue #3 — Stocktake validation is an intentional pre-posting business rule](https://github.com/ayabenz/nav2015-agent/issues/3).
+
+
+## 10. Transfer posting caller coverage
+
+The full company-export caller scan found the same four callers for each shared transfer posting codeunit:
+
+- Codeunit 5704 (OUT): Codeunits 5706, 5707, 5763 and 7324.
+- Codeunit 5705 (IN): Codeunits 5706, 5707, 5760 and 7324.
+
+The two page wrappers are shared by Transfer, Loan and Return Loan. Codeunits 5760/5763 handle warehouse receipt/shipment source lines, while Codeunit 7324 handles warehouse activity posting. Its Transfer Line branch calls Codeunit 5705 for Invt. Put-away and Codeunit 5704 for the other activity type. All these routes reach the same pre-posting stocktake gates.
+
+Codeunit 7324 performs a COMMIT before calling the transfer posting codeunit. The transfer posting gate still runs before inventory posting, but warehouse-activity state committed earlier may remain if the stocktake check rejects the transfer. Validate this behavior in a runtime test.
+
+Caller manifests:
+- [Codeunit 5704 callers](../transfer_post_callers/5704/callers_manifest.csv)
+- [Codeunit 5705 callers](../transfer_post_callers/5705/callers_manifest.csv)
+
+The scan covers the exported company source only; it does not rule out external integrations or source omitted from the export.

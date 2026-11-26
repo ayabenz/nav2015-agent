@@ -65,3 +65,50 @@ Add `--json` before the subcommand to produce machine-readable JSON.
 ## Current implementation boundary
 
 This is the first query layer, not yet a natural-language AI agent. It provides deterministic retrieval primitives that a later agent can call. A future agent must cite the returned source locations and distinguish static findings, company-confirmed policy, and runtime-verified behavior.
+
+## Planned extension: Conditional Logic Intelligence
+
+The next source-analysis layer will explain C/AL branch logic and connect predicates to NAV table values. It will reuse the existing parsed source, symbol index and dependency graph. The first implementation is static and deterministic; it will not claim to know which branch executed for a live or historical document.
+
+### Supported control-flow scope
+
+- IF / THEN, ELSE, ELSEIF and nested blocks.
+- CASE / OF, individual value/range arms and default ELSE.
+- Boolean composition (AND, OR, NOT), comparisons, parentheses, literals and Option members.
+- Mapping of Record variables and qualified field references to NAV Table / Field definitions.
+- Option metadata resolution from the table field's OptionString / parsed option members.
+- Source-backed branch tree with TRUE/FALSE or CASE-match/default paths.
+
+### Example explanation
+
+```pascal
+IF SalesHeader."Document Type" = SalesHeader."Document Type"::Order THEN BEGIN
+    IF SalesHeader.Status = SalesHeader.Status::Released THEN
+        CODEUNIT.RUN(CODEUNIT::"Sales-Post", SalesHeader)
+    ELSE
+        ERROR('Document is not released');
+END ELSE
+    ERROR('Invalid document type');
+```
+
+The analyzer should explain the outer predicate, its resolved table/field and Option member, then the nested predicate and both outcomes. It should associate the TRUE branch with the posting call and the FALSE branches with their respective errors, each backed by source line ranges. This is a source explanation, not proof of runtime execution.
+
+### Resolution and data-flow stages
+
+1. Parse branch structure and retain raw source expressions.
+2. Normalize expressions into operands and operators.
+3. Resolve Record variable types, field identities and Option/Enum members using parsed metadata and the symbol index.
+4. Track local assignments and record-field mutations before predicates.
+5. Trace direct-call parameters and relevant record values across procedures when statically resolvable.
+6. Preserve unresolved expressions (including dynamic RecordRef/FieldRef, EVALUATE and indirect data flow) with explicit diagnostics instead of guessing.
+
+### Static versus runtime conclusions
+
+- **Static:** describes conditions, possible outcomes and source statements reached by each outcome.
+- **Runtime:** evaluates a predicate for a specific document only when an explicit, correctly scoped runtime snapshot and execution context are supplied. A current database row alone does not prove what values existed when a historical posting ran.
+
+### Planned CLI and tests
+
+Proposed CLI: `nav-intel --company datascrip conditions "Codeunit 80.PostItemJnlLine"`. Integrate the output into existing object and procedure details after the dedicated query is stable. Tests should cover nested IF/ELSE, ELSEIF, CASE, Option values, field comparisons, variable assignment/data-flow and unresolved expressions.
+
+See ROADMAP_TRACKER.md, Phase 2.5, for implementation tasks and exit criteria.

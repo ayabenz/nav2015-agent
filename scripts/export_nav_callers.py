@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Find and export NAV objects that reference Codeunit 50107 / Block Stocktake."""
+"""Find and export NAV objects that reference a target Codeunit."""
 from __future__ import annotations
 
 import argparse

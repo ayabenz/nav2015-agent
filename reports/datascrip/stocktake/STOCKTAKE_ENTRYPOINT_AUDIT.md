@@ -226,3 +226,23 @@ The following routes need explicit company confirmation before remediation:
 3. Whether the Sales/Purchase source paths through Codeunit 5763 and direct Codeunit 5760 callers are expected to be blocked, while preserving the approved Sales Return Order / Credit Memo exception.
 
 These decisions are tracked in [Issue #3](https://github.com/ayabenz/nav2015-agent/issues/3). The issue also records the accepted Codeunit 50082 behavior.
+
+## 12. Purchase posting routes
+
+Purchase posting is documented in [Purchase Posting — Stocktake Entry-Point Audit](../purchase_flow/PURCHASE_POSTING_STOCKTAKE_AUDIT.md).
+
+Key findings:
+- Codeunit 90 Purch.-Post has no direct Codeunit 50107 call.
+- Codeunits 91/92 call the purchase stocktake check only when Ship or Receive is already TRUE. This protects normal Purchase Order Receive and Purchase Return Order Ship selections.
+- For Purchase Invoice and Purchase Credit Memo, Codeunit 90 applies Receive=TRUE or Ship=TRUE after the wrapper's conditional check. Static inspection indicates the wrapper check may be skipped for those document types; runtime confirmation is still required.
+- Batch Reports 496/497/498/6665 call Codeunit 90 directly.
+- Codeunit 98 Job Queue calls Codeunit 90 at execution without rechecking stocktake; a check at enqueue time can become stale before execution.
+- Codeunit 5760 warehouse receipt, Codeunit 5763 warehouse shipment, and Codeunit 7324 warehouse activity posting call Codeunit 90 directly for Purchase Line sources.
+- Codeunits 5751/5752 check stocktake when creating purchase warehouse source documents, but that does not replace a check at actual posting time.
+- Codeunit 1313 purchase invoice correction and Mini Purchase Credit Memo Post & Print are additional direct Codeunit 90 routes.
+
+These routes are open business-policy decisions until the company confirms whether stocktake should block the relevant physical Receive/Ship operation. Do not classify them as defects solely from static inspection.
+
+Detailed caller inventory: [Purchase Post caller manifest](../purchase_post_callers/callers_manifest.csv).
+
+All accepted behavior and open policy questions are tracked in [Issue #3](https://github.com/ayabenz/nav2015-agent/issues/3).

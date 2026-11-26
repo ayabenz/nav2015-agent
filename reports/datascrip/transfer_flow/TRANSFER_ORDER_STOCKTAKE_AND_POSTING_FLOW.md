@@ -156,3 +156,7 @@ No missing stocktake gate was identified in the inspected regular Transfer Order
 - `reports/datascrip/transfer_tables/Table_5741.txt`
 
 Related decision: [Issue #3 — Stocktake validation is an intentional pre-posting business rule](https://github.com/ayabenz/nav2015-agent/issues/3).
+
+## 9. Related transfer variants
+
+The regular Transfer Type is not the only use of Table 5740. Loan and Return Loan use separate pages but share Codeunits 5704/5705. Their special ownership and original-item application behavior is documented in [LOAN_AND_RETURN_LOAN_POSTING_FLOW.md](LOAN_AND_RETURN_LOAN_POSTING_FLOW.md).

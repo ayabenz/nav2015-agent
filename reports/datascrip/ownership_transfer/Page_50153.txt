@@ -1,0 +1,74 @@
+OBJECT Page 50153 Ownership Ledger Entries
+{
+  OBJECT-PROPERTIES
+  {
+    Date=10/21/15;
+    Time=01:00:00;
+    Modified=Yes;
+    Version List=DTS:T30;
+  }
+  PROPERTIES
+  {
+    Editable=No;
+    SourceTable=Table50035;
+    PageType=List;
+  }
+  CONTROLS
+  {
+    { 1   ;0   ;Container ;
+                ContainerType=ContentArea }
+
+    { 2   ;1   ;Group     ;
+                Name=Group;
+                GroupType=Repeater }
+
+    { 13  ;2   ;Field     ;
+                SourceExpr="Entry No." }
+
+    { 3   ;2   ;Field     ;
+                SourceExpr="Posting Date" }
+
+    { 6   ;2   ;Field     ;
+                SourceExpr="Document No." }
+
+    { 12  ;2   ;Field     ;
+                SourceExpr=Description }
+
+    { 7   ;2   ;Field     ;
+                SourceExpr="Item No." }
+
+    { 8   ;2   ;Field     ;
+                SourceExpr=Quantity }
+
+    { 10  ;2   ;Field     ;
+                SourceExpr="Location Code" }
+
+    { 9   ;2   ;Field     ;
+                SourceExpr=Owner }
+
+    { 4   ;2   ;Field     ;
+                SourceExpr="Entry Type" }
+
+    { 5   ;2   ;Field     ;
+                SourceExpr="Document Type" }
+
+    { 15  ;2   ;Field     ;
+                SourceExpr="User ID" }
+
+    { 16  ;    ;Container ;
+                ContainerType=FactBoxArea }
+
+    { 17  ;1   ;Part      ;
+                SubPageLink=Item No.=FIELD(Item No.),
+                            Location Code=FIELD(Location Code);
+                PagePartID=Page50161;
+                PartType=Page }
+
+  }
+  CODE
+  {
+
+    BEGIN
+    END.
+  }
+}

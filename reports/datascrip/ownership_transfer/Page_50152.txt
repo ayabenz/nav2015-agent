@@ -1,0 +1,242 @@
+OBJECT Page 50152 Ownership Transfer
+{
+  OBJECT-PROPERTIES
+  {
+    Date=04/22/16;
+    Time=15:11:01;
+    Modified=Yes;
+    Version List=DTS:T30;
+  }
+  PROPERTIES
+  {
+    SaveValues=Yes;
+    SourceTable=Table50037;
+    DelayedInsert=Yes;
+    DataCaptionFields=Journal Batch Name;
+    PageType=Worksheet;
+    AutoSplitKey=Yes;
+    OnOpenPage=VAR
+                 JnlSelected@1000 : Boolean;
+               BEGIN
+                 cWMS_Mgt.BatchSelection(JnlSelected,CurrentJnlBatchName);
+                 IF NOT JnlSelected THEN
+                   ERROR('Own. Journal Batch List is empty');
+                 cWMS_Mgt.OpenJnl(CurrentJnlBatchName,Rec);
+               END;
+
+    OnAfterGetRecord=BEGIN
+                       //SetDetail;
+                     END;
+
+    OnNewRecord=BEGIN
+                  SetUpNewLine(xRec, Balance);
+                  //UpdateBalance;
+                END;
+
+    OnAfterGetCurrRecord=BEGIN
+                           gBol_ItemNoEditable := "P2B Document No." = '';
+                           gBol_QuantityEditable := "P2B Document No." = '';
+                           gBol_LocationEditable := "P2B Document No." = '';
+                           gBol_OwnerEditable := "P2B Document No." = '';
+                           //UpdateBalance;
+                           SetDetail;
+                         END;
+
+    ActionList=ACTIONS
+    {
+      { 17      ;    ;ActionContainer;
+                      ActionContainerType=ActionItems }
+      { 18      ;1   ;ActionGroup;
+                      CaptionML=ENU=P&osting }
+      { 19      ;2   ;Action    ;
+                      CaptionML=ENU=P&ost;
+                      OnAction=BEGIN
+                                 IF TotalBalance <>0 THEN
+                                   ERROR('Transfer Owner belum balance..');
+                                 CLEAR(cWMS_Mgt);
+                                 //CheckBalance();
+                                 cWMS_Mgt.PostingOwnershipTransfer(Rec);
+                               END;
+                                }
+      { 10      ;2   ;Action    ;
+                      Name=Print;
+                      OnAction=BEGIN
+                                 SETFILTER("Journal Batch Name", CurrentJnlBatchName);
+                                 REPORT.RUNMODAL(50168, TRUE, FALSE, Rec);
+                               END;
+                                }
+    }
+  }
+  CONTROLS
+  {
+    { 1   ;0   ;Container ;
+                ContainerType=ContentArea }
+
+    { 12  ;1   ;Field     ;
+                CaptionML=ENU=Batch Name;
+                SourceExpr=CurrentJnlBatchName;
+                OnValidate=BEGIN
+                             cWMS_Mgt.CheckName(CurrentJnlBatchName);
+                             CurrPage.SAVERECORD;
+                             cWMS_Mgt.SetName(CurrentJnlBatchName,Rec);
+                             CurrPage.UPDATE(FALSE);
+                           END;
+
+                OnLookup=VAR
+                           tOJB@1001 : Record 50036;
+                           tUS@1000 : Record 91;
+                         BEGIN
+                           CurrPage.SAVERECORD;
+                           COMMIT;
+                           tOJB.RESET;
+                           tUS.GET(USERID);
+                           IF (tUS."Journal Template Filter" <> tUS."Journal Template Filter"::" ") THEN
+                           BEGIN
+                             tOJB.FILTERGROUP := 2;
+                             tOJB.SETRANGE("Journal Template Filter",tUS."Journal Template Filter");
+                             tOJB.FILTERGROUP := 0;
+                           END;
+                           IF PAGE.RUNMODAL(0,tOJB) = ACTION::LookupOK THEN
+                           BEGIN
+                             CurrentJnlBatchName := tOJB.Name;
+                             cWMS_Mgt.SetName(CurrentJnlBatchName,Rec);
+                           END;
+                           CurrPage.UPDATE(FALSE);
+                         END;
+                          }
+
+    { 2   ;1   ;Group     ;
+                Name=Group;
+                GroupType=Repeater }
+
+    { 9   ;2   ;Field     ;
+                SourceExpr="Line No.";
+                Enabled=gBol_LineNoEditable;
+                Editable=gBol_LineNoEditable }
+
+    { 3   ;2   ;Field     ;
+                SourceExpr="Item No.";
+                Enabled=gBol_ItemNoEditable;
+                Editable=gBol_ItemNoEditable }
+
+    { 4   ;2   ;Field     ;
+                SourceExpr="Posting Date" }
+
+    { 5   ;2   ;Field     ;
+                SourceExpr="Document No.";
+                Enabled=gBol_DocNoEditable;
+                Editable=gBol_DocNoEditable }
+
+    { 6   ;2   ;Field     ;
+                SourceExpr=Description;
+                Enabled=gBol_DescEditable;
+                Editable=gBol_DescEditable }
+
+    { 7   ;2   ;Field     ;
+                SourceExpr="Location Code";
+                Enabled=gBol_LocationEditable;
+                Editable=gBol_LocationEditable }
+
+    { 11  ;2   ;Field     ;
+                SourceExpr="Transfer-from Owner";
+                Enabled=gBol_OwnerEditable;
+                Editable=gBol_OwnerEditable }
+
+    { 13  ;2   ;Field     ;
+                SourceExpr="Transfer-to Owner";
+                Enabled=gBol_OwnerEditable;
+                Editable=gBol_OwnerEditable }
+
+    { 8   ;2   ;Field     ;
+                SourceExpr=Quantity;
+                Enabled=gBol_QuantityEditable;
+                Editable=gBol_QuantityEditable }
+
+  }
+  CODE
+  {
+    VAR
+      CurrentJnlBatchName@1000 : Code[10];
+      cWMS_Mgt@1001 : Codeunit 50051;
+      Balance@1003 : Decimal;
+      TotalBalance@1002 : Decimal;
+      gBol_LineNoEditable@1004 : Boolean;
+      gBol_PostingDateEditable@1005 : Boolean;
+      gBol_DocNoEditable@1007 : Boolean;
+      gBol_ItemNoEditable@1006 : Boolean;
+      gBol_DescEditable@1008 : Boolean;
+      gBol_LocationEditable@1009 : Boolean;
+      gBol_OwnerEditable@1010 : Boolean;
+      gBol_QuantityEditable@1011 : Boolean;
+
+    PROCEDURE UpdateBalance@1000000013();
+    VAR
+      tmpOT@1000000000 : Record 50037;
+    BEGIN
+      TotalBalance := 0;
+
+      tmpOT.COPY(Rec);
+      IF tmpOT.FIND('-') THEN
+      REPEAT
+        TotalBalance += tmpOT.Quantity;
+      UNTIL tmpOT.NEXT = 0;
+
+      Balance := 0;
+
+      tmpOT.SETRANGE("Document No.", Rec."Document No.");
+      tmpOT.SETRANGE("Item No.", Rec."Item No.");
+      IF tmpOT.FIND('-') THEN
+      REPEAT
+        Balance += tmpOT.Quantity;
+      UNTIL tmpOT.NEXT = 0;
+    END;
+
+    PROCEDURE CheckBalance@1000000000();
+    VAR
+      tOT@1000000000 : Record 50037;
+      tOT2@1000000001 : Record 50037;
+    BEGIN
+      tOT.COPY(Rec);
+      IF tOT.FIND('-') THEN
+      REPEAT
+        tOT2.RESET;
+        tOT2.SETRANGE("Item No.", tOT."Item No.");
+        TotalBalance := 0;
+        IF tOT2.FIND('-') THEN
+        REPEAT
+           TotalBalance += tOT2.Quantity;
+        UNTIL tOT2.NEXT = 0;
+
+        IF TotalBalance > 0 THEN
+           ERROR('Transfer Owner tidak balance untuk Item '+ tOT."Item No.");
+
+      UNTIL tOT.NEXT = 0;
+    END;
+
+    PROCEDURE SetDetail@1000000001();
+    BEGIN
+      IF CurrentJnlBatchName = 'TR-OWN' THEN  BEGIN
+        gBol_LineNoEditable := FALSE;
+        //gBol_PostingDateEditable := TRUE;
+        gBol_DocNoEditable := FALSE;
+        gBol_ItemNoEditable := FALSE;
+        gBol_DescEditable := FALSE;
+        gBol_LocationEditable := FALSE;
+        gBol_OwnerEditable := FALSE;
+        gBol_QuantityEditable := FALSE;
+      END ELSE BEGIN
+        gBol_LineNoEditable := TRUE;
+        //gBol_PostingDateEditable := TRUE;
+        gBol_DocNoEditable := TRUE;
+        gBol_ItemNoEditable := TRUE;
+        gBol_DescEditable := TRUE;
+        gBol_LocationEditable := TRUE;
+        gBol_OwnerEditable := TRUE;
+        gBol_QuantityEditable := TRUE;
+      END;
+    END;
+
+    BEGIN
+    END.
+  }
+}

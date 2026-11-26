@@ -1,0 +1,69 @@
+OBJECT Page 50161 Item Ownership FactBox
+{
+  OBJECT-PROPERTIES
+  {
+    Date=10/09/15;
+    Time=01:00:00;
+    Modified=Yes;
+    Version List=DTS:T30;
+  }
+  PROPERTIES
+  {
+    Editable=No;
+    SourceTable=Table50035;
+    SourceTableView=SORTING(Item No.,Location Code);
+    PageType=CardPart;
+    OnAfterGetRecord=BEGIN
+                       SUMRemainingQty;
+                     END;
+
+  }
+  CONTROLS
+  {
+    { 1   ;0   ;Container ;
+                ContainerType=ContentArea }
+
+    { 2   ;1   ;Field     ;
+                CaptionML=ENU=Item No.;
+                SourceExpr="Item No.";
+                OnDrillDown=BEGIN
+                              ShowDetails;
+                            END;
+                             }
+
+    { 3   ;1   ;Field     ;
+                CaptionML=ENU=Remaining Qty per Location;
+                DecimalPlaces=0:5;
+                SourceExpr=SUMRemainingQty }
+
+  }
+  CODE
+  {
+    VAR
+      Item@1000 : Record 27;
+
+    LOCAL PROCEDURE ShowDetails@1();
+    BEGIN
+      Item.GET("Item No.");
+      PAGE.RUN(PAGE::"Item Card",Item);
+    END;
+
+    LOCAL PROCEDURE SUMRemainingQty@3() : Decimal;
+    VAR
+      Rec_OLE@1000 : Record 50035;
+    BEGIN
+      Rec_OLE.SETCURRENTKEY("Item No.","Location Code");
+      Rec_OLE.SETRANGE("Item No.", "Item No.");
+      Rec_OLE.SETRANGE("Location Code", "Location Code");
+      //Rec_OLE.SETRANGE(Owner, Owner);
+      IF Rec_OLE.FINDSET THEN BEGIN
+        Rec_OLE.CALCSUMS(Quantity);
+        EXIT(Rec_OLE.Quantity);
+      END ELSE
+        EXIT(0);
+    END;
+
+    BEGIN
+    END.
+  }
+}

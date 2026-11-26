@@ -1,0 +1,280 @@
+OBJECT Table 50037 Ownership Transfer
+{
+  OBJECT-PROPERTIES
+  {
+    Date=01/04/16;
+    Time=14:41:54;
+    Modified=Yes;
+    Version List=DTS:D34,T30;
+  }
+  PROPERTIES
+  {
+    LookupPageID=Page50156;
+    DrillDownPageID=Page50156;
+  }
+  FIELDS
+  {
+    { 2   ;   ;Line No.            ;Integer       ;Description=D34 }
+    { 3   ;   ;Item No.            ;Code20        ;TableRelation=Item;
+                                                   OnValidate=VAR
+                                                                tItem@1000000000 : Record 27;
+                                                              BEGIN
+                                                                // D34.01
+                                                                IF xRec."Item No." <> Rec."Item No." THEN
+                                                                BEGIN
+                                                                  IF tItem.GET("Item No.") THEN
+                                                                  BEGIN
+                                                                    Description := tItem.Description;
+                                                                    VALIDATE("Unit of Measure Code", tItem."Base Unit of Measure");
+                                                                  END
+                                                                  ELSE
+                                                                  BEGIN
+                                                                    Description := tItem.Description;
+                                                                    VALIDATE("Unit of Measure Code", '');
+                                                                  END;
+
+                                                                  "Location Code" := '';
+                                                                  Owner := '';
+                                                                  "Transfer-from Owner" := '';
+                                                                  "Transfer-to Owner" := '';
+                                                                  Quantity := 0;
+                                                                  "Quantity (Base)" := 0;
+                                                                END;
+                                                                // D34.01
+                                                              END;
+
+                                                   Description=D34 }
+    { 4   ;   ;Posting Date        ;Date          ;Description=D34 }
+    { 6   ;   ;Document No.        ;Code20        ;Description=D34 }
+    { 7   ;   ;Description         ;Text50        ;Description=D34 }
+    { 8   ;   ;Location Code       ;Code10        ;TableRelation=Location WHERE (Ownership=FILTER(Yes));
+                                                   OnValidate=BEGIN
+                                                                // D34.01
+                                                                IF "Location Code" = 'DUNEX' THEN
+                                                                  ERROR('DUNEX tidak bisa digunakan, silahkan gunakan PLG');
+
+                                                                IF xRec."Location Code" <> Rec."Location Code" THEN
+                                                                BEGIN
+                                                                  Owner := '';
+                                                                  "Transfer-from Owner" := '';
+                                                                  "Transfer-to Owner" := '';
+                                                                  Quantity := 0;
+                                                                  "Quantity (Base)" := 0;
+                                                                END;
+                                                                // D34.01
+                                                              END;
+
+                                                   Description=D34 }
+    { 9   ;   ;Quantity            ;Decimal       ;OnValidate=VAR
+                                                                tOT@1000000000 : Record 50037;
+                                                                xRecQuantity@1000000001 : Decimal;
+                                                                cuCWM@1000000002 : Codeunit 50051;
+                                                                tmpQtyAvailable@1000000003 : Decimal;
+                                                                tItem@1000000004 : Record 27;
+                                                                SkipBlankOwner@1000 : Boolean;
+                                                              BEGIN
+                                                                // D34.01
+                                                                TESTFIELD("Item No.");
+                                                                TESTFIELD("Location Code");
+                                                                //TESTFIELD(Owner);
+                                                                //TESTFIELD("Transfer-from Owner");
+                                                                //TESTFIELD("Transfer-to Owner");
+
+                                                                //IF (Quantity < 0) AND ("P2B Document No."='') THEN
+                                                                IF ("P2B Document No." = '') AND ("Transfer-to Owner" = '') THEN
+                                                                  BEGIN
+                                                                    //T30.03
+                                                                    //IF "Transfer-from Owner" <> '' THEN
+                                                                    //  SkipBlankOwner := TRUE
+                                                                    //ELSE
+                                                                      SkipBlankOwner := FALSE;
+                                                                    //End T30.03
+                                                                      tItem.GET("Item No.");
+                                                                      xRecQuantity := xRec.Quantity;
+                                                                      IF NOT cuCWM.CekQuantity(
+                                                                        6 { Trans Type 6 = Ownership Transfer }
+                                                                        ,Rec."Item No."
+                                                                        ,Rec."Location Code"
+                                                                        ,Rec."Transfer-from Owner"
+                                                                        ,Quantity
+                                                                        ,Rec."Unit of Measure Code"
+                                                                        ,xRecQuantity
+                                                                        ,xRec."Unit of Measure Code"
+                                                                        ,tmpQtyAvailable
+                                                                        ,SkipBlankOwner)  //T30.04
+                                                                      THEN
+                                                                      BEGIN
+                                                                        ERROR('Quantity ' + "Item No."
+                                                                            + ' dengan Lokasi : ' + "Location Code"
+                                                                            + ' dan Owner : ' + "Transfer-from Owner"
+                                                                            + ' tidak cukup ... ');
+                                                                      END;
+                                                                  END;
+
+                                                                SetQuantity();
+                                                                // D34.01
+                                                              END;
+
+                                                   DecimalPlaces=0:5;
+                                                   MinValue=0;
+                                                   Description=D34 }
+    { 10  ;   ;Journal Batch Name  ;Code10        ;TableRelation="Ownership Journal Batch";
+                                                   Description=D34 }
+    { 11  ;   ;Reason Code         ;Code10        ;TableRelation="Reason Code";
+                                                   Description=D34 }
+    { 12  ;   ;Owner               ;Code20        ;TableRelation="Dimension Value".Code WHERE (Dimension Code=FILTER(OWNERSHIP));
+                                                   OnValidate=BEGIN
+                                                                // D34.01
+                                                                ERROR('sudah tidak dipakai');
+                                                                cuCWM.ValidateOwnerField("Location Code");
+                                                                IF xRec.Owner <> Rec.Owner THEN BEGIN
+                                                                  Quantity := 0;
+                                                                  "Quantity (Base)" := 0;
+                                                                END;
+                                                                // D34.01
+                                                              END;
+
+                                                   OnLookup=BEGIN
+                                                              // D34.01
+                                                              cuCWM.LookUpOwnerGlobal("Location Code",Rec.Owner);
+                                                              // D34.01
+                                                            END;
+
+                                                   Description=D34 }
+    { 20  ;   ;Unit of Measure Code;Code10        ;TableRelation="Item Unit of Measure".Code WHERE (Item No.=FIELD(Item No.));
+                                                   OnValidate=VAR
+                                                                tIUoM@1000000000 : Record 5404;
+                                                                tUoM@1000000001 : Record 204;
+                                                                Text_001@1000000002 : TextConst 'ENU=Unit of Measure Code for Item %1 doesnt exist';
+                                                              BEGIN
+                                                                // D34.01
+                                                                IF "Unit of Measure Code" = '' THEN
+                                                                  "Unit of Measure" := ''
+                                                                ELSE
+                                                                BEGIN
+                                                                  IF NOT tUoM.GET("Unit of Measure Code") THEN ERROR(FORMAT(Text_001), "Item No.");
+                                                                  "Unit of Measure" := tUoM.Description;
+                                                                END;
+                                                                SetQuantity();
+                                                                // D34.01
+                                                              END;
+
+                                                   CaptionML=ENU=Unit of Measure Code;
+                                                   Description=D34 }
+    { 21  ;   ;Unit of Measure     ;Text10        ;Description=D34 }
+    { 22  ;   ;Qty. per Unit of Measure;Decimal   ;Description=D34 }
+    { 23  ;   ;Quantity (Base)     ;Decimal       ;DecimalPlaces=0:5;
+                                                   Description=D34 }
+    { 50001;  ;P2B Document No.    ;Code20        ;Description=D34 }
+    { 50002;  ;Transfer-from Owner ;Code20        ;TableRelation="Dimension Value".Code WHERE (Dimension Code=FILTER(OWNERSHIP));
+                                                   OnValidate=BEGIN
+                                                                cuCWM.ValidateOwnerField("Location Code");
+                                                                IF xRec."Transfer-from Owner" <> "Transfer-from Owner" THEN BEGIN
+                                                                  Quantity := 0;
+                                                                  "Quantity (Base)" := 0;
+                                                                END;
+
+                                                                IF "Transfer-from Owner" = "Transfer-to Owner" THEN
+                                                                  ERROR(Text50000);
+
+                                                                Owner := "Transfer-from Owner";
+                                                                "Transfer-to Owner" := '';
+                                                              END;
+
+                                                   OnLookup=BEGIN
+                                                              cuCWM.LookUpOwnerGlobal("Location Code","Transfer-from Owner");
+                                                            END;
+
+                                                   Description=T30.01 }
+    { 50003;  ;Transfer-to Owner   ;Code20        ;TableRelation="Dimension Value".Code WHERE (Dimension Code=FILTER(OWNERSHIP));
+                                                   OnValidate=BEGIN
+                                                                cuCWM.ValidateOwnerField("Location Code");
+                                                                IF xRec."Transfer-to Owner" <> "Transfer-to Owner" THEN BEGIN
+                                                                  Quantity := 0;
+                                                                  "Quantity (Base)" := 0;
+                                                                END;
+
+                                                                IF "Transfer-from Owner" = "Transfer-to Owner" THEN
+                                                                  ERROR(Text50000);
+
+                                                                Owner := "Transfer-to Owner";
+                                                                "Transfer-from Owner" := '';
+                                                              END;
+
+                                                   OnLookup=BEGIN
+                                                              cuCWM.LookUpOwnerGlobal("Location Code","Transfer-to Owner");
+                                                            END;
+
+                                                   Description=T30.01 }
+    { 50004;  ;Posting No. Series  ;Code10        ;TableRelation="No. Series";
+                                                   Description=T30.01 }
+  }
+  KEYS
+  {
+    {    ;Journal Batch Name,Line No.             ;Clustered=Yes }
+    {    ;Quantity,Item No.,Location Code,Owner,Posting Date;
+                                                   SumIndexFields=Quantity }
+  }
+  FIELDGROUPS
+  {
+  }
+  CODE
+  {
+    VAR
+      cuCWM@1000 : Codeunit 50051;
+      Text50000@1001 : TextConst 'ENU=Transfer-from Owner cannot be the same as Transfer-to Owner.';
+
+    PROCEDURE SetUpNewLine@1000000000(LastOwnershipTransfer@1000000000 : Record 50037;pBalance@1000000004 : Decimal);
+    VAR
+      NoSeriesMgt@1000000003 : Codeunit 396;
+      tOT@1000000002 : Record 50037;
+      OwnershipJnlBatch@1000000001 : Record 50036;
+      OwnershipTransfer@1000 : Record 50037;
+    BEGIN
+      //T30.01
+      OwnershipJnlBatch.GET("Journal Batch Name");
+      OwnershipTransfer.SETRANGE("Journal Batch Name", "Journal Batch Name");
+      IF OwnershipTransfer.FINDFIRST THEN BEGIN
+        "Posting Date"  := LastOwnershipTransfer."Posting Date";
+        "Document No."  := LastOwnershipTransfer."Document No.";
+        //IF pBalance = 0 THEN
+        //  "Document No." := INCSTR("Document No.");
+      END ELSE BEGIN
+        "Posting Date"  := WORKDATE;
+        IF OwnershipJnlBatch."No. Series" <> '' THEN BEGIN
+          CLEAR(NoSeriesMgt);
+          "Document No."  := NoSeriesMgt.TryGetNextNo(OwnershipJnlBatch."No. Series","Posting Date");
+        END;
+      END;
+      "Reason Code" := OwnershipJnlBatch."Reason Code";
+      "Posting No. Series" := OwnershipJnlBatch."Posting No. Series";
+      //T30.01
+    END;
+
+    PROCEDURE SetQuantity@1000000002();
+    VAR
+      tIUoM@1000000000 : Record 5404;
+    BEGIN
+      // D34.01
+      "Qty. per Unit of Measure" := 1;
+
+      tIUoM.SETRANGE("Item No.", "Item No.");
+      tIUoM.SETRANGE(Code, "Unit of Measure Code");
+      IF tIUoM.FIND('-') THEN
+        "Qty. per Unit of Measure" := tIUoM."Qty. per Unit of Measure";
+
+      "Quantity (Base)" := ROUND("Qty. per Unit of Measure" * Quantity,0.00001);
+      // D34.01
+    END;
+
+    BEGIN
+    {
+      D34.01  29 Jul 2015   BNY   Buat tabel baru "Ownership Transfer" dari tabel di Nav.5
+      T30.01    15 Sep 15     SH    Add function : SetUpNewLine, Add fields
+      T30.02    22 Sep 2015   SH    Add key for Table Item
+      T30.03    30 Des 2015   SY    Add codes
+      T30.04    30 Des 2015   SY    Change codes
+    }
+    END.
+  }
+}

@@ -1,0 +1,64 @@
+OBJECT Page 50156 Ownership Transfer List
+{
+  OBJECT-PROPERTIES
+  {
+    Date=10/09/15;
+    Time=01:00:00;
+    Modified=Yes;
+    Version List=DTS:T30;
+  }
+  PROPERTIES
+  {
+    InsertAllowed=No;
+    DeleteAllowed=No;
+    ModifyAllowed=No;
+    SourceTable=Table50037;
+    PageType=List;
+  }
+  CONTROLS
+  {
+    { 1   ;0   ;Container ;
+                ContainerType=ContentArea }
+
+    { 2   ;1   ;Group     ;
+                Name=Group;
+                GroupType=Repeater }
+
+    { 3   ;2   ;Field     ;
+                SourceExpr="Journal Batch Name" }
+
+    { 4   ;2   ;Field     ;
+                SourceExpr="Line No." }
+
+    { 5   ;2   ;Field     ;
+                SourceExpr="Document No." }
+
+    { 6   ;2   ;Field     ;
+                SourceExpr="Posting Date" }
+
+    { 7   ;2   ;Field     ;
+                SourceExpr="Item No." }
+
+    { 8   ;2   ;Field     ;
+                SourceExpr=Description }
+
+    { 9   ;2   ;Field     ;
+                SourceExpr=Quantity }
+
+    { 11  ;2   ;Field     ;
+                SourceExpr="Location Code" }
+
+    { 10  ;2   ;Field     ;
+                SourceExpr="Transfer-from Owner" }
+
+    { 12  ;2   ;Field     ;
+                SourceExpr="Transfer-to Owner" }
+
+  }
+  CODE
+  {
+
+    BEGIN
+    END.
+  }
+}

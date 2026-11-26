@@ -1,0 +1,46 @@
+OBJECT Table 50036 Ownership Journal Batch
+{
+  OBJECT-PROPERTIES
+  {
+    Date=09/16/15;
+    Time=01:00:00;
+    Modified=Yes;
+    Version List=DTS:D34,T30;
+  }
+  PROPERTIES
+  {
+    DataCaptionFields=Name,Description;
+    LookupPageID=Page50151;
+  }
+  FIELDS
+  {
+    { 2   ;   ;Name                ;Code10        ;Description=D34 }
+    { 3   ;   ;Description         ;Text50        ;Description=D34 }
+    { 4   ;   ;Reason Code         ;Code10        ;TableRelation="Reason Code";
+                                                   Description=D34 }
+    { 5   ;   ;No. Series          ;Code10        ;TableRelation="No. Series";
+                                                   Description=D34 }
+    { 6   ;   ;Posting No. Series  ;Code10        ;TableRelation="No. Series";
+                                                   Description=T30.01 }
+    { 50001;  ;Journal Template Filter;Option     ;OptionCaptionML=ENU=" ,ACCOUNTING,SALES ADMIN,WAREHOUSE,PURCHASING";
+                                                   OptionString=[ ,ACCOUNTING,SALES ADMIN,WAREHOUSE,PURCHASING];
+                                                   Description=D34 }
+  }
+  KEYS
+  {
+    {    ;Name                                    ;Clustered=Yes }
+  }
+  FIELDGROUPS
+  {
+  }
+  CODE
+  {
+
+    BEGIN
+    {
+      D34.01  29 Jul 2015   BNY   Buat tabel baru "Ownership Journal Batch" dari tabel di Nav.5
+      T30.01   15 Sep 2015   SH    Add field, LookupPageID, DataCaptionFields
+    }
+    END.
+  }
+}

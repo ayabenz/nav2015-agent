@@ -1,0 +1,189 @@
+OBJECT Codeunit 50200 Update Owner Whse. Entry
+{
+  OBJECT-PROPERTIES
+  {
+    Date=02/12/16;
+    Time=07:50:45;
+    Modified=Yes;
+    Version List=;
+  }
+  PROPERTIES
+  {
+    OnRun=BEGIN
+            {
+            MESSAGE('Company name %1',COMPANYNAME);
+            RunScript := CONFIRM('Do you want update Owner on Warehouse Entry ?');
+
+            IF RunScript THEN
+            BEGIN
+              WhseEntry.RESET;
+              WhseEntry.SETFILTER(WhseEntry.Owner,'');
+              IF WhseEntry.FIND('-') THEN
+                REPEAT
+                  CASE WhseEntry."Source Document" OF
+                    WhseEntry."Source Document"::"S. Order":
+                    BEGIN
+                      CASE WhseEntry."Reference Document" OF
+                        WhseEntry."Reference Document"::"Posted Shipment":
+                        BEGIN
+                          SalesShptLine.RESET;
+                          SalesShptLine.SETFILTER(SalesShptLine."Document No.",WhseEntry."Reference No.");
+                          SalesShptLine.SETRANGE(SalesShptLine."Line No.",WhseEntry."Source Line No.");
+                          IF SalesShptLine.FINDFIRST THEN
+                            WhseEntry.Owner := SalesShptLine.Owner;
+                        END;
+                        WhseEntry."Reference Document"::Pick:
+                        BEGIN
+                          WhseShptLine.RESET;
+                          WhseShptLine.SETFILTER(WhseShptLine."No.",WhseEntry."Whse. Document No.");
+                          WhseShptLine.SETRANGE(WhseShptLine."Line No.",WhseEntry."Whse. Document Line No.");
+                          IF WhseShptLine.FINDFIRST THEN
+                            WhseEntry.Owner := WhseShptLine.Ownership
+                          ELSE
+                          BEGIN
+                            SalesLine.RESET;
+                            SalesLine.SETRANGE(SalesLine."Document Type",SalesLine."Document Type"::Order);
+                            SalesLine.SETFILTER(SalesLine."Document No.",WhseEntry."Source No.");
+                            SalesLine.SETRANGE(SalesLine."Line No.",WhseEntry."Source Line No.");
+                            IF SalesLine.FINDFIRST THEN
+                              WhseEntry.Owner := SalesLine.Owner
+                            ELSE
+                            BEGIN
+                              SalesShptLine.RESET;
+                              SalesShptLine.SETFILTER(SalesShptLine."Order No.",WhseEntry."Source No.");
+                              SalesShptLine.SETRANGE(SalesShptLine."Line No.",WhseEntry."Source Line No.");
+                              SalesShptLine.SETFILTER(SalesShptLine.Quantity,'<>%1',0);
+                              IF SalesShptLine.FINDFIRST THEN
+                                WhseEntry.Owner := SalesShptLine.Owner;
+                            END;
+                          END;
+                        END;
+                      END;
+                    END;
+                    WhseEntry."Source Document"::"P. Order":
+                    BEGIN
+                      CASE WhseEntry."Reference Document" OF
+                        WhseEntry."Reference Document"::"Posted Rcpt.":
+                        BEGIN
+                          PurchRcptLine.RESET;
+                          PurchRcptLine.SETFILTER(PurchRcptLine."Document No.",WhseEntry."Reference No.");
+                          PurchRcptLine.SETRANGE(PurchRcptLine."Line No.",WhseEntry."Source Line No.");
+                          IF PurchRcptLine.FINDFIRST THEN
+                            WhseEntry.Owner := PurchRcptLine.Owner;
+                        END;
+                        WhseEntry."Reference Document"::"Put-away":
+                        BEGIN
+                          PostedWhseRcptLine.RESET;
+                          PostedWhseRcptLine.SETFILTER(PostedWhseRcptLine."No.",WhseEntry."Whse. Document No.");
+                          PostedWhseRcptLine.SETRANGE(PostedWhseRcptLine."Line No.",WhseEntry."Whse. Document Line No.");
+                          IF PostedWhseRcptLine.FINDFIRST THEN
+                          BEGIN
+                            PurchRcptLine.RESET;
+                            PurchRcptLine.SETFILTER(PurchRcptLine."Order No.",PostedWhseRcptLine."Source No.");
+                            PurchRcptLine.SETRANGE(PurchRcptLine."Line No.",PostedWhseRcptLine."Source Line No.");
+                            IF PurchRcptLine.FINDFIRST THEN
+                              WhseEntry.Owner := PurchRcptLine.Owner;
+                          END;
+                        END;
+                      END;
+                    END;
+                    WhseEntry."Source Document"::"S. Return Order":
+                    BEGIN
+                      CASE WhseEntry."Reference Document" OF
+                        WhseEntry."Reference Document"::"Posted Rtrn. Rcpt.":
+                        BEGIN
+                          ReturnRcptLine.RESET;
+                          ReturnRcptLine.SETFILTER(ReturnRcptLine."Document No.",WhseEntry."Reference No.");
+                          ReturnRcptLine.SETRANGE(ReturnRcptLine."Line No.",WhseEntry."Source Line No.");
+                          IF ReturnRcptLine.FINDFIRST THEN
+                            WhseEntry.Owner := ReturnRcptLine.Owner;
+                        END;
+                        WhseEntry."Reference Document"::"Put-away":
+                        BEGIN
+                          PostedWhseRcptLine.RESET;
+                          PostedWhseRcptLine.SETFILTER(PostedWhseRcptLine."No.",WhseEntry."Whse. Document No.");
+                          PostedWhseRcptLine.SETRANGE(PostedWhseRcptLine."Line No.",WhseEntry."Whse. Document Line No.");
+                          IF PostedWhseRcptLine.FINDFIRST THEN
+                          BEGIN
+                            ReturnRcptLine.RESET;
+                            ReturnRcptLine.SETFILTER(ReturnRcptLine."Return Order No.",PostedWhseRcptLine."Source No.");
+                            ReturnRcptLine.SETRANGE(ReturnRcptLine."Return Order Line No.",PostedWhseRcptLine."Source Line No.");
+                            IF ReturnRcptLine.FINDFIRST THEN
+                              WhseEntry.Owner := ReturnRcptLine.Owner;
+                          END;
+                        END;
+                      END;
+                    END;
+                    WhseEntry."Source Document"::"Outb. Transfer":
+                    BEGIN
+                      CASE WhseEntry."Reference Document" OF
+                        WhseEntry."Reference Document"::Pick:
+                        BEGIN
+                          TrnfShptLine.RESET;
+                          TrnfShptLine.SETFILTER(TrnfShptLine."Transfer Order No.",WhseEntry."Source No.");
+                          TrnfShptLine.SETRANGE(TrnfShptLine."Line No.",WhseEntry."Source Line No.");
+                          IF TrnfShptLine.FINDFIRST THEN
+                            WhseEntry.Owner := TrnfShptLine.Owner;
+                        END;
+                        WhseEntry."Reference Document"::"Posted T. Shipment":
+                        BEGIN
+                          TrnfShptLine.RESET;
+                          TrnfShptLine.SETFILTER(TrnfShptLine."Document No.",WhseEntry."Reference No.");
+                          TrnfShptLine.SETRANGE(TrnfShptLine."Line No.",WhseEntry."Source Line No.");
+                          IF TrnfShptLine.FINDFIRST THEN
+                            WhseEntry.Owner := TrnfShptLine.Owner;
+                        END;
+                      END;
+                    END;
+                    WhseEntry."Source Document"::"Inb. Transfer":
+                    BEGIN
+                      CASE WhseEntry."Reference Document" OF
+                        WhseEntry."Reference Document"::"Put-away":
+                        BEGIN
+                          TrnfRcptLine.RESET;
+                          TrnfRcptLine.SETFILTER(TrnfRcptLine."Transfer Order No.",WhseEntry."Source No.");
+                          TrnfRcptLine.SETRANGE(TrnfRcptLine."Line No.",WhseEntry."Source Line No.");
+                          IF TrnfRcptLine.FINDFIRST THEN
+                            WhseEntry.Owner := TrnfRcptLine.Owner;
+                        END;
+                        WhseEntry."Reference Document"::"Posted T. Shipment":
+                        BEGIN
+                          TrnfRcptLine.RESET;
+                          TrnfRcptLine.SETFILTER(TrnfRcptLine."Document No.",WhseEntry."Reference No.");
+                          TrnfRcptLine.SETRANGE(TrnfRcptLine."Line No.",WhseEntry."Source Line No.");
+                          IF TrnfRcptLine.FINDFIRST THEN
+                            WhseEntry.Owner := TrnfRcptLine.Owner;
+                        END;
+                      END;
+                    END;
+                  END;
+                  WhseEntry.MODIFY;
+                UNTIL WhseEntry.NEXT = 0;
+              MESSAGE('Done');
+            END
+            ELSE
+              MESSAGE('Canceled');
+            }
+          END;
+
+  }
+  CODE
+  {
+    VAR
+      WhseEntry@1004 : Record 7312;
+      WhseShptLine@1000 : Record 7321;
+      PostedWhseShptLine@1001 : Record 7323;
+      SalesShptLine@1002 : Record 111;
+      RegWhseActivity@1003 : Record 5773;
+      PurchRcptLine@1005 : Record 121;
+      PostedWhseRcptLine@1006 : Record 7319;
+      ReturnRcptLine@1007 : Record 6661;
+      TrnfRcptLine@1008 : Record 5747;
+      TrnfShptLine@1009 : Record 5745;
+      RunScript@1010 : Boolean;
+      SalesLine@1011 : Record 37;
+
+    BEGIN
+    END.
+  }
+}

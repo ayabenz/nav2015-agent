@@ -48,7 +48,7 @@ jobs:
           if not source.is_file() or source.suffix.lower() not in {".zip", ".txt"}:
               raise SystemExit(f"Invalid source file: {source}")
           with open(os.environ["GITHUB_OUTPUT"], "a") as f:
-              f.write(f"source={source.as_posix()}\\n")
+              f.write(f"source={source.as_posix()}\n")
           PY
 
       - name: Discover callers of Codeunit 5704

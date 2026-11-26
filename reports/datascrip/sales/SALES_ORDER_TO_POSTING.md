@@ -596,3 +596,9 @@ A broader caller and entry-point audit is now documented in [Stocktake Entry-Poi
 **Important implementation nuance:** moving the existing `BlockStocktakeSalesHeader(SalesHeader,FALSE)` call unchanged into Codeunit 80 would not fix invoice-only Sales Orders or Return Orders. The existing procedure filters those document types by Qty. to Ship or Return Qty. to Receive, respectively. A central posting gate must receive the actual Ship/Receive/Invoice intent and inspect Qty. to Invoice when applicable.
 
 The audit report contains the entry-point matrix, source evidence, purchase-path findings, recommended central enforcement design, regression matrix and scope limitations.
+
+The expanded audit also covers Sales Return Order / Credit Memo and warehouse shipment posting. It found that:
+- Return Order receive-only has the Codeunit 50081 gate, but credit-only routes via Codeunit 50082, Codeunit 82 and Report 6655 do not.
+- Credit Memo posting via Page 44 / Codeunits 81–82 and Report 298 does not show a stocktake gate.
+- Warehouse shipment creation is gated in Codeunit 5752, but the posting engine Codeunit 5763 and its wrappers Codeunits 5764/5765 do not call Codeunit 50107. Page 7335 Post Batch (Report 50223) also runs Codeunit 5763 without a gate.
+- Warehouse receipt page actions are gated in Page 5768, but Codeunit 5760 itself has no central stocktake check; direct/alternate callers need validation.

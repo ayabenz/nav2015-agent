@@ -11,12 +11,12 @@ on:
       output:
         description: "Repository directory for extracted objects"
         required: true
-        default: "reports/datascrip/ownership_transfer"
+        default: "reports/datascrip/p2b"
         type: string
       objects:
         description: "Space-separated selectors, e.g. Page:43 Page:7335 Page:7336 Page:5769 Report:296 Report:297 Codeunit:81 Codeunit:82 Codeunit:5760 Codeunit:5761 Codeunit:5762 Codeunit:5763 Codeunit:98"
         required: true
-        default: "Codeunit:50051"
+        default: "Page:50054 Page:50055 Page:50056 Page:50057 Page:50058 Page:50060 Page:50061 Page:50062 Page:50063 Page:50073 Page:50074 Page:50075 Page:50078 Page:50079 Table:50013 Table:50014 Table:50017 Table:50051 Table:50052 Table:50053 Table:50054 Table:50055 Table:50056 Table:50057 Codeunit:50100 Codeunit:50101 Codeunit:50102 Report:50137 Report:50355"
         type: string
   push:
     branches:
@@ -51,8 +51,8 @@ jobs:
         id: inputs
         env:
           SOURCE: ${{ inputs.source || 'data/input/datascrip/datascrip.zip' }}
-          OUTPUT: ${{ inputs.output || 'reports/datascrip/ownership_transfer' }}
-          OBJECTS: ${{ inputs.objects || 'Codeunit:50051' }}
+          OUTPUT: ${{ inputs.output || 'reports/datascrip/p2b' }}
+          OBJECTS: ${{ inputs.objects || 'Page:50054 Page:50055 Page:50056 Page:50057 Page:50058 Page:50060 Page:50061 Page:50062 Page:50063 Page:50073 Page:50074 Page:50075 Page:50078 Page:50079 Table:50013 Table:50014 Table:50017 Table:50051 Table:50052 Table:50053 Table:50054 Table:50055 Table:50056 Table:50057 Codeunit:50100 Codeunit:50101 Codeunit:50102 Report:50137 Report:50355' }}
         run: |
           python - <<'PY'
           import os, re

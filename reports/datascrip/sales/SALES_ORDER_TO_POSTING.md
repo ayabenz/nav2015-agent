@@ -492,3 +492,89 @@ python scripts/export_nav_objects.py --input data/input/datascrip/datascrip.zip 
 ```
 
 Then commit/push `reports/datascrip/stocktake` to branch `datascrip`. No new NAV export is required.
+
+
+
+## 18. Table 50063 and Page 50169 — Stocktake block configuration
+
+The two objects were extracted from the existing `data/input/datascrip/datascrip.zip` archive using the new GitHub Actions extraction runner. Source files:
+- `reports/datascrip/stocktake/Table_50063.txt`
+- `reports/datascrip/stocktake/Page_50169.txt`
+
+### 18.1 Table 50063 schema
+
+Table 50063 `Setting Blocked Stocktake` has these fields:
+
+| Field ID | Name | Type | Meaning / usage |
+|---:|---|---|---|
+| 1 | Item Category Code | Text250 | Item Category filter |
+| 2 | Product Group Code | Text250 | Product Group filter |
+| 3 | Item No. | Text250 | Item filter |
+| 4 | Location Code | Text250 | Location filter |
+| 5 | Start Date | DateTime | Inclusive block start |
+| 6 | End Date | DateTime | Inclusive block end |
+| 7 | Jenis Transaksi | Option: IN, OUT, ALL | Transaction direction |
+| 8 | Dept. Code | Code100 | Present in schema; not read by Codeunit 50107 |
+| 10 | ID | Integer, AutoIncrement | Primary key |
+| 11 | Block Type | Option: Item, Product Group, Item Category | Chooses which item-scope field is applied |
+| 12 | CreateUserID | Code30 | Audit field, non-editable |
+| 13 | CreateDateTime | DateTime | Audit field, non-editable |
+| 14 | Note | Text250 | Free-form note |
+
+The only key is clustered ID. The table has an OnInsert trigger that stamps USERID and CURRENTDATETIME into CreateUserID and CreateDateTime. There are no table-level OnModify, OnDelete, or field validation triggers in this export.
+
+**Important observations:**
+- The active time window is based on DateTime, not Date. Codeunit 50107 uses inclusive comparisons: Start Date <= CURRENTDATETIME and End Date >= CURRENTDATETIME.
+- The three item selectors and Location Code are Text250, not strongly typed Code fields with table relations. The maintenance page supplies lookups, but the table itself does not enforce referential integrity through field relations.
+- Dept. Code exists in the schema but the inspected BlockStocktake procedures do not filter by it. It currently has no demonstrated effect on blocking.
+- There is no source-level validation that Start Date <= End Date, that a selector is populated, or that overlapping rules are prohibited.
+- A record with no populated Item Category Code, Product Group Code or Item No. will not block in the inspected Codeunit 50107 logic, because each gate checks that at least one selector is non-empty before applying the Block Type filter.
+
+### 18.2 Page 50169 maintenance behavior
+
+Page 50169 `Block Stocktake` is a List page over Table 50063 with DelayedInsert=Yes.
+
+- Location Code lookup opens Location List and supports multi-value filter input by appending values with `|`.
+- Item No. lookup opens Item List and supports the same multi-value syntax.
+- Product Group Code and Item Category Code lookups likewise support pipe-separated selections.
+- Block Type controls which selector is enabled in the UI.
+- OnInsertRecord and OnModifyRecord clear the two selector fields that do not correspond to the selected Block Type:
+  - Item: clear Product Group and Item Category;
+  - Product Group: clear Item No. and Item Category;
+  - Item Category: clear Product Group and Item No.
+- The same clearing logic is performed on both insert and modify.
+- The page exposes Start Date, End Date, Block Type, item-scope selector, Jenis Transaksi and Note.
+- Dept. Code is explicitly Visible=FALSE.
+- Page code contains no additional business actions or procedures beyond these page triggers and lookup handlers.
+
+The page-level clearing reduces the chance of conflicting selectors when users maintain records through this page. It is not a database-level constraint: inserts/updates made outside Page 50169 can still populate multiple selectors or omit the intended selector.
+
+### 18.3 Cross-check against Codeunit 50107
+
+Combining Table 50063, Page 50169 and Codeunit 50107 establishes the full configuration model:
+
+1. A stocktake rule is active only during its inclusive Start Date–End Date DateTime window.
+2. It is scoped to one or more Location Code values using NAV filter syntax.
+3. Direction is IN, OUT or ALL.
+4. Block Type chooses one item selector: Item, Product Group or Item Category.
+5. The posting gate checks the transaction's location and item attributes against the active rule, then raises an error naming the blocked item.
+6. Dept. Code is stored but is not used by the inspected Codeunit 50107 procedures.
+
+**Potential configuration risks to validate operationally:**
+- Missing Start Date / End Date or reversed date ranges can create ineffective or unexpectedly active rules; no validation was found in these objects.
+- Blank item-scope values silently make the rule ineffective in the inspected posting gates.
+- Text250 filter fields accept NAV filter syntax. This enables multi-selection but also means manually entered filter expressions may have broader matching semantics than a literal code.
+- Overlapping active rules are allowed by the table/page source; the first matching rule causes an error, so the displayed item is the first encountered match, not necessarily the only applicable rule.
+- Dept. Code may mislead users because it is stored but hidden and not applied in the inspected blocking logic.
+
+### 18.4 Sales flow nuance
+
+In `BlockStocktakeSalesHeader`, the Qty. to Ship / Return Qty. to Receive filter is applied only for Sales Order and Return Order. Sales Invoice and Credit Memo use their document-type direction filter but do not apply those quantity filters in this procedure. Therefore all Item lines on those document types can be considered by the stocktake gate, subject to location and item-scope matching. This is a source observation; validate whether that behavior is intentional for the company's invoice/credit-memo workflow.
+
+### 18.5 Evidence and remaining checks
+
+- Table schema and OnInsert audit stamping: Table 50063, source object.
+- Selector enablement, multi-value lookups and field clearing: Page 50169, page triggers and controls.
+- Runtime block window, direction, location and item-scope filtering: Codeunit 50107 procedures `BlockStocktakeSalesHeader`, `BlockStocktakePurchaseHeader`, `BlockStocktakeTransferHeader` and `BlockStocktakeWarehouseReceiptHeader`.
+
+The earlier Section 17 extraction instruction is superseded: both source files are now present in the repository. Remaining work is to inspect all callers of Codeunit 50107 and determine whether every relevant posting/warehouse entry point invokes the appropriate gate.

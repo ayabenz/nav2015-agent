@@ -112,3 +112,17 @@ The analyzer should explain the outer predicate, its resolved table/field and Op
 Proposed CLI: `nav-intel --company datascrip conditions "Codeunit 80.PostItemJnlLine"`. Integrate the output into existing object and procedure details after the dedicated query is stable. Tests should cover nested IF/ELSE, ELSEIF, CASE, Option values, field comparisons, variable assignment/data-flow and unresolved expressions.
 
 See ROADMAP_TRACKER.md, Phase 2.5, for implementation tasks and exit criteria.
+
+## Initial implementation: control-flow structure extraction
+
+The first implementation adds `nav_ai.control_flow` and a `conditions` command. It extracts nested IF/ELSE and CASE/OF branches from a supplied NAV TXT export and preserves raw predicates, branch statements, source spans and parser diagnostics.
+
+Example:
+
+```powershell
+nav-intel --company datascrip conditions --source-file "data/input/datascrip/Codeunit 50081.txt" --object "Codeunit 50081" --procedure "CheckStocktake"
+```
+
+The source file must contain one resolvable object (or use `--object` to select one object from a multi-object export). Omit `--procedure` to analyze the object's CODE section. The command currently requires an explicit source file; automatic source-file resolution from the symbol index is a subsequent integration step.
+
+**Current limits:** predicates are retained as source text and are not yet semantically resolved to Table/Field IDs or OptionString values. Assignment/data-flow, cross-procedure value propagation, full C/AL grammar coverage and runtime evaluation are not implemented. Unsupported statements are preserved as opaque statement nodes. Treat diagnostics and source spans as part of the evidence.

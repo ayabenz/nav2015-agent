@@ -136,7 +136,7 @@ No missing stocktake gate was identified in the inspected regular Transfer Order
 ## 7. Scope limitations / next validation
 
 1. The Page 5740 source view is filtered to Transfer Type = Transfer. Codeunits 5704/5705 and 5706 also contain logic for Loan and Return Loan. Those variants should be audited separately, especially their owner fallback and item-application/tracking behavior.
-2. Confirm whether any custom report, job queue, integration, or external extension posts transfer journals through an alternate code path that bypasses Codeunit 5704/5705.
+2. A full static caller scan of the company export found no alternate transfer posting engine: all discovered callers of Codeunit 5704/5705 are listed in section 10. This conclusion is limited to the exported source archive; external integrations or code not included in the export remain outside the scan.
 3. Runtime-test an active Table 50063 rule for both OUT and IN, including a warehouse shipment/receipt created before the stocktake window becomes active.
 4. Validate ownership continuity for partial shipments/receipts, blank line Owner with header fallback, and transfer lines with item tracking.
 
@@ -160,3 +160,27 @@ Related decision: [Issue #3 — Stocktake validation is an intentional pre-posti
 ## 9. Related transfer variants
 
 The regular Transfer Type is not the only use of Table 5740. Loan and Return Loan use separate pages but share Codeunits 5704/5705. Their special ownership and original-item application behavior is documented in [LOAN_AND_RETURN_LOAN_POSTING_FLOW.md](LOAN_AND_RETURN_LOAN_POSTING_FLOW.md).
+
+
+## 10. Full posting-caller audit
+
+A repository runner scanned the complete company export (AllObjects.txt) for direct references to Codeunit 5704 and Codeunit 5705, including numeric Codeunit references and their symbolic names.
+
+| Target posting codeunit | Discovered callers | What they do |
+|---|---|---|
+| Codeunit 5704 — TransferOrder-Post Shipment | Codeunit 5706, Codeunit 5707 | UI Post and Post & Print wrappers |
+| Codeunit 5704 — TransferOrder-Post Shipment | Codeunit 5763 | Warehouse Shipment source type Transfer Line |
+| Codeunit 5704 — TransferOrder-Post Shipment | Codeunit 7324 | Warehouse Activity posting; Transfer Line branch when activity type is not Invt. Put-away |
+| Codeunit 5705 — TransferOrder-Post Receipt | Codeunit 5706, Codeunit 5707 | UI Post and Post & Print wrappers |
+| Codeunit 5705 — TransferOrder-Post Receipt | Codeunit 5760 | Warehouse Receipt source type Transfer Line |
+| Codeunit 5705 — TransferOrder-Post Receipt | Codeunit 7324 | Warehouse Activity posting; Transfer Line branch when activity type is Invt. Put-away |
+
+**Result:** the complete exported source contains four caller objects for each posting codeunit. Every discovered route delegates to Codeunit 5704 or 5705; no direct alternate Transfer Order posting route was found in the archive.
+
+**Warehouse Activity timing note:** Codeunit 7324 executes COMMIT before it calls Codeunit 5704/5705. The stocktake check still runs at the start of the transfer posting codeunit and before its inventory posting work, but the preceding warehouse-activity transaction may already have been committed. Validate the user-visible and persisted state when an active stocktake causes the downstream posting call to error.
+
+Caller manifests and exported caller objects:
+- [Codeunit 5704 callers](../transfer_post_callers/5704/callers_manifest.csv)
+- [Codeunit 5705 callers](../transfer_post_callers/5705/callers_manifest.csv)
+
+Static scan limitation: references created dynamically, external integrations, or source code omitted from the company export cannot be ruled out.

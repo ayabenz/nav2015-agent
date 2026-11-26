@@ -11,12 +11,12 @@ on:
       output:
         description: "Repository directory for extracted objects"
         required: true
-        default: "reports/datascrip/stocktake"
+        default: "reports/datascrip/stocktake_entrypoints"
         type: string
       objects:
-        description: "Space-separated selectors, e.g. Table:50063 Page:50169"
+        description: "Space-separated selectors, e.g. Page:43 Report:296 Codeunit:98"
         required: true
-        default: "Table:50063 Page:50169"
+        default: "Page:43 Report:296 Codeunit:98"
         type: string
   push:
     branches:
@@ -51,8 +51,8 @@ jobs:
         id: inputs
         env:
           SOURCE: ${{ inputs.source || 'data/input/datascrip/datascrip.zip' }}
-          OUTPUT: ${{ inputs.output || 'reports/datascrip/stocktake' }}
-          OBJECTS: ${{ inputs.objects || 'Table:50063 Page:50169' }}
+          OUTPUT: ${{ inputs.output || 'reports/datascrip/stocktake_entrypoints' }}
+          OBJECTS: ${{ inputs.objects || 'Page:43 Report:296 Codeunit:98' }}
         run: |
           python - <<'PY'
           import os, re
@@ -83,7 +83,7 @@ jobs:
         run: |
           python scripts/export_nav_callers.py \
             --input data/input/datascrip/datascrip.zip \
-            --output reports/datascrip/stocktake_callers
+            --output reports/datascrip/stocktake_entrypoints_callers
 
       - name: Commit extracted objects
         env:
@@ -91,7 +91,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -- "$OUTPUT" reports/datascrip/stocktake_callers
+          git add -- "$OUTPUT" reports/datascrip/stocktake_entrypoints_callers
           if git diff --cached --quiet; then
             echo "No extracted file changes to commit."
             exit 0

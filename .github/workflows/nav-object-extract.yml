@@ -11,12 +11,12 @@ on:
       output:
         description: "Repository directory for extracted objects"
         required: true
-        default: "reports/datascrip/transfer_tables"
+        default: "reports/datascrip/transfer_variants"
         type: string
       objects:
         description: "Space-separated selectors, e.g. Page:43 Page:7335 Page:7336 Page:5769 Report:296 Report:297 Codeunit:81 Codeunit:82 Codeunit:5760 Codeunit:5761 Codeunit:5762 Codeunit:5763 Codeunit:98"
         required: true
-        default: "Page:43 Page:7335 Page:7336 Page:5769 Report:296 Report:297 Codeunit:81 Codeunit:82 Codeunit:5760 Codeunit:5761 Codeunit:5762 Codeunit:5763 Codeunit:98"
+        default: "Page:50000 Page:50004 Page:50115 Page:50116 Page:5742 Report:5702 Codeunit:5708"
         type: string
   push:
     branches:

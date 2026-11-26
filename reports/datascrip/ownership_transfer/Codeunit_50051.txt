@@ -1,0 +1,1501 @@
+OBJECT Codeunit 50051 Custom WMS Management
+{
+  OBJECT-PROPERTIES
+  {
+    Date=12/23/16;
+    Time=14:53:19;
+    Modified=Yes;
+    Version List=DTS:D34,D52,T10,D12,T30,T37;
+  }
+  PROPERTIES
+  {
+    OnRun=BEGIN
+          END;
+
+  }
+  CODE
+  {
+    VAR
+      TxtErr001@1000 : TextConst 'ENU="ownership must be Yes in location code = ''%1'' or ''%2''"';
+      bxtBarcodeBinary@1001 : BigText;
+      txcErrorSize@1004 : TextConst 'ENU=Valid values for the barcode size are 1, 2, 3, 4 & 5';
+      txcErrorLength@1003 : TextConst 'ENU=Value to encode should be %1 digits.';
+      txcErrorNumber@1002 : TextConst 'ENU=Only numbers allowed.';
+      Text50000@1005 : TextConst 'ENU=Do you want to post the Ownership Transfer?';
+
+    PROCEDURE OpenJnl@1000000001(Cod_CurrentOwnBatchName@1000000001 : Code[10];VAR Rec_OwnTransfer@1000000000 : Record 50037);
+    BEGIN
+      //T30.01
+      Rec_OwnTransfer.FILTERGROUP := 2;
+      Rec_OwnTransfer.SETRANGE("Journal Batch Name", Cod_CurrentOwnBatchName);
+      Rec_OwnTransfer.FILTERGROUP := 0;
+      //T30.01
+    END;
+
+    PROCEDURE BatchSelection@1000000003(VAR Bol_JnlSelected@1000000000 : Boolean;VAR Cod_CurrentOwnBatchName@1000000003 : Code[10]);
+    VAR
+      Rec_OJB@1000000002 : Record 50036;
+      Rec_US@1000000001 : Record 91;
+    BEGIN
+      //T30.01
+      Bol_JnlSelected := TRUE;
+      Rec_US.GET(USERID);
+
+      Rec_OJB.RESET;
+      IF (Rec_US."Journal Template Filter" <> Rec_US."Journal Template Filter"::" ") THEN
+      BEGIN
+        Rec_OJB.FILTERGROUP := 2;
+        Rec_OJB.SETRANGE("Journal Template Filter" ,Rec_US."Journal Template Filter");
+        Rec_OJB.FILTERGROUP := 0;
+      END;
+
+      IF Rec_OJB.FINDFIRST THEN
+        Cod_CurrentOwnBatchName := Rec_OJB.Name
+      ELSE
+        Bol_JnlSelected := FALSE;
+      //T30.01
+    END;
+
+    PROCEDURE PostingOwnershipTransfer@1000000004(VAR Rec_OwnershipTransfer@1000000000 : Record 50037);
+    VAR
+      Rec_OLE@1005 : Record 50035;
+      Int_Tmp@1004 : Integer;
+      Rec_OJB@1003 : Record 50036;
+      Txt_DocNo@1002 : Text[30];
+      CU_NSM@1001 : Codeunit 396;
+      Bol_flagAnswer@1000 : Boolean;
+    BEGIN
+      //T30.01
+      IF NOT CekPostOwnTransfer(Rec_OwnershipTransfer) THEN  //SH1
+        EXIT;
+
+      IF NOT DIALOG.CONFIRM(Text50000, TRUE) THEN
+        EXIT;
+
+      Rec_OLE.LOCKTABLE;
+      Int_Tmp := 0;
+
+      Rec_OLE.RESET;
+      IF Rec_OLE.FINDLAST THEN
+        Int_Tmp := Rec_OLE."Entry No."
+      ELSE
+        Int_Tmp := 0;
+
+      Txt_DocNo := '';
+      WITH Rec_OwnershipTransfer DO BEGIN
+        FINDSET;
+        REPEAT
+          IF Quantity <> 0 THEN
+          BEGIN
+            Rec_OJB.GET("Journal Batch Name");
+            IF (Txt_DocNo <> "Document No.") THEN
+            BEGIN
+              Txt_DocNo := "Document No.";
+              IF (Rec_OJB."No. Series" <> '') THEN
+                TESTFIELD("Document No.", CU_NSM.GetNextNo(Rec_OJB."No. Series",0D,FALSE));
+            END;
+
+            IF "Transfer-from Owner" <> '' THEN BEGIN
+              //Insert Negative
+              Rec_OLE.INIT;
+              Int_Tmp += 1;
+              Rec_OLE."Entry No." := Int_Tmp;
+              Rec_OLE.Description := Description;
+              Rec_OLE."Posting Date" := "Posting Date";
+              Rec_OLE."Document No." := "Document No.";
+              Rec_OLE."Item No." := "Item No.";
+              Rec_OLE.Quantity := -"Quantity (Base)";
+              Rec_OLE.Owner := "Transfer-from Owner";
+              Rec_OLE."Location Code" := "Location Code";
+              //Rec_OLE."Entry Type" :=  Rec_OLE."Entry Type"::"Negative Adjmt.";
+              Rec_OLE."Entry Type" :=  Rec_OLE."Entry Type"::"Transfer Ownership";
+              Rec_OLE."Document Type" := Rec_OLE."Document Type"::"Transfer Ownership";  //T30.02
+              Rec_OLE."User ID" := USERID;  //T30.04
+              Rec_OLE."Original Doc No." := Txt_DocNo;
+              Rec_OLE."P2B Doc No." := Rec_OwnershipTransfer."P2B Document No.";
+              Rec_OLE.INSERT;
+            END ELSE BEGIN
+              //Insert Positive
+              Rec_OLE.INIT;
+              Int_Tmp += 1;
+              Rec_OLE."Entry No." := Int_Tmp;
+              Rec_OLE.Description := Description;
+              Rec_OLE."Posting Date" := "Posting Date";
+              Rec_OLE."Document No." := "Document No.";
+              Rec_OLE."Item No." := "Item No.";
+              Rec_OLE.Quantity := "Quantity (Base)";
+              Rec_OLE.Owner := "Transfer-to Owner";
+              Rec_OLE."Location Code" := "Location Code";
+              //Rec_OLE."Entry Type" :=  Rec_OLE."Entry Type"::"Positive Adjmt.";
+              Rec_OLE."Entry Type" :=  Rec_OLE."Entry Type"::"Transfer Ownership";
+              Rec_OLE."Document Type" := Rec_OLE."Document Type"::"Transfer Ownership";  //T30.02
+              Rec_OLE."User ID" := USERID;  //T30.04
+              Rec_OLE."Original Doc No." := Txt_DocNo;
+              Rec_OLE."P2B Doc No." := Rec_OwnershipTransfer."P2B Document No.";
+              Rec_OLE.INSERT;
+            END;
+            IF (Rec_OJB."No. Series" <> '') THEN
+              CU_NSM.SaveNoSeries;
+          END;
+        UNTIL NEXT = 0;
+        DELETEALL;
+      END;
+      //T30.01
+    END;
+
+    PROCEDURE CekPostOwnTransfer@1000000005(VAR Rec_OwnershipTransfer@1000000000 : Record 50037) : Boolean;
+    VAR
+      Rec_OLE@1003 : Record 50035;
+      Rec_Location@1000000001 : Record 14;
+      Rec_OwnershipTrans@1000 : Record 50037;
+      Dec_QtyFrom@1001 : Decimal;
+      Dec_QtyTo@1002 : Decimal;
+    BEGIN
+      //T30.01
+      WITH Rec_OwnershipTransfer DO BEGIN
+        FINDSET;
+        REPEAT
+          //TESTFIELD("Journal Batch Name");
+          //TESTFIELD("Line No.");
+          TESTFIELD("Item No.");
+          TESTFIELD("Posting Date");
+          TESTFIELD("Document No.");
+          //TESTFIELD(Description);
+          TESTFIELD("Location Code");
+
+          Rec_Location.GET("Location Code");
+          IF Rec_Location.Ownership THEN
+            Rec_Location.TESTFIELD(Ownership,TRUE);
+
+          TESTFIELD(Quantity);
+          //T30.02
+          TESTFIELD(Owner);
+          //TESTFIELD("Transfer-from Owner");
+          //TESTFIELD("Transfer-to Owner");
+          IF ("Transfer-from Owner" <> '') AND ("Transfer-to Owner" <> '') THEN
+            ERROR('Transfer-from Owner dan Transfer-to Owner hanya boleh diisi salah satu.');
+          //T30.02
+
+          IF "P2B Document No." <> '' THEN BEGIN
+            Rec_OLE.RESET;
+            Rec_OLE.SETCURRENTKEY("P2B Doc No.");
+            Rec_OLE.SETRANGE("P2B Doc No.", "P2B Document No.");
+            IF Rec_OLE.FINDFIRST THEN
+              ERROR('Ownership Ledger Entry dengan No. P2B %1 sudah pernah diposting.', "P2B Document No.");
+          END;
+
+          //Check Balance Before Posting
+          Dec_QtyFrom := 0;
+          Dec_QtyTo := 0;
+          IF "Transfer-from Owner" <> '' THEN
+            Dec_QtyFrom := Quantity
+          ELSE IF "Transfer-to Owner" <> '' THEN
+            Dec_QtyTo := Quantity;
+
+          Rec_OwnershipTrans.RESET;
+          Rec_OwnershipTrans.SETRANGE("Journal Batch Name", "Journal Batch Name");
+          Rec_OwnershipTrans.SETFILTER("Line No.", '<>%1', "Line No.");
+          Rec_OwnershipTrans.SETRANGE("Item No.", "Item No.");
+          Rec_OwnershipTrans.SETRANGE("Document No.", "Document No.");
+          Rec_OwnershipTrans.SETRANGE("Posting Date", "Posting Date");
+          Rec_OwnershipTrans.SETFILTER("Transfer-from Owner", '<>%1', '');
+          Rec_OwnershipTrans.SETRANGE("Transfer-to Owner", '');
+          IF Rec_OwnershipTrans.FINDSET THEN
+            REPEAT
+              Dec_QtyFrom := Dec_QtyFrom + Rec_OwnershipTrans.Quantity;
+            UNTIL Rec_OwnershipTrans.NEXT = 0;
+
+          Rec_OwnershipTrans.SETRANGE("Transfer-from Owner", '');
+          Rec_OwnershipTrans.SETFILTER("Transfer-to Owner", '<>%1', '');
+          IF Rec_OwnershipTrans.FINDSET THEN
+            REPEAT
+              Dec_QtyTo := Dec_QtyTo + Rec_OwnershipTrans.Quantity;
+            UNTIL Rec_OwnershipTrans.NEXT = 0;
+
+          IF Dec_QtyFrom <> Dec_QtyTo THEN
+            ERROR('Quantity must be Balance for Item %1 Doc No. %2 Posting Date %3',Rec_OwnershipTrans."Item No.",
+              Rec_OwnershipTrans."Document No.",Rec_OwnershipTrans."Posting Date");
+
+        UNTIL NEXT = 0;
+      END;
+      EXIT(TRUE);
+      //T30.01
+    END;
+
+    PROCEDURE ValidateOwnerField@1000000008(pLocationCode@1000000000 : Code[10]) : Boolean;
+    VAR
+      tLoc@1000000001 : Record 14;
+    BEGIN
+      // D34.02
+      IF pLocationCode = '' THEN
+        ERROR('Location Code cannot be blank');
+
+      tLoc.GET(pLocationCode);
+      tLoc.TESTFIELD(Ownership,TRUE);
+      EXIT(TRUE);
+      // D34.02
+    END;
+
+    PROCEDURE TempUpdateItemTracking@1000000021(tWRH@1000000005 : Record 7316);
+    VAR
+      tILE@1000000000 : Record 32;
+      tRE@1000000001 : Record 337;
+      tSL@1000000002 : Record 37;
+      tWRL@1000000003 : Record 7317;
+      tmpDate@1000000004 : Date;
+      tItem@1000000006 : Record 27;
+    BEGIN
+      // D34.02
+      //Default date untuk lot no. dan expiration date
+      tmpDate := 102612D;
+
+      tWRL.RESET;
+      tWRL.SETRANGE("No.", tWRH."No.");
+      IF tWRL.FIND('-') THEN
+      REPEAT
+        IF (tWRL."Source Type" = 37) THEN //SALES LINE - RETURN RECEIPT
+        BEGIN
+          tSL.RESET;
+          tSL.SETRANGE("Document Type", tWRL."Source Subtype");
+          tSL.SETRANGE("Document No.", tWRL."Source No.");
+          tSL.SETRANGE("Line No.", tWRL."Source Line No.");
+          IF tSL.FIND('-') THEN
+          BEGIN
+            IF (tSL."Appl.-from Item Entry" <> 0) THEN
+            BEGIN
+              tItem.GET(tWRL."Item No.");
+              IF (tItem."Item Tracking Code" <> '') THEN
+              BEGIN
+                tILE.RESET;
+                tILE.SETRANGE("Entry No.", tSL."Appl.-from Item Entry");
+                IF tILE.FIND('-') THEN
+                BEGIN
+                  IF (tILE."Lot No." = '') AND (tILE."Expiration Date" = 0D) THEN
+                  BEGIN
+                    tILE."Lot No." := FORMAT(tmpDate, 0, '<year4>/<month,2>/<day,2>');
+                    tILE."Expiration Date" := CALCDATE('+3Y',tmpDate);
+                    tILE.MODIFY;
+                  END;
+
+                  tRE.RESET;
+                  tRE.SETRANGE("Source Type", tWRL."Source Type");
+                  tRE.SETRANGE("Source Subtype", tWRL."Source Subtype");
+                  tRE.SETRANGE("Source ID", tWRL."Source No.");
+                  tRE.SETRANGE("Source Ref. No.", tWRL."Source Line No.");
+                  IF tRE.FIND('-') THEN
+                  BEGIN
+                    tRE."Lot No." := tILE."Lot No.";
+                    tRE."Expiration Date" := tILE."Expiration Date";
+                    tRE."Appl.-from Item Entry" := tSL."Appl.-from Item Entry";
+                    tRE.MODIFY;
+                  END;
+                END;
+              END;
+            END;
+          END;
+        END;
+      UNTIL tWRL.NEXT = 0;
+      // D34.02
+    END;
+
+    PROCEDURE GetLocFilterFromWhseEmployee@1000000018(CurrUserID@1000000003 : Code[50]) : Text[1024];
+    VAR
+      WhsEmply@1000000000 : Record 7301;
+      tempInteger@1000000001 : Integer;
+      tempText@1000000002 : Text[1024];
+    BEGIN
+      //T10
+      tempInteger := 0;
+      tempText := '';
+
+      WhsEmply.RESET;
+      WhsEmply.SETRANGE("User ID", CurrUserID);
+      IF WhsEmply.FINDSET(FALSE,FALSE) THEN
+      REPEAT
+        IF WhsEmply."Location Code" <> '' THEN
+        BEGIN
+          IF tempInteger > 0 THEN tempText += '|';
+          tempText += FORMAT(WhsEmply."Location Code");
+          tempInteger += 1;
+        END;
+      UNTIL WhsEmply.NEXT = 0;
+
+      EXIT(tempText);
+      //End T10
+    END;
+
+    PROCEDURE CekQuantity@1000000013(pTransType@1000000988 : ',Sales Line,Purchase Line,Transfer Line,Item Journal Line,P2B Line,Ownership Transfer';pItemNo@1000000000 : Code[20];pLocationCode@1000000990 : Code[10];pOwner@1000000007 : Code[10];pQuantity@1000000010 : Decimal;pUoMCode@1000000011 : Code[10];pxQuantity@1000000012 : Decimal;pxUoMCode@1000000013 : Code[10];VAR vQtyAvailable@1000000014 : Decimal;SkipBlankOwner@1000000971 : Boolean) Result@1000000006 : Boolean;
+    VAR
+      tItem@1000000022 : Record 27;
+      tSL@1000000999 : Record 37;
+      tPL@1000000996 : Record 39;
+      tTL@1000000995 : Record 5741;
+      tIJL@1000000994 : Record 83;
+      tIUoM@1000000992 : Record 5404;
+      Q_ItemLedgerEntry@1000000002 : Decimal;
+      Q_OwnershipLedgerEntry@1000000029 : Decimal;
+      Q_SalesLine@1000000028 : Decimal;
+      Q_PurchaseLine@1000000023 : Decimal;
+      Q_TransferLine@1000000024 : Decimal;
+      Q_ItemJournalLine@1000000025 : Decimal;
+      Q_Base@1000000026 : Decimal;
+      Q_xBase@1000000027 : Decimal;
+      tP2BH@1000000005 : Record 50013;
+      tP2BL@1000000004 : Record 50014;
+      cuP2BMgt@1000000001 : Codeunit 50100;
+      Q_P2BLine@1000000991 : Decimal;
+      IsLocOwnership@1000000003 : Boolean;
+      tLocation@1000000989 : Record 14;
+      Q_OwnershipTransfer@1000000980 : Decimal;
+    BEGIN
+      // D34.02
+      { DVZ - Cek Quantity Available }
+      { ********************************************** }
+
+      {
+      Option pTransType :
+      -----------------------
+      0. Blank
+      1. Sales Line
+      2. Purchase Line
+      3. Transfer Line
+      4. Item Journal Line ( tidak aktif )
+      5. P2B Line
+      6. Ownership Transfer
+      -----------------------
+      }
+      { ********************************************** }
+
+      Result := FALSE;
+
+      //T30.03 tLocation.GET(pLocationCode);
+      IF tLocation.GET(pLocationCode) THEN; //T30.03
+      IsLocOwnership := tLocation.Ownership;
+
+      IF IsLocOwnership
+        AND (pOwner = '' )
+        AND NOT SkipBlankOwner
+      THEN
+        ERROR('Owner cannot be blank');
+
+      IF NOT IsLocOwnership THEN
+      BEGIN
+        { I. Item ledger Entry - Quantity }
+
+        tItem.RESET;
+        tItem.GET(pItemNo);
+        tItem.SETRANGE("Location Filter", pLocationCode);
+        tItem.CALCFIELDS(
+          Inventory
+          ,"Qty. on Sales Order"
+          ,"Trans. Ord. Shipment (Qty.)"
+          ,"Qty. On Purchase Return"
+          ,"Qty P2B Line (Item Journal)"
+          ,"Qty P2B Line (Other)"
+          ,"Qty. On Ownshp. Transfer"
+          );
+
+        Q_ItemLedgerEntry := tItem.Inventory;
+      END
+      ELSE
+      BEGIN
+        { II. Ownership ledger Entry - Quantity }
+
+        tItem.RESET;
+        tItem.GET(pItemNo);
+        tItem.SETRANGE("Location Filter", pLocationCode);
+        IF NOT SkipBlankOwner THEN
+          tItem.SETRANGE("Owner Filter", pOwner);
+
+        tItem.CALCFIELDS(
+          "Qty. On Ownshp. Ledg. Entry"
+          ,"Qty. on Sales Order"
+          ,"Trans. Ord. Shipment (Qty.)"
+          ,"Qty. On Purchase Return"
+          ,"Qty P2B Line (Item Journal)"
+          ,"Qty P2B Line (Other)"
+          ,"Qty. On Ownshp. Transfer"
+          );
+
+        Q_OwnershipLedgerEntry := tItem."Qty. On Ownshp. Ledg. Entry";
+      END;
+
+      { III. Sales Line - Quantity (Order) }
+      Q_SalesLine := tItem."Qty. on Sales Order";
+      IF (pTransType = 1) THEN
+          Q_SalesLine := Q_SalesLine - pxQuantity;
+
+
+      { IV. Purchase Line - Quantity (Return Order) }
+      Q_PurchaseLine := tItem."Qty. On Purchase Return";
+      IF (pTransType = 2) THEN
+          Q_PurchaseLine := Q_PurchaseLine - pxQuantity;
+
+
+      { ** Service Invoice Line - Quantity (dikosongkan) }
+      { ** Loaner - Quantity (dikosongkan) }
+
+      { V. Transfer Line - Quantity }
+      Q_TransferLine := tItem."Trans. Ord. Shipment (Qty.)";
+      IF (pTransType = 3) THEN
+          Q_TransferLine := Q_TransferLine - pxQuantity;
+
+
+      { VI. Item Journal Line - Quantity }
+      tIJL.RESET;
+      tIJL.SETCURRENTKEY("Journal Template Name","Entry Type","Item No.","Location Code",Owner,"Quantity (Base)");
+      tIJL.SETFILTER("Journal Template Name",'<>%1&<>%2', 'PHYS. INVE', 'REVALUATIO');
+      tIJL.SETRANGE("Entry Type", tIJL."Entry Type"::"Negative Adjmt.");
+      tIJL.SETRANGE("Item No.", pItemNo);
+      tIJL.SETRANGE("Location Code", pLocationCode);
+      IF IsLocOwnership THEN
+        IF NOT SkipBlankOwner THEN
+          tIJL.SETRANGE(Owner, pOwner);
+
+      { Diff. with Item Availability, Here }
+      //tIJL.SETFILTER("Journal Template Name",'<>%1','PHYS. INVE');
+      //tIJL.SETFILTER("Journal Template Name",'<>%1&<>%2', 'PHYS. INVE', 'REVALUATIO');
+
+      tIJL.SETFILTER("Quantity (Base)",'>0');
+      { ---------- }
+      //IF tIJL.FIND('-') THEN
+      IF tIJL.FINDFIRST THEN
+      BEGIN
+        IF tIJL.CALCSUMS("Quantity (Base)") THEN
+        Q_ItemJournalLine := tIJL."Quantity (Base)";
+        //Q_ItemJournalLine := -tIJL."Quantity (Base)" - pxQuantity;
+      END;
+      IF (pTransType = 4) THEN
+        //IF Q_ItemJournalLine = 0 THEN
+          //Q_ItemJournalLine := pxQuantity
+        //ELSE
+        Q_ItemJournalLine := Q_ItemJournalLine - pxQuantity;
+
+
+      { VIIa. P2B - Quantity }
+      Q_P2BLine := tItem."Qty P2B Line (Item Journal)" + tItem."Qty P2B Line (Other)";
+      IF (pTransType = 5) THEN
+        //IF Q_P2BLine = 0 THEN
+          //Q_P2BLine := pxQuantity
+        //ELSE
+        Q_P2BLine := Q_P2BLine - pxQuantity;
+
+
+      { VIII. Rec - UoM - Quantity Base }
+      tIUoM.RESET;
+      tIUoM.SETRANGE("Item No.", pItemNo);
+      tIUoM.SETRANGE(Code, pUoMCode);
+      IF tIUoM.FINDFIRST THEN
+        Q_Base := (pQuantity * tIUoM."Qty. per Unit of Measure")
+      ELSE
+        ERROR('Unit of Measure Code invalid ...');
+
+      { IX. xRec - UoM - Quantity Base }
+      tIUoM.RESET;
+      tIUoM.SETRANGE("Item No.", pItemNo);
+      tIUoM.SETRANGE(Code, pxUoMCode);
+      IF tIUoM.FINDFIRST THEN
+        Q_xBase := (pxQuantity * tIUoM."Qty. per Unit of Measure")
+      ELSE
+        ERROR('Unit of Measure Code invalid ...');
+
+
+      { X. Ownership Transfer }
+      //Q_OwnershipTransfer := (tItem."Qty. On Ownshp. Transfer" * (-1));
+      Q_OwnershipTransfer := tItem."Qty. On Ownshp. Transfer";
+      IF (pTransType = 6) THEN
+        //IF Q_OwnershipTransfer = 0 THEN
+          //Q_OwnershipTransfer := pxQuantity
+        //ELSE
+        Q_OwnershipTransfer := Q_OwnershipTransfer - pxQuantity;
+        //Q_OwnershipTransfer := Q_OwnershipTransfer - pQuantity;
+
+
+      { Formula }
+      { ********************************************** }
+
+      IF ((Q_Base - Q_xBase) <= 0) THEN
+        {
+        Result := ((Q_ItemLedgerEntry
+                + Q_OwnershipLedgerEntry
+                - Q_SalesLine
+                - Q_PurchaseLine
+                - Q_TransferLine
+                - Q_ItemJournalLine
+                - Q_P2BLine
+                - Q_OwnershipTransfer
+                - Q_Base + Q_xBase) >= 0)
+        }
+        Result := TRUE { Qty lebih kecil or sama dengan qty lama }
+      ELSE
+        IF ((Q_Base - Q_xBase) > 0)
+          AND ((Q_ItemLedgerEntry
+            + Q_OwnershipLedgerEntry
+            - Q_SalesLine
+            - Q_PurchaseLine
+            - Q_TransferLine
+            - Q_ItemJournalLine
+            - Q_P2BLine
+            - Q_OwnershipTransfer
+            - Q_Base) >= 0)
+        THEN
+          Result := TRUE { Qty lebih besar dari qty lama dan stok cukup }
+        ELSE
+          IF ((Q_Base - Q_xBase) > 0)
+            AND ((Q_ItemLedgerEntry
+              + Q_OwnershipLedgerEntry
+              - Q_SalesLine
+              - Q_PurchaseLine
+              - Q_TransferLine
+              - Q_ItemJournalLine
+              - Q_P2BLine
+              - Q_OwnershipTransfer
+              - Q_Base) < 0)
+          THEN
+            Result := FALSE; { Qty lebih besar dari qty lama dan stok tidak cukup }
+
+      vQtyAvailable := Q_ItemLedgerEntry
+        + Q_OwnershipLedgerEntry
+        - Q_SalesLine
+        - Q_PurchaseLine
+        - ABS(Q_TransferLine)
+        - Q_ItemJournalLine
+        - Q_P2BLine
+        - Q_OwnershipTransfer;
+
+      //T37.01
+      // jika "Allow Negative Availability" di thick, maka qty in diperhitungkan
+      IF (tItem."Allow Negative Availability") AND (pTransType = 1) THEN BEGIN
+        //T37.02 tItem.CALCFIELDS("Qty. on Purch. Order","FP Order Receipt (Qty.)","Rel. Order Receipt (Qty.)",
+        //T37.02           "Qty. in Transit","Trans. Ord. Receipt (Qty.)","Qty. on Sales Return",
+        //T37.02           "Qty. on Assembly Order","Qty. On Ownshp. Transfer");
+
+        //T37.02 vQtyAvailable += tItem."Qty. on Purch. Order"+tItem."FP Order Receipt (Qty.)"+tItem."Rel. Order Receipt (Qty.)"+
+        //T37.02           tItem."Qty. in Transit"+tItem."Trans. Ord. Receipt (Qty.)"+tItem."Qty. on Sales Return"+
+        //T37.02           tItem."Qty. on Assembly Order"+tItem."Qty. On Ownshp. Transfer";
+
+        tItem.CALCFIELDS("Qty. on Purch. Order"); //T37.02
+        vQtyAvailable += tItem."Qty. on Purch. Order" - pQuantity; //T37.02
+
+        IF vQtyAvailable >= 0 THEN
+          Result := TRUE
+        ELSE
+          Result := FALSE;
+      END;
+      //T37.01
+
+      // D34.02
+    END;
+
+    PROCEDURE LookUpOwnerGlobal@1000000009(pLocationCode@1000000002 : Code[10];VAR pOwner@1000000003 : Code[10]);
+    VAR
+      tLoc@1000000000 : Record 14;
+      tDV@1000000001 : Record 349;
+    BEGIN
+      // D34.02
+      ValidateOwnerField(pLocationCode);
+
+      tDV.SETRANGE("Dimension Code",'OWNERSHIP');
+      IF PAGE.RUNMODAL(0,tDV) = ACTION::LookupOK THEN
+        pOwner := tDV.Code;
+      // D34.02
+    END;
+
+    PROCEDURE ValidateOwnerTransferField@1000000010(pFromLocation@1000000000 : Code[10];pToLocation@1000000001 : Code[10]);
+    VAR
+      tLoc@1000000002 : ARRAY [2] OF Record 14;
+    BEGIN
+      // D52.01
+      tLoc[1].GET(pFromLocation);
+      tLoc[2].GET(pToLocation);
+
+      IF NOT (tLoc[1].Ownership OR tLoc[2].Ownership) THEN
+        ERROR(FORMAT(TxtErr001),pFromLocation, pToLocation);
+      // END D52.01
+    END;
+
+    PROCEDURE AddWmsLog@1000000022(Tipe@1000000000 : Text[50];DocNo@1000000001 : Text[50];Alasan@1000000002 : Text[150];ReffNo1@1000000005 : Text[50];ReffNo2@1000000006 : Text[30];RegDateTime@1000000007 : DateTime);
+    VAR
+      AllPurpTbl@1000000003 : Record 50023;
+      IdxNo@1000000004 : Integer;
+    BEGIN
+      //T10.01
+      //LOG-DEL-PICK, LOG-DEL-SHIP, LOG-REOPEN-PB, LOG-REOPEN-PL
+
+      IdxNo := 0;
+
+      AllPurpTbl.RESET;
+      AllPurpTbl.SETRANGE(Table_Type, Tipe);
+      AllPurpTbl.SETRANGE(Text50_1, DocNo);
+      IF AllPurpTbl.FINDLAST THEN
+        IdxNo := AllPurpTbl.SeqNo;
+
+      IdxNo += 10;
+
+      AllPurpTbl.RESET;
+      AllPurpTbl.INIT;
+      AllPurpTbl.Table_Type := Tipe;
+      AllPurpTbl.SeqNo := IdxNo;
+      AllPurpTbl.Text50_1 := DocNo;
+      AllPurpTbl.Text50_2 := ReffNo1;
+      AllPurpTbl.Text50_3 := ReffNo2;
+      AllPurpTbl.Text150_1 := Alasan;
+      AllPurpTbl.Code20_1 := USERID;
+      AllPurpTbl.DateTime_1 := CURRENTDATETIME;
+      //AllPurpTbl.Time_1 := TIME;
+      AllPurpTbl.DateTime_2 := RegDateTime;
+      //AllPurpTbl.Time_2 := RegTime;
+      AllPurpTbl.INSERT;
+      //End T10.01
+    END;
+
+    PROCEDURE EncodeCode39@1000000015(pcodBarcode@1000000001 : Code[1024];pintSize@1000000011 : Integer;pblnCheckDigit@1000000004 : Boolean;pblnVertical@1000000012 : Boolean;VAR precTmpTempBlob@1000000000 : TEMPORARY Record 99008535);
+    VAR
+      lintCount1@1000000005 : Integer;
+      lintSum@1000000006 : Integer;
+      lintConvInt@1000000007 : Integer;
+      lintCheckDigit@1000000008 : Integer;
+      lintLines@1000000009 : Integer;
+      lintBars@1000000002 : Integer;
+      loutBmpHeader@1000000010 : OutStream;
+      lrecTmpAPT@1000000013 : TEMPORARY Record 50023;
+    BEGIN
+      CLEAR(bxtBarcodeBinary);
+      CLEAR(precTmpTempBlob);
+      CLEAR(lrecTmpAPT);
+      lrecTmpAPT.DELETEALL;
+
+      lintSum := 0;
+
+      IF NOT (pintSize IN [1,2,3,4,5]) THEN
+        ERROR(txcErrorSize);
+
+      InitCode39(lrecTmpAPT);
+
+      //CALCULATE CHECK DIGIT
+      IF pblnCheckDigit THEN BEGIN
+        FOR lintCount1 := 1 TO STRLEN(pcodBarcode) DO
+        BEGIN
+          lrecTmpAPT.RESET;
+          lrecTmpAPT.SETRANGE(Code10_1, FORMAT(pcodBarcode[lintCount1]));
+          lrecTmpAPT.FIND('-');
+
+          EVALUATE(lintConvInt, lrecTmpAPT.Code3_1);
+          lintSum += lintConvInt;
+        END;
+        lintCheckDigit := lintSum MOD 43;
+        pcodBarcode := pcodBarcode + FORMAT(lintCheckDigit);
+      END;
+
+      //ADD START CHARACTER
+
+      lrecTmpAPT.RESET;
+      lrecTmpAPT.SETRANGE(Code10_1, '*');
+      lrecTmpAPT.FIND('-');
+
+      bxtBarcodeBinary.ADDTEXT(FORMAT(lrecTmpAPT.Code20_1));
+
+      //ADD SEPERATOR
+      bxtBarcodeBinary.ADDTEXT('0');
+
+      FOR lintCount1 := 1 TO STRLEN(pcodBarcode) DO BEGIN
+        //ADD SEPERATOR
+        bxtBarcodeBinary.ADDTEXT('0');
+
+        lrecTmpAPT.RESET;
+        //lrecTmpAPT.SETRANGE(Code10_1, FORMAT(pcodBarcode[lintCount1]));
+        lrecTmpAPT.SETFILTER(Code10_1, '=%1', FORMAT(pcodBarcode[lintCount1]));
+        lrecTmpAPT.FIND('-');
+
+        bxtBarcodeBinary.ADDTEXT(FORMAT(lrecTmpAPT.Code20_1));
+      END;
+
+      //ADD SEPERATOR
+      bxtBarcodeBinary.ADDTEXT('0');
+
+      //ADD STOP CHARACTER
+      lrecTmpAPT.RESET;
+      lrecTmpAPT.SETRANGE(Code10_1, '*');
+      lrecTmpAPT.FIND('-');
+
+      bxtBarcodeBinary.ADDTEXT(FORMAT(lrecTmpAPT.Code20_1));
+
+      lintBars  := bxtBarcodeBinary.LENGTH;
+      lintLines := ROUND(lintBars * 0.25, 1, '>');
+
+      precTmpTempBlob.Blob.CREATEOUTSTREAM(loutBmpHeader);
+
+      //WRITING HEADER
+      CreateBMPHeader(loutBmpHeader,lintBars,lintLines,pintSize,pblnVertical);
+
+      //WRITE BARCODE DETAIL
+      CreateBarcodeDetail(lintLines,lintBars,pintSize,pblnVertical,loutBmpHeader);
+    END;
+
+    LOCAL PROCEDURE CreateBMPHeader@1140005(VAR poutBmpHeader@1000000000 : OutStream;pintCols@1000000001 : Integer;pintRows@1000000002 : Integer;pintSize@1000000004 : Integer;pblnVertical@1000000006 : Boolean);
+    VAR
+      charInf@1000000003 : Char;
+      lintResolution@1000000005 : Integer;
+      lintWidth@1000000007 : Integer;
+      lintHeight@1000000008 : Integer;
+    BEGIN
+
+      lintResolution := ROUND(2835 / pintSize,1,'=');
+
+      IF pblnVertical THEN BEGIN
+        lintWidth  := pintRows * pintSize;
+        lintHeight := pintCols;
+      END ELSE BEGIN
+        lintWidth  := pintCols * pintSize;
+        lintHeight := pintRows * pintSize;
+      END;
+
+      charInf := 'B' ;
+      poutBmpHeader.WRITE(charInf, 1);
+      charInf := 'M' ;
+      poutBmpHeader.WRITE(charInf, 1);
+      poutBmpHeader.WRITE(54 + pintRows * pintCols * 3, 4); //SIZE BMP
+      poutBmpHeader.WRITE(0, 4); //APPLICATION SPECIFIC
+      poutBmpHeader.WRITE(54, 4); //OFFSET DATA PIXELS
+      poutBmpHeader.WRITE(40, 4); //NUMBER OF BYTES IN HEADER FROM THIS POINT
+      poutBmpHeader.WRITE(lintWidth, 4); //WIDTH PIXEL
+      poutBmpHeader.WRITE(lintHeight, 4); //HEIGHT PIXEL
+      poutBmpHeader.WRITE(65536 * 24 + 1, 4); //COLOR DEPTH
+      poutBmpHeader.WRITE(0, 4); //NO. OF COLOR PANES & BITS PER PIXEL
+      poutBmpHeader.WRITE(0, 4); //SIZE BMP DATA
+      poutBmpHeader.WRITE(lintResolution, 4); //HORIZONTAL RESOLUTION
+      poutBmpHeader.WRITE(lintResolution, 4); //VERTICAL RESOLUTION
+      poutBmpHeader.WRITE(0, 4); //NO. OF COLORS IN PALETTE
+      poutBmpHeader.WRITE(0, 4); //IMPORTANT COLORS
+    END;
+
+    LOCAL PROCEDURE CreateBarcodeDetail@1000000014(pintLines@1000000005 : Integer;pintBars@1000000006 : Integer;pintSize@1000000009 : Integer;pblnVertical@1000000010 : Boolean;VAR poutBmpHeader@1000000007 : OutStream);
+    VAR
+      lintLineLoop@1000000004 : Integer;
+      lintBarLoop@1000000003 : Integer;
+      ltxtByte@1000000002 : Text[1];
+      lchar@1000000001 : Char;
+      lintChainFiller@1000000000 : Integer;
+      lintSize@1000000008 : Integer;
+      lintCount@1000000011 : Integer;
+    BEGIN
+      IF pblnVertical THEN BEGIN
+        FOR lintBarLoop := 1 TO (bxtBarcodeBinary.LENGTH) DO BEGIN
+
+          FOR lintLineLoop := 1 TO (pintLines * pintSize) DO BEGIN
+            bxtBarcodeBinary.GETSUBTEXT(ltxtByte,lintBarLoop,1);
+
+            IF ltxtByte = '1' THEN
+              lchar := 0
+            ELSE
+              lchar := 255;
+
+            poutBmpHeader.WRITE(lchar,1);
+            poutBmpHeader.WRITE(lchar,1);
+            poutBmpHeader.WRITE(lchar,1);
+          END;
+
+          FOR lintChainFiller := 1 TO (lintLineLoop MOD 4) DO BEGIN
+            //Adding 0 bytes if needed - line end
+            lchar := 0;
+            poutBmpHeader.WRITE(lchar,1);
+          END;
+        END;
+      END ELSE BEGIN
+        FOR lintLineLoop := 1 TO pintLines * pintSize DO BEGIN
+          FOR lintBarLoop := 1 TO bxtBarcodeBinary.LENGTH DO BEGIN
+            bxtBarcodeBinary.GETSUBTEXT(ltxtByte,lintBarLoop,1);
+
+            IF ltxtByte = '1' THEN
+              lchar := 0
+            ELSE
+              lchar := 255;
+
+            FOR lintSize := 1 TO pintSize DO BEGIN
+              //Putting Pixel: Black or White
+              poutBmpHeader.WRITE(lchar,1);
+              poutBmpHeader.WRITE(lchar,1);
+              poutBmpHeader.WRITE(lchar,1);
+            END
+          END;
+
+          FOR lintChainFiller := 1 TO ((lintBarLoop* pintSize) MOD 4) DO BEGIN
+            //Adding 0 bytes if needed - line end
+            lchar := 0;
+            poutBmpHeader.WRITE(lchar,1);
+          END;
+        END;
+      END
+    END;
+
+    LOCAL PROCEDURE InitCode39@1000000006(VAR _tmpAPT@1000000000 : TEMPORARY Record 50023);
+    BEGIN
+      //THIS IS NOT THE EXTENDED CODE 39 ENCODING TABLE!
+
+      _tmpAPT.INIT;
+      _tmpAPT.Table_Type  := 'X';
+      _tmpAPT.SeqNo       := 1;
+      _tmpAPT.Text50_1    := 'X';
+      _tmpAPT.Code10_1    := '0';
+      _tmpAPT.Code3_1    := '0';
+      _tmpAPT.Code20_1 := '101001101101';
+      _tmpAPT.INSERT;
+
+      _tmpAPT.INIT;
+      _tmpAPT.Table_Type  := 'X';
+      _tmpAPT.SeqNo       := 2;
+      _tmpAPT.Text50_1    := 'X';
+      _tmpAPT.Code10_1    := '1';
+      _tmpAPT.Code3_1    := '1';
+      _tmpAPT.Code20_1 := '110100101011';
+      _tmpAPT.INSERT;
+
+      _tmpAPT.INIT;
+      _tmpAPT.Table_Type  := 'X';
+      _tmpAPT.SeqNo       := 3;
+      _tmpAPT.Text50_1    := 'X';
+      _tmpAPT.Code10_1    := '2';
+      _tmpAPT.Code3_1    := '2';
+      _tmpAPT.Code20_1 := '101100101011';
+      _tmpAPT.INSERT;
+
+      _tmpAPT.INIT;
+      _tmpAPT.Table_Type  := 'X';
+      _tmpAPT.SeqNo       := 4;
+      _tmpAPT.Text50_1    := 'X';
+      _tmpAPT.Code10_1    := '3';
+      _tmpAPT.Code3_1    := '3';
+      _tmpAPT.Code20_1 := '110110010101';
+      _tmpAPT.INSERT;
+
+      _tmpAPT.INIT;
+      _tmpAPT.Table_Type  := 'X';
+      _tmpAPT.SeqNo       := 5;
+      _tmpAPT.Text50_1    := 'X';
+      _tmpAPT.Code10_1    := '4';
+      _tmpAPT.Code3_1    := '4';
+      _tmpAPT.Code20_1 := '101001101011';
+      _tmpAPT.INSERT;
+
+      _tmpAPT.INIT;
+      _tmpAPT.Table_Type  := 'X';
+      _tmpAPT.SeqNo       := 6;
+      _tmpAPT.Text50_1    := 'X';
+      _tmpAPT.Code10_1    := '5';
+      _tmpAPT.Code3_1    := '5';
+      _tmpAPT.Code20_1 := '110100110101';
+      _tmpAPT.INSERT;
+
+      _tmpAPT.Table_Type  := 'X';
+      _tmpAPT.SeqNo       := 7;
+      _tmpAPT.Text50_1    := 'X';
+      _tmpAPT.INIT;
+      _tmpAPT.Code10_1    := '6';
+      _tmpAPT.Code3_1    := '6';
+      _tmpAPT.Code20_1 := '101100110101';
+      _tmpAPT.INSERT;
+
+      _tmpAPT.INIT;
+      _tmpAPT.Table_Type  := 'X';
+      _tmpAPT.SeqNo       := 8;
+      _tmpAPT.Text50_1    := 'X';
+      _tmpAPT.Code10_1    := '7';
+      _tmpAPT.Code3_1    := '7';
+      _tmpAPT.Code20_1 := '101001011011';
+      _tmpAPT.INSERT;
+
+      _tmpAPT.INIT;
+      _tmpAPT.Table_Type  := 'X';
+      _tmpAPT.SeqNo       := 9;
+      _tmpAPT.Text50_1    := 'X';
+      _tmpAPT.Code10_1    := '8';
+      _tmpAPT.Code3_1    := '8';
+      _tmpAPT.Code20_1 := '110100101101';
+      _tmpAPT.INSERT;
+
+      _tmpAPT.INIT;
+      _tmpAPT.Table_Type  := 'X';
+      _tmpAPT.SeqNo       := 10;
+      _tmpAPT.Text50_1    := 'X';
+      _tmpAPT.Code10_1    := '9';
+      _tmpAPT.Code3_1    := '9';
+      _tmpAPT.Code20_1 := '101100101101';
+      _tmpAPT.INSERT;
+
+      _tmpAPT.INIT;
+      _tmpAPT.Table_Type  := 'X';
+      _tmpAPT.SeqNo       := 11;
+      _tmpAPT.Text50_1    := 'X';
+      _tmpAPT.Code10_1    := 'A';
+      _tmpAPT.Code3_1    := '10';
+      _tmpAPT.Code20_1 := '110101001011';
+      _tmpAPT.INSERT;
+
+      _tmpAPT.INIT;
+      _tmpAPT.Table_Type  := 'X';
+      _tmpAPT.SeqNo       := 12;
+      _tmpAPT.Text50_1    := 'X';
+      _tmpAPT.Code10_1    := 'B';
+      _tmpAPT.Code3_1    := '11';
+      _tmpAPT.Code20_1 := '101101001011';
+      _tmpAPT.INSERT;
+
+      _tmpAPT.INIT;
+      _tmpAPT.Table_Type  := 'X';
+      _tmpAPT.SeqNo       := 13;
+      _tmpAPT.Text50_1    := 'X';
+      _tmpAPT.Code10_1    := 'C';
+      _tmpAPT.Code3_1    := '12';
+      _tmpAPT.Code20_1 := '110110100101';
+      _tmpAPT.INSERT;
+
+      _tmpAPT.INIT;
+      _tmpAPT.Table_Type  := 'X';
+      _tmpAPT.SeqNo       := 14;
+      _tmpAPT.Text50_1    := 'X';
+      _tmpAPT.Code10_1    := 'D';
+      _tmpAPT.Code3_1    := '13';
+      _tmpAPT.Code20_1 := '101011001011';
+      _tmpAPT.INSERT;
+
+      _tmpAPT.INIT;
+      _tmpAPT.Table_Type  := 'X';
+      _tmpAPT.SeqNo       := 15;
+      _tmpAPT.Text50_1    := 'X';
+      _tmpAPT.Code10_1    := 'E';
+      _tmpAPT.Code3_1    := '14';
+      _tmpAPT.Code20_1 := '110101100101';
+      _tmpAPT.INSERT;
+
+      _tmpAPT.INIT;
+      _tmpAPT.Table_Type  := 'X';
+      _tmpAPT.SeqNo       := 16;
+      _tmpAPT.Text50_1    := 'X';
+      _tmpAPT.Code10_1    := 'F';
+      _tmpAPT.Code3_1    := '15';
+      _tmpAPT.Code20_1 := '101101100101';
+      _tmpAPT.INSERT;
+
+      _tmpAPT.INIT;
+      _tmpAPT.Table_Type  := 'X';
+      _tmpAPT.SeqNo       := 17;
+      _tmpAPT.Text50_1    := 'X';
+      _tmpAPT.Code10_1    := 'G';
+      _tmpAPT.Code3_1    := '16';
+      _tmpAPT.Code20_1 := '101010011011';
+      _tmpAPT.INSERT;
+
+      _tmpAPT.INIT;
+      _tmpAPT.Table_Type  := 'X';
+      _tmpAPT.SeqNo       := 18;
+      _tmpAPT.Text50_1    := 'X';
+      _tmpAPT.Code10_1    := 'H';
+      _tmpAPT.Code3_1    := '17';
+      _tmpAPT.Code20_1 := '110101001101';
+      _tmpAPT.INSERT;
+
+      _tmpAPT.INIT;
+      _tmpAPT.Table_Type  := 'X';
+      _tmpAPT.SeqNo       := 19;
+      _tmpAPT.Text50_1    := 'X';
+      _tmpAPT.Code10_1    := 'I';
+      _tmpAPT.Code3_1    := '18';
+      _tmpAPT.Code20_1 := '101101001101';
+      _tmpAPT.INSERT;
+
+      _tmpAPT.INIT;
+      _tmpAPT.Table_Type  := 'X';
+      _tmpAPT.SeqNo       := 20;
+      _tmpAPT.Text50_1    := 'X';
+      _tmpAPT.Code10_1    := 'J';
+      _tmpAPT.Code3_1    := '19';
+      _tmpAPT.Code20_1 := '101011001101';
+      _tmpAPT.INSERT;
+
+      _tmpAPT.INIT;
+      _tmpAPT.Table_Type  := 'X';
+      _tmpAPT.SeqNo       := 21;
+      _tmpAPT.Text50_1    := 'X';
+      _tmpAPT.Code10_1    := 'K';
+      _tmpAPT.Code3_1    := '20';
+      _tmpAPT.Code20_1 := '110101010011';
+      _tmpAPT.INSERT;
+
+      _tmpAPT.INIT;
+      _tmpAPT.Table_Type  := 'X';
+      _tmpAPT.SeqNo       := 22;
+      _tmpAPT.Text50_1    := 'X';
+      _tmpAPT.Code10_1    := 'L';
+      _tmpAPT.Code3_1    := '21';
+      _tmpAPT.Code20_1 := '101101010011';
+      _tmpAPT.INSERT;
+
+      _tmpAPT.INIT;
+      _tmpAPT.Table_Type  := 'X';
+      _tmpAPT.SeqNo       := 23;
+      _tmpAPT.Text50_1    := 'X';
+      _tmpAPT.Code10_1    := 'M';
+      _tmpAPT.Code3_1    := '22';
+      _tmpAPT.Code20_1 := '110110101001';
+      _tmpAPT.INSERT;
+
+      _tmpAPT.INIT;
+      _tmpAPT.Table_Type  := 'X';
+      _tmpAPT.SeqNo       := 24;
+      _tmpAPT.Text50_1    := 'X';
+      _tmpAPT.Code10_1    := 'N';
+      _tmpAPT.Code3_1    := '23';
+      _tmpAPT.Code20_1 := '101011010011';
+      _tmpAPT.INSERT;
+
+      _tmpAPT.INIT;
+      _tmpAPT.Table_Type  := 'X';
+      _tmpAPT.SeqNo       := 25;
+      _tmpAPT.Text50_1    := 'X';
+      _tmpAPT.Code10_1    := 'O';
+      _tmpAPT.Code3_1    := '24';
+      _tmpAPT.Code20_1 := '110101101001';
+      _tmpAPT.INSERT;
+
+      _tmpAPT.INIT;
+      _tmpAPT.Table_Type  := 'X';
+      _tmpAPT.SeqNo       := 26;
+      _tmpAPT.Text50_1    := 'X';
+      _tmpAPT.Code10_1    := 'P';
+      _tmpAPT.Code3_1    := '25';
+      _tmpAPT.Code20_1 := '101101101001';
+      _tmpAPT.INSERT;
+
+      _tmpAPT.INIT;
+      _tmpAPT.Table_Type  := 'X';
+      _tmpAPT.SeqNo       := 27;
+      _tmpAPT.Text50_1    := 'X';
+      _tmpAPT.Code10_1    := 'Q';
+      _tmpAPT.Code3_1    := '26';
+      _tmpAPT.Code20_1 := '101010110011';
+      _tmpAPT.INSERT;
+
+      _tmpAPT.INIT;
+      _tmpAPT.Table_Type  := 'X';
+      _tmpAPT.SeqNo       := 28;
+      _tmpAPT.Text50_1    := 'X';
+      _tmpAPT.Code10_1    := 'R';
+      _tmpAPT.Code3_1    := '27';
+      _tmpAPT.Code20_1 := '110101011001';
+      _tmpAPT.INSERT;
+
+      _tmpAPT.INIT;
+      _tmpAPT.Table_Type  := 'X';
+      _tmpAPT.SeqNo       := 29;
+      _tmpAPT.Text50_1    := 'X';
+      _tmpAPT.Code10_1    := 'S';
+      _tmpAPT.Code3_1    := '28';
+      _tmpAPT.Code20_1 := '101101011001';
+      _tmpAPT.INSERT;
+
+      _tmpAPT.INIT;
+      _tmpAPT.Table_Type  := 'X';
+      _tmpAPT.SeqNo       := 30;
+      _tmpAPT.Text50_1    := 'X';
+      _tmpAPT.Code10_1    := 'T';
+      _tmpAPT.Code3_1    := '29';
+      _tmpAPT.Code20_1 := '101011011001';
+      _tmpAPT.INSERT;
+
+      _tmpAPT.INIT;
+      _tmpAPT.Table_Type  := 'X';
+      _tmpAPT.SeqNo       := 31;
+      _tmpAPT.Text50_1    := 'X';
+      _tmpAPT.Code10_1    := 'U';
+      _tmpAPT.Code3_1    := '30';
+      _tmpAPT.Code20_1 := '110010101011';
+      _tmpAPT.INSERT;
+
+      _tmpAPT.INIT;
+      _tmpAPT.Table_Type  := 'X';
+      _tmpAPT.SeqNo       := 32;
+      _tmpAPT.Text50_1    := 'X';
+      _tmpAPT.Code10_1    := 'V';
+      _tmpAPT.Code3_1    := '31';
+      _tmpAPT.Code20_1 := '100110101011';
+      _tmpAPT.INSERT;
+
+      _tmpAPT.INIT;
+      _tmpAPT.Table_Type  := 'X';
+      _tmpAPT.SeqNo       := 33;
+      _tmpAPT.Text50_1    := 'X';
+      _tmpAPT.Code10_1    := 'W';
+      _tmpAPT.Code3_1    := '32';
+      _tmpAPT.Code20_1 := '110011010101';
+      _tmpAPT.INSERT;
+
+      _tmpAPT.INIT;
+      _tmpAPT.Table_Type  := 'X';
+      _tmpAPT.SeqNo       := 34;
+      _tmpAPT.Text50_1    := 'X';
+      _tmpAPT.Code10_1    := 'X';
+      _tmpAPT.Code3_1    := '33';
+      _tmpAPT.Code20_1 := '100101101011';
+      _tmpAPT.INSERT;
+
+      _tmpAPT.INIT;
+      _tmpAPT.Table_Type  := 'X';
+      _tmpAPT.SeqNo       := 35;
+      _tmpAPT.Text50_1    := 'X';
+      _tmpAPT.Code10_1    := 'Y';
+      _tmpAPT.Code3_1    := '34';
+      _tmpAPT.Code20_1 := '110010110101';
+      _tmpAPT.INSERT;
+
+      _tmpAPT.INIT;
+      _tmpAPT.Table_Type  := 'X';
+      _tmpAPT.SeqNo       := 36;
+      _tmpAPT.Text50_1    := 'X';
+      _tmpAPT.Code10_1    := 'Z';
+      _tmpAPT.Code3_1    := '35';
+      _tmpAPT.Code20_1 := '100110110101';
+      _tmpAPT.INSERT;
+
+      _tmpAPT.INIT;
+      _tmpAPT.Table_Type  := 'X';
+      _tmpAPT.SeqNo       := 37;
+      _tmpAPT.Text50_1    := 'X';
+      _tmpAPT.Code10_1    := '-';
+      _tmpAPT.Code3_1    := '36';
+      _tmpAPT.Code20_1 := '100101011011';
+      _tmpAPT.INSERT;
+
+      _tmpAPT.INIT;
+      _tmpAPT.Table_Type  := 'X';
+      _tmpAPT.SeqNo       := 38;
+      _tmpAPT.Text50_1    := 'X';
+      _tmpAPT.Code10_1    := '.';
+      _tmpAPT.Code3_1    := '37';
+      _tmpAPT.Code20_1 := '110010101101';
+      _tmpAPT.INSERT;
+
+      _tmpAPT.INIT;
+      _tmpAPT.Table_Type  := 'X';
+      _tmpAPT.SeqNo       := 39;
+      _tmpAPT.Text50_1    := 'X';
+      _tmpAPT.Code10_1    := ' ';
+      _tmpAPT.Code3_1    := '38';
+      _tmpAPT.Code20_1 := '100110101101';
+      _tmpAPT.INSERT;
+
+      _tmpAPT.INIT;
+      _tmpAPT.Table_Type  := 'X';
+      _tmpAPT.SeqNo       := 40;
+      _tmpAPT.Text50_1    := 'X';
+      _tmpAPT.Code10_1    := '$';
+      _tmpAPT.Code3_1    := '39';
+      _tmpAPT.Code20_1 := '100100100101';
+      _tmpAPT.INSERT;
+
+      _tmpAPT.INIT;
+      _tmpAPT.Table_Type  := 'X';
+      _tmpAPT.SeqNo       := 41;
+      _tmpAPT.Text50_1    := 'X';
+      _tmpAPT.Code10_1    := '/';
+      _tmpAPT.Code3_1    := '40';
+      _tmpAPT.Code20_1 := '100100101001';
+      _tmpAPT.INSERT;
+
+      _tmpAPT.INIT;
+      _tmpAPT.Table_Type  := 'X';
+      _tmpAPT.SeqNo       := 42;
+      _tmpAPT.Text50_1    := 'X';
+      _tmpAPT.Code10_1    := '+';
+      _tmpAPT.Code3_1    := '41';
+      _tmpAPT.Code20_1 := '100101001001';
+      _tmpAPT.INSERT;
+
+      _tmpAPT.INIT;
+      _tmpAPT.Table_Type  := 'X';
+      _tmpAPT.SeqNo       := 43;
+      _tmpAPT.Text50_1    := 'X';
+      _tmpAPT.Code10_1    := '%';
+      _tmpAPT.Code3_1    := '42';
+      _tmpAPT.Code20_1 := '101001001001';
+      _tmpAPT.INSERT;
+
+      _tmpAPT.INIT;
+      _tmpAPT.Table_Type  := 'X';
+      _tmpAPT.SeqNo       := 44;
+      _tmpAPT.Text50_1    := 'X';
+      _tmpAPT.Code10_1    := '*';
+      _tmpAPT.Code3_1    := '';
+      _tmpAPT.Code20_1 := '100101101101';
+      _tmpAPT.INSERT;
+    END;
+
+    PROCEDURE NewCekQuantity@1000000020(pTransType@1000000988 : ',Sales Line,Purchase Line,Transfer Line,Item Journal Line,P2B Line,Ownership Transfer';pItemNo@1000000000 : Code[20];pxLocationCode@1000000008 : Code[10];pLocationCode@1000000990 : Code[10];pxOwner@1000000970 : Code[10];pOwner@1000000007 : Code[10];pQuantity@1000000010 : Decimal;pUoMCode@1000000011 : Code[10];pxQuantity@1000000012 : Decimal;pxUoMCode@1000000013 : Code[10];VAR vQtyAvailable@1000000014 : Decimal;SkipBlankOwner@1000000971 : Boolean) Result@1000000006 : Boolean;
+    VAR
+      tItem@1000000022 : Record 27;
+      tSL@1000000999 : Record 37;
+      tPL@1000000996 : Record 39;
+      tTL@1000000995 : Record 5741;
+      tIJL@1000000994 : Record 83;
+      tIUoM@1000000992 : Record 5404;
+      Q_ItemLedgerEntry@1000000002 : Decimal;
+      Q_OwnershipLedgerEntry@1000000029 : Decimal;
+      Q_SalesLine@1000000028 : Decimal;
+      Q_PurchaseLine@1000000023 : Decimal;
+      Q_TransferLine@1000000024 : Decimal;
+      Q_ItemJournalLine@1000000025 : Decimal;
+      Q_Base@1000000026 : Decimal;
+      Q_xBase@1000000027 : Decimal;
+      tP2BH@1000000005 : Record 50013;
+      tP2BL@1000000004 : Record 50014;
+      cuP2BMgt@1000000001 : Codeunit 50100;
+      Q_P2BLine@1000000991 : Decimal;
+      IsLocOwnership@1000000003 : Boolean;
+      tLocation@1000000989 : Record 14;
+      Q_OwnershipTransfer@1000000980 : Decimal;
+      xTmpQty@1000000791 : Decimal;
+    BEGIN
+      //T30.01
+      { DVZ - Cek Quantity Available }
+      { ********************************************** }
+
+      {
+      Option pTransType :
+      -----------------------
+      0. Blank
+      1. Sales Line
+      2. Purchase Line
+      3. Transfer Line
+      4. Item Journal Line
+      5. P2B Line
+      6. Ownership Transfer
+      -----------------------
+      }
+      { ********************************************** }
+
+      Result := FALSE;
+
+      tLocation.GET(pLocationCode);
+      IsLocOwnership := tLocation.Ownership;
+
+      IF IsLocOwnership
+        AND (pOwner = '' )
+        AND NOT SkipBlankOwner
+      THEN
+        ERROR('Owner cannot be blank');
+
+      IF NOT IsLocOwnership THEN
+      BEGIN
+        { I. Item ledger Entry - Quantity }
+
+        tItem.RESET;
+        tItem.GET(pItemNo);
+        tItem.SETRANGE("Location Filter", pLocationCode);
+        tItem.CALCFIELDS(
+          Inventory
+          ,"Qty. on Sales Order"
+          ,"Trans. Ord. Shipment (Qty.)"
+          ,"Qty. On Purchase Return"
+          ,"Qty P2B Line (Item Journal)"
+          ,"Qty P2B Line (Other)"
+          ,"Qty. On Ownshp. Transfer"
+          );
+
+        Q_ItemLedgerEntry := tItem.Inventory;
+      END
+      ELSE
+      BEGIN
+        { II. Ownership ledger Entry - Quantity }
+
+        tItem.RESET;
+        tItem.GET(pItemNo);
+        tItem.SETRANGE("Location Filter", pLocationCode);
+        IF NOT SkipBlankOwner THEN
+          tItem.SETRANGE("Owner Filter", pOwner);
+
+        tItem.CALCFIELDS(
+          "Qty. On Ownshp. Ledg. Entry"
+          ,"Qty. on Sales Order"
+          ,"Trans. Ord. Shipment (Qty.)"
+          ,"Qty. On Purchase Return"
+          ,"Qty P2B Line (Item Journal)"
+          ,"Qty P2B Line (Other)"
+          ,"Qty. On Ownshp. Transfer"
+          );
+
+        Q_OwnershipLedgerEntry := tItem."Qty. On Ownshp. Ledg. Entry";
+      END;
+
+      { III. Sales Line - Quantity (Order) }
+      Q_SalesLine := tItem."Qty. on Sales Order";
+
+      { IV. Purchase Line - Quantity (Return Order) }
+      Q_PurchaseLine := tItem."Qty. On Purchase Return";
+
+      { ** Service Invoice Line - Quantity (dikosongkan) }
+      { ** Loaner - Quantity (dikosongkan) }
+
+      { V. Transfer Line - Quantity }
+      Q_TransferLine := tItem."Trans. Ord. Shipment (Qty.)";
+
+      { VI. Item Journal Line - Quantity }
+      tIJL.RESET;
+      tIJL.SETCURRENTKEY("Journal Template Name","Entry Type","Item No.","Location Code",Owner,"Quantity (Base)");
+      tIJL.SETFILTER("Journal Template Name",'<>%1&<>%2', 'PHYS. INVE', 'REVALUATIO');
+      tIJL.SETRANGE("Entry Type", tIJL."Entry Type"::"Negative Adjmt.");
+      tIJL.SETRANGE("Item No.", pItemNo);
+      tIJL.SETRANGE("Location Code", pLocationCode);
+      IF IsLocOwnership THEN
+        IF NOT SkipBlankOwner THEN
+          tIJL.SETRANGE(Owner, pOwner);
+
+      { Diff. with Item Availability, Here }
+      //tIJL.SETFILTER("Journal Template Name",'<>%1','PHYS. INVE');
+      //tIJL.SETFILTER("Journal Template Name",'<>%1&<>%2', 'PHYS. INVE', 'REVALUATIO');
+      tIJL.SETFILTER("Quantity (Base)",'>0');
+      { ---------- }
+      IF tIJL.FIND('-') THEN
+      BEGIN
+        IF tIJL.CALCSUMS("Quantity (Base)") THEN
+          Q_ItemJournalLine := -tIJL."Quantity (Base)" - (-pxQuantity);
+      END;
+
+      { VIIa. P2B - Quantity }
+      Q_P2BLine := tItem."Qty P2B Line (Item Journal)" + tItem."Qty P2B Line (Other)";
+
+      { VIII. Rec - UoM - Quantity Base }
+      tIUoM.RESET;
+      tIUoM.SETRANGE("Item No.", pItemNo);
+      tIUoM.SETRANGE(Code, pUoMCode);
+      IF tIUoM.FIND('-') THEN
+        Q_Base := (pQuantity * tIUoM."Qty. per Unit of Measure")
+      ELSE
+        ERROR('Unit of Measure Code invalid ...');
+
+      { IX. xRec - UoM - Quantity Base }
+      tIUoM.RESET;
+      tIUoM.SETRANGE("Item No.", pItemNo);
+      tIUoM.SETRANGE(Code, pxUoMCode);
+      IF tIUoM.FIND('-') THEN
+        Q_xBase := (pxQuantity * tIUoM."Qty. per Unit of Measure")
+      ELSE
+        ERROR('Unit of Measure Code invalid ...');
+
+      { X. Ownership Transfer }
+      //Q_OwnershipTransfer := (tItem."Qty. On Ownshp. Transfer" * (-1));
+      Q_OwnershipTransfer := tItem."Qty. On Ownshp. Transfer";
+
+      IF (pxLocationCode=pLocationCode) AND (pxOwner=pOwner) THEN
+        xTmpQty := pxQuantity
+      ELSE
+        xTmpQty := 0;
+
+      { Formula }
+      { ********************************************** }
+
+      IF ((pxLocationCode=pLocationCode) AND (pxOwner=pOwner)) THEN
+      BEGIN
+        IF ((Q_Base - Q_xBase) <= 0) THEN
+          Result := TRUE { Qty lebih kecil or sama dengan qty lama }
+        ELSE
+          IF ((Q_Base - Q_xBase) > 0)
+            AND ((
+              //xTmpQty +
+                Q_ItemLedgerEntry
+              + Q_OwnershipLedgerEntry
+              - Q_SalesLine
+              - Q_PurchaseLine
+              - Q_TransferLine
+              + Q_ItemJournalLine
+              - Q_P2BLine
+              - Q_OwnershipTransfer
+              - Q_Base) >= 0)
+          THEN
+            Result := TRUE { Qty lebih besar dari qty lama dan stok cukup }
+          ELSE
+            IF ((Q_Base - Q_xBase) > 0)
+              AND ((
+                //xTmpQty +
+                  Q_ItemLedgerEntry
+                + Q_OwnershipLedgerEntry
+                - Q_SalesLine
+                - Q_PurchaseLine
+                - Q_TransferLine
+                + Q_ItemJournalLine
+                - Q_P2BLine
+                - Q_OwnershipTransfer
+                - Q_Base) < 0)
+            THEN
+              Result := FALSE; { Qty lebih besar dari qty lama dan stok tidak cukup }
+      END
+      ELSE
+        Result := ((Q_ItemLedgerEntry
+          + Q_OwnershipLedgerEntry
+          - Q_SalesLine
+          - Q_PurchaseLine
+          - Q_TransferLine
+          + Q_ItemJournalLine
+          - Q_P2BLine
+          - Q_OwnershipTransfer
+          - Q_Base) >=0);
+
+      vQtyAvailable := Q_ItemLedgerEntry
+        + Q_OwnershipLedgerEntry
+        - Q_SalesLine
+        - Q_PurchaseLine
+        - Q_TransferLine
+        + Q_ItemJournalLine
+        - Q_P2BLine
+        - Q_OwnershipTransfer;
+      //T30.01
+    END;
+
+    PROCEDURE CheckName@1000000000(CurrentOwnBatchName@1000000000 : Code[10]);
+    VAR
+      Rec_OwnJnlBatch@1000000002 : Record 50036;
+      Rec_UserSetup@1000000001 : Record 91;
+    BEGIN
+      //T30.02
+      Rec_UserSetup.GET(USERID);
+
+      Rec_OwnJnlBatch.GET(CurrentOwnBatchName);
+      IF (Rec_UserSetup."Journal Template Filter" <> Rec_UserSetup."Journal Template Filter"::" ") THEN
+        Rec_OwnJnlBatch.SETRANGE("Journal Template Filter", Rec_UserSetup."Journal Template Filter");
+      Rec_OwnJnlBatch.FINDFIRST;
+      //T30.02
+    END;
+
+    PROCEDURE SetName@1000000002(CurrentOwnBatchName@1000000000 : Code[10];VAR tOwnTransfer@1000000001 : Record 50037);
+    BEGIN
+      //T30.02
+      tOwnTransfer.FILTERGROUP := 2;
+      tOwnTransfer.SETRANGE("Journal Batch Name", CurrentOwnBatchName);
+      tOwnTransfer.FILTERGROUP := 0;
+      IF tOwnTransfer.FINDFIRST THEN;
+      //T30.02
+    END;
+
+    BEGIN
+    {
+      D34.01  29 Jul 2015   BNY   Create new Codeunit - Custom WMS Management dari codeunit di Nav.5
+      D34.02  29 Jul 2015   BNY   Add new function :
+                                  - ValidateOwnerField
+                                  - TempUpdateItemTracking
+                                  - GetLocFilterFromWhseEmployee
+                                  - CekQuantity
+                                  - LookUpOwnerGlobal
+      D52.01    20 Agust 2015   RFL   Tambah fungsi : ValidateOwnerTransferField
+      D52.02    20 Agust 2015   RFL   Tambah TxtErr001|ownership must be Yes in location code = '%1' or '%2'
+
+      T10.01    24 Agt 2015    SY  Add function GetLocFilterFromWhseEmployee, AddWmsLog
+      D12.01    09 Sep 2015   AFR   Tambah fungsi EncodeCode39,CreateBMPHeader,CreateBarcodeDetail,InitCode39
+      T30.01    15 Sep 2015   SH   Add function : NewCekQuantity, OpenJnl, BatchSelection, PostingOwnershipTransfer, CekPostOwnTransfer
+      T30.02    09 Oct 2015   SH   Add function : CheckName, SetName
+                                   Add codes to fix "Transfer-from" and "Transfer-to"
+      T30.03    23 Oct 2015   RT   Exclude if Item is Service type
+      T30.04    28 Oct 2015   SH   Add codes
+      T37.01    26 Nov 2015   RT   Add codes -- allow negative availability
+      T37.02    30 Nov 2015   RT   Change codes (just calculate availability in PO)
+    }
+    END.
+  }
+}

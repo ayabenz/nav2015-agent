@@ -46,8 +46,17 @@ def main():
             rf"(?i)\bCODEUNIT\s*\.\s*RUN\s*\(\s*{target_id}\b"
         ),
     }
-    if target_id == 90:
-        patterns["Purch.-Post symbol"] = re.compile(r'(?i)CODEUNIT\s*::\s*"Purch\.-Post"')
+    symbols = {
+        22: "Item Jnl.-Post Line",
+        23: "Item Jnl.-Post Batch",
+        90: "Purch.-Post",
+        241: "Item Jnl.-Post",
+    }
+    if target_id in symbols:
+        symbol = re.escape(symbols[target_id])
+        patterns[f"{symbols[target_id]} symbol"] = re.compile(
+            rf'(?i)CODEUNIT\\s*::\\s*"{symbol}"'
+        )
     if target_id == 50107:
         patterns.update(REFERENCE_PATTERNS)
     found = {}

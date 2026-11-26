@@ -11,12 +11,12 @@ on:
       output:
         description: "Repository directory for extracted objects"
         required: true
-        default: "reports/datascrip/p2b"
+        default: "reports/datascrip/purchase_flow"
         type: string
       objects:
         description: "Space-separated selectors, e.g. Page:43 Page:7335 Page:7336 Page:5769 Report:296 Report:297 Codeunit:81 Codeunit:82 Codeunit:5760 Codeunit:5761 Codeunit:5762 Codeunit:5763 Codeunit:98"
         required: true
-        default: "Page:50054 Page:50055 Page:50056 Page:50057 Page:50058 Page:50060 Page:50061 Page:50062 Page:50063 Page:50073 Page:50074 Page:50075 Page:50078 Page:50079 Table:50013 Table:50014 Table:50017 Table:50051 Table:50052 Table:50053 Table:50054 Table:50055 Table:50056 Table:50057 Codeunit:50100 Codeunit:50101 Codeunit:50102 Report:50137 Report:50355 Page:40 Codeunit:241 Codeunit:23"
+        default: "Page:50 Page:51 Page:52 Page:54 Page:55 Page:98 Page:254 Page:6640 Page:6641 Page:9307 Page:9308 Page:9309 Page:9311 Page:50076 Page:50077 Codeunit:90 Codeunit:91 Codeunit:92 Codeunit:98 Codeunit:415 Codeunit:5751 Codeunit:5752 Codeunit:5760 Codeunit:5763 Report:496 Report:497 Report:498 Report:6665 Table:38 Table:39"
         type: string
   push:
     branches:
@@ -51,8 +51,8 @@ jobs:
         id: inputs
         env:
           SOURCE: ${{ inputs.source || 'data/input/datascrip/datascrip.zip' }}
-          OUTPUT: ${{ inputs.output || 'reports/datascrip/p2b' }}
-          OBJECTS: ${{ inputs.objects || 'Page:50054 Page:50055 Page:50056 Page:50057 Page:50058 Page:50060 Page:50061 Page:50062 Page:50063 Page:50073 Page:50074 Page:50075 Page:50078 Page:50079 Table:50013 Table:50014 Table:50017 Table:50051 Table:50052 Table:50053 Table:50054 Table:50055 Table:50056 Table:50057 Codeunit:50100 Codeunit:50101 Codeunit:50102 Report:50137 Report:50355 Page:40 Codeunit:241 Codeunit:23' }}
+          OUTPUT: ${{ inputs.output || 'reports/datascrip/purchase_flow' }}
+          OBJECTS: ${{ inputs.objects || 'Page:50 Page:51 Page:52 Page:54 Page:55 Page:98 Page:254 Page:6640 Page:6641 Page:9307 Page:9308 Page:9309 Page:9311 Page:50076 Page:50077 Codeunit:90 Codeunit:91 Codeunit:92 Codeunit:98 Codeunit:415 Codeunit:5751 Codeunit:5752 Codeunit:5760 Codeunit:5763 Report:496 Report:497 Report:498 Report:6665 Table:38 Table:39' }}
         run: |
           python - <<'PY'
           import os, re

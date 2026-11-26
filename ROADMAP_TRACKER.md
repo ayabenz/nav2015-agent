@@ -17,7 +17,9 @@
 | Business-rule confirmation | PARTIAL | Accepted behavior documented in Issue #3; other policy decisions remain open |
 | NAV runtime validation | BLOCKED | Requires isolated non-production NAV 2015 test company and matching Datascrip build |
 | Remediation implementation | NOT STARTED / gated | Do not change posting logic until policy is confirmed and runtime cases are reproducible |
-| Deterministic Code Intelligence query layer | IMPLEMENTED — first vertical slice | `nav-intel` queries existing symbol/graph SQLite databases; object/procedure/callers/callees/impact/table usage; tests added, execution pending |\n| AI-assisted NAV reasoning / agent workflows | PLANNED | Build on deterministic query layer, parser, symbol index, semantic diff and dependency graph; keep source evidence traceable |
+| Deterministic Code Intelligence query layer | IMPLEMENTED — first vertical slice | `nav-intel` queries existing symbol/graph SQLite databases; object/procedure/callers/callees/impact/table usage; tests added, execution pending |
+| Conditional Logic Intelligence | PLANNED | Explain IF/ELSE/ELSEIF/CASE branches, field/value predicates, nested paths and data-flow; static analysis first, runtime evaluation later |
+| AI-assisted NAV reasoning / agent workflows | PLANNED | Build on deterministic query layer, conditional logic, parser, symbol index, semantic diff and dependency graph; keep source evidence traceable |
 
 ## 2. Roadmap
 
@@ -67,6 +69,28 @@
 
 These are recorded analysis outputs, not a claim that every NAV object or indirect/dynamic dependency has been resolved. See [NAV Dependency Report](../../reports/datascrip/NAV_Dependency_Report.xlsx) in the repository.
 
+### Phase 2.5 — Conditional Logic Intelligence (new)
+
+**Goal:** explain why a NAV procedure takes a particular branch by connecting C/AL conditions to the underlying table, field, variable and option values. This extends the existing symbol index and dependency graph; it does not replace or rebuild them.
+
+- [ ] Inventory and parse C/AL control-flow constructs: IF / THEN / ELSE / ELSEIF and CASE / OF / ELSE; preserve nested block structure and source line ranges.
+- [ ] Normalize condition expressions: operands, comparison operators, boolean operators, parentheses, constants and enum/option members.
+- [ ] Resolve Record variables and field references to NAV Table / Field identities, including qualified Option values such as Record.Status::Released.
+- [ ] Resolve field metadata and OptionString values from parsed table definitions; distinguish Option fields, ordinary text/code/numeric/date fields and unresolved expressions.
+- [ ] Build branch paths with parent/child relationships and explicit TRUE / FALSE / CASE-match / CASE-default outcomes.
+- [ ] Track local variable assignments and record-field values sufficiently to explain predicates whose operands are assigned earlier in the procedure.
+- [ ] Trace relevant values across direct procedure calls where parameter and Record-variable flow can be resolved safely.
+- [ ] Add nav-intel conditions and object/procedure integration; return source file, line range, resolution confidence and unresolved operands.
+- [ ] Add unit fixtures for nested IF/ELSE, ELSEIF, CASE, Option values, field comparisons, variable assignments and unresolved/dynamic expressions.
+- [ ] Document static-analysis limits and avoid presenting inferred branch reachability as runtime fact.
+- [ ] Add optional runtime evaluation only as a separate later capability, requiring an explicitly supplied read-only record snapshot / runtime evidence.
+
+**Design boundary:** static analysis explains the predicates and possible paths encoded in source. It cannot say which branch actually ran for a particular document unless the corresponding runtime values and execution context are supplied. SQL/current table values must never be silently treated as proof of historical execution.
+
+**Initial data model (implementation may evolve):** conditions / conditional_branches store object, procedure, condition ID, parent condition, branch type, normalized expression, source file and line range; condition_operands store operand text, resolved table/field IDs, operator, expected value and value type. Keep raw expression and resolution diagnostics so conclusions remain auditable.
+
+**Exit criteria:** for a selected procedure, nav-intel can explain each supported branch in readable form (for example, Sales Header.Status = Released → TRUE path / ELSE path), identify source lines and resolved field metadata, and explicitly label unknown or runtime-dependent values.
+
 ### Phase 3 — Stocktake runtime validation
 
 **Current status: BLOCKED — environment access required.** See [Issue #4](https://github.com/ayabenz/nav2015-agent/issues/4) and [environment readiness checklist](./stocktake/STOCKTAKE_RUNTIME_ENVIRONMENT_READINESS.md).
@@ -108,10 +132,10 @@ These are recorded analysis outputs, not a claim that every NAV object or indire
 - [ ] Define agent use cases and safety boundaries (read-only by default).
 - [ ] Expose deterministic search, object details, procedure details and dependency/impact queries as tools.
 - [ ] Require citations to source object, procedure and line/range for every code conclusion.
-- [ ] Add multi-hop trace workflows for posting, table writes and callers.
+- [ ] Add multi-hop trace workflows for posting, table writes, callers and conditional branch paths.
 - [ ] Add regression/evaluation dataset from known NAV questions and verified answers.
 - [ ] Add optional SQL metadata/runtime evidence integration with least-privilege read-only access.
-- [ ] Add change-impact and test-scenario generation grounded in the dependency graph.
+- [ ] Add change-impact and test-scenario generation grounded in the dependency graph and conditional logic.
 - [ ] Keep code modification and posting execution outside autonomous agent permissions unless explicitly approved.
 
 ## 3. Test and validation history

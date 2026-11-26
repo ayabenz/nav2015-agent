@@ -55,7 +55,7 @@ def main():
     if target_id in symbols:
         symbol = re.escape(symbols[target_id])
         patterns[f"{symbols[target_id]} symbol"] = re.compile(
-            rf'(?i)CODEUNIT\\s*::\\s*"{symbol}"'
+            rf'(?i)CODEUNIT\s*::\s*"{symbol}"'
         )
     if target_id == 50107:
         patterns.update(REFERENCE_PATTERNS)

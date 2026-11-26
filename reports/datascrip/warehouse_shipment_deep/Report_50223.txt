@@ -1,0 +1,187 @@
+OBJECT Report 50223 Post Batch Whse. Shipment
+{
+  OBJECT-PROPERTIES
+  {
+    Date=09/09/24;
+    Time=10:22:48;
+    Modified=Yes;
+    Version List=DTS:T13,T34;
+  }
+  PROPERTIES
+  {
+    ProcessingOnly=Yes;
+  }
+  DATASET
+  {
+    { 1   ;    ;DataItem;                    ;
+               DataItemTable=Table7320;
+               DataItemTableView=SORTING(No.)
+                                 ORDER(Ascending)
+                                 WHERE(Document Status=FILTER(Completely Picked),
+                                       Finished=FILTER(Yes));
+               OnPreDataItem=VAR
+                               WMSManagement@1000 : Codeunit 7302;
+                             BEGIN
+                               tmpWSH.DELETEALL;
+                               SETFILTER("Location Code",WMSManagement.GetDefaultLocation);
+                             END;
+
+               OnAfterGetRecord=BEGIN
+
+                                  tmpWSH.INIT;
+                                  tmpWSH.TRANSFERFIELDS("Warehouse Shipment Header");
+                                  tmpWSH.INSERT;
+                                END;
+
+               ReqFilterFields=No.,Line Source No.,Finished }
+
+    { 2   ;    ;DataItem;                    ;
+               DataItemTable=Table2000000026;
+               DataItemTableView=SORTING(Number)
+                                 ORDER(Ascending)
+                                 WHERE(Number=FILTER(1));
+               OnPreDataItem=VAR
+                               tWSL@1008 : Record 7321;
+                               cWPS@1007 : Codeunit 5763;
+                               tSSH@1006 : Record 110;
+                               tmpFilterNo@1005 : ARRAY [10] OF Text[1024];
+                               tmpFlag@1004 : Boolean;
+                               tmpInt@1003 : Integer;
+                               N@1002 : Integer;
+                               tRSH@1001 : Record 6650;
+                               tTSH@1000 : Record 5744;
+                             BEGIN
+
+                               IF tmpWSH.COUNT = 0 THEN CurrReport.BREAK;
+
+                               CLEAR(cWPS);
+
+                               FOR N := 1 TO 10 DO tmpFilterNo[N] := '';
+
+                               tmpFlag := FALSE;
+                               tmpInt := 1;
+
+                               tmpWSH.RESET;
+                               IF tmpWSH.FIND('-') THEN
+                               REPEAT
+                                 IF STRLEN(tmpFilterNo[tmpInt]) > 1000 THEN tmpInt += 1;
+
+                                 IF tmpFlag THEN
+                                   tmpFilterNo[tmpInt] += '|'
+                                 ELSE
+                                   tmpFlag := TRUE;
+
+                                 tmpFilterNo[tmpInt] += FORMAT(tmpWSH."No.");
+
+                                 tWSL.RESET;
+                                 tWSL.SETRANGE("No.", tmpWSH."No.");
+                                 IF tWSL.FIND('-') THEN
+                                 BEGIN
+                                   cWPS.SetPostingSettings(FALSE); //-- INVOICE = FALSE
+                                   cWPS.SetPrint(FALSE);
+                                   cWPS.SetSkipOpenDoc(TRUE);
+                                   cWPS.SetCustomProcess(RF_PostingDate,TRUE);
+                                   cWPS.RUN(tWSL);
+                                   CLEAR(cWPS);
+                                 END;
+                               UNTIL tmpWSH.NEXT = 0;
+
+                               IF Print AND ((tmpFilterNo[1]+tmpFilterNo[2]+tmpFilterNo[3]) <> '') THEN
+                               BEGIN
+                                 //Sales Shipment Header
+                                 tSSH.RESET;
+                                 tSSH.SETFILTER("Shipment No.",
+                                    (tmpFilterNo[1]+tmpFilterNo[2]+
+                                     tmpFilterNo[3]+tmpFilterNo[4]+
+                                     tmpFilterNo[5]+tmpFilterNo[6]+
+                                     tmpFilterNo[7]+tmpFilterNo[8]+
+                                     tmpFilterNo[9]+tmpFilterNo[10]));
+                                 IF tSSH.FIND('-') THEN
+
+                                  //IF (tSSH."Sell-to Customer No." = '39310') AND (tSSH."Shortcut Dimension 1 Code"='364') THEN
+                                  // REPORT.RUN(REPORT::"DO Reffcode Cust",FALSE,FALSE,tSSH)
+                                  //ELSE
+                                   //T34.1
+                                   //REPORT.RUN(REPORT::"Sales - Shipment",FALSE,FALSE,tSSH);
+                                   REPORT.RUN(REPORT::"Report Delivery Order",FALSE,FALSE,tSSH);
+                                   //End T34.1
+
+                                 //Return Shipment Header
+                                 tRSH.RESET;
+                                 tRSH.SETFILTER("Shipment No.",
+                                    (tmpFilterNo[1]+tmpFilterNo[2]+
+                                     tmpFilterNo[3]+tmpFilterNo[4]+
+                                     tmpFilterNo[5]+tmpFilterNo[6]+
+                                     tmpFilterNo[7]+tmpFilterNo[8]+
+                                     tmpFilterNo[9]+tmpFilterNo[10]));
+                                 IF tRSH.FIND('-') THEN
+                                 REPORT.RUN(REPORT::"Purchase - Return Shipment",FALSE,FALSE,tRSH);
+
+                                 //Transfer Shipment Header
+                                 tTSH.RESET;
+                                 tTSH.SETFILTER("Shipment No.",
+                                    (tmpFilterNo[1]+tmpFilterNo[2]+
+                                     tmpFilterNo[3]+tmpFilterNo[4]+
+                                     tmpFilterNo[5]+tmpFilterNo[6]+
+                                     tmpFilterNo[7]+tmpFilterNo[8]+
+                                     tmpFilterNo[9]+tmpFilterNo[10]));
+                                 IF tTSH.FIND('-') THEN
+                                 REPORT.RUN(REPORT::"Transfer Shipment",FALSE,FALSE,tTSH);
+
+                               END;
+
+                               tmpWSH.DELETEALL;
+                               //cWPS.GetResultMessage;
+                               MESSAGE(Text1001);
+                               CLEAR(cWPS);
+                             END;
+                              }
+
+  }
+  REQUESTPAGE
+  {
+    PROPERTIES
+    {
+      OnOpenPage=BEGIN
+                   RF_PostingDate := TODAY;
+                 END;
+
+    }
+    CONTROLS
+    {
+      { 1   ;    ;Container ;
+                  Name=Option;
+                  ContainerType=ContentArea }
+
+      { 2   ;1   ;Field     ;
+                  CaptionML=ENU=Posting Date;
+                  SourceExpr=RF_PostingDate }
+
+    }
+  }
+  LABELS
+  {
+  }
+  CODE
+  {
+    VAR
+      tmpWSH@1000 : TEMPORARY Record 7320;
+      Print@1001 : Boolean;
+      Text1001@1002 : TextConst 'ENU=posting process is complete';
+      RF_PostingDate@1003 : Date;
+
+    PROCEDURE SetPrint@1000000000(Print2@1000000000 : Boolean);
+    BEGIN
+      Print := Print2;
+    END;
+
+    BEGIN
+    {
+      T34.1   30 Nov 2015   SY    Change codes
+    }
+    END.
+  }
+  RDLDATA
+  {
+  }
+}

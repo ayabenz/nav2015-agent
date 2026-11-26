@@ -237,7 +237,7 @@ Key findings:
 - For Purchase Invoice and Purchase Credit Memo, Codeunit 90 applies Receive=TRUE or Ship=TRUE after the wrapper's conditional check. Static inspection indicates the wrapper check may be skipped for those document types; runtime confirmation is still required.
 - Batch Reports 496/497/498/6665 call Codeunit 90 directly.
 - Codeunit 98 Job Queue calls Codeunit 90 at execution without rechecking stocktake; a check at enqueue time can become stale before execution.
-- Codeunit 5760 warehouse receipt, Codeunit 5763 warehouse shipment, and Codeunit 7324 warehouse activity posting call Codeunit 90 directly for Purchase Line sources.
+- Normal Page 5768 Warehouse Receipt UI calls the warehouse-receipt stocktake check before Codeunit 5760. Codeunit 5760 itself has no internal check and calls Codeunit 90 directly for Purchase Line sources, so direct/alternate callers remain unprotected. Codeunit 5763 warehouse shipment and Codeunit 7324 warehouse activity posting call Codeunit 90 directly for Purchase Line sources without an inspected posting-time check.
 - Codeunits 5751/5752 check stocktake when creating purchase warehouse source documents, but that does not replace a check at actual posting time.
 - Codeunit 1313 purchase invoice correction and Mini Purchase Credit Memo Post & Print are additional direct Codeunit 90 routes.
 

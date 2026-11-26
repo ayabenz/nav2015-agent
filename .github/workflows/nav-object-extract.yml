@@ -1,0 +1,93 @@
+name: NAV object extraction
+
+on:
+  workflow_dispatch:
+    inputs:
+      source:
+        description: "Repository path to NAV TXT/ZIP source"
+        required: true
+        default: "data/input/datascrip/datascrip.zip"
+        type: string
+      output:
+        description: "Repository directory for extracted objects"
+        required: true
+        default: "reports/datascrip/stocktake"
+        type: string
+      objects:
+        description: "Space-separated selectors, e.g. Table:50063 Page:50169"
+        required: true
+        default: "Table:50063 Page:50169"
+        type: string
+  push:
+    branches:
+      - datascrip
+    paths:
+      - ".github/workflows/nav-object-extract.yml"
+      - "scripts/export_nav_objects.py"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: nav-object-extraction-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  extract:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Validate inputs
+        id: inputs
+        env:
+          SOURCE: ${{ inputs.source || 'data/input/datascrip/datascrip.zip' }}
+          OUTPUT: ${{ inputs.output || 'reports/datascrip/stocktake' }}
+          OBJECTS: ${{ inputs.objects || 'Table:50063 Page:50169' }}
+        run: |
+          python - <<'PY'
+          import os, re
+          from pathlib import Path
+          source = Path(os.environ["SOURCE"])
+          output = Path(os.environ["OUTPUT"])
+          objects = os.environ["OBJECTS"].split()
+          if not source.is_file() or source.suffix.lower() not in {".zip", ".txt"}:
+              raise SystemExit(f"Invalid source file: {source}")
+          if output.is_absolute() or ".." in output.parts or not str(output).strip():
+              raise SystemExit(f"Unsafe output directory: {output}")
+          if not objects or any(not re.fullmatch(r"[A-Za-z]+:\\d+", item) for item in objects):
+              raise SystemExit("Objects must be space-separated Type:ID selectors")
+          with open(os.environ["GITHUB_OUTPUT"], "a") as f:
+              f.write(f"source={source.as_posix()}\n")
+              f.write(f"output={output.as_posix()}\n")
+              f.write(f"objects={' '.join(objects)}\n")
+          PY
+
+      - name: Extract NAV objects
+        run: |
+          python scripts/export_nav_objects.py \
+            --input "${{ steps.inputs.outputs.source }}" \
+            --output "${{ steps.inputs.outputs.output }}" \
+            --objects ${{ steps.inputs.outputs.objects }}
+
+      - name: Commit extracted objects
+        env:
+          OUTPUT: ${{ steps.inputs.outputs.output }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -- "$OUTPUT"
+          if git diff --cached --quiet; then
+            echo "No extracted file changes to commit."
+            exit 0
+          fi
+          git commit -m "Extract NAV objects from source archive"
+          git push

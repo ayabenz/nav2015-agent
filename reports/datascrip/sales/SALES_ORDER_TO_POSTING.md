@@ -612,3 +612,18 @@ The related return-side process has been reconstructed separately in [Sales Retu
 ### 21. Warehouse Shipment flow
 
 The warehouse shipment process is documented in [Warehouse Shipment — Create, Pick and Post](WAREHOUSE_SHIPMENT_POSTING_FLOW.md). It traces Codeunit 5752 source creation, Page 7335/7336, Codeunits 5764/5765/5763, Report 50223, source-line quantity synchronization, source-specific posting and the posting-time stocktake gap. The important distinction is that Codeunit 5752 checks when source documents are added, while Codeunit 5763 currently has no central Table 50063 check when the warehouse shipment is posted.
+
+
+### 22. Transfer Order stocktake and posting flow
+
+The Transfer Order flow is now documented separately in [Transfer Order — Stocktake, Ownership, and Posting Flow](../transfer_flow/TRANSFER_ORDER_STOCKTAKE_AND_POSTING_FLOW.md).
+
+Key result:
+- Codeunit 5704 checks `BlockStocktakeTransferHeader(Rec,'OUT')` as its first executable posting operation.
+- Codeunit 5705 checks `BlockStocktakeTransferHeader(Rec,'IN')` as its first executable posting operation.
+- Page 5740 Post and Post & Print wrappers delegate to Codeunit 5704/5705.
+- Warehouse shipment posting (Codeunit 5763) delegates Transfer Line posting to Codeunit 5704; warehouse receipt posting (Codeunit 5760) delegates Transfer Line posting to Codeunit 5705.
+- Codeunits 5752/5751 also check OUT/IN when creating outbound/inbound warehouse source documents.
+- Therefore, the inspected regular Transfer Order routes have stocktake checks both at warehouse source creation and again immediately before actual posting.
+
+The company-approved stocktake design and its intentional Sales Return Order / Credit Memo behavior are recorded in [Issue #3](https://github.com/ayabenz/nav2015-agent/issues/3). Do not treat the absence of a duplicate check in every wrapper as a defect when the actual posting codeunit performs the required pre-posting check or the company has explicitly accepted the route behavior.

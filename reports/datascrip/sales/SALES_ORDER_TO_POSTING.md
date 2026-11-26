@@ -602,3 +602,8 @@ The expanded audit also covers Sales Return Order / Credit Memo and warehouse sh
 - Credit Memo posting via Page 44 / Codeunits 81–82 and Report 298 does not show a stocktake gate.
 - Warehouse shipment creation is gated in Codeunit 5752, but the posting engine Codeunit 5763 and its wrappers Codeunits 5764/5765 do not call Codeunit 50107. Page 7335 Post Batch (Report 50223) also runs Codeunit 5763 without a gate.
 - Warehouse receipt page actions are gated in Page 5768, but Codeunit 5760 itself has no central stocktake check; direct/alternate callers need validation.
+
+
+### 20. Sales Return Order and Credit Memo flow
+
+The related return-side process has been reconstructed separately in [Sales Return Order → Return Receipt / Credit Memo](SALES_RETURN_CREDIT_MEMO_FLOW.md). It distinguishes physical return receipt from customer credit posting, maps the Page 6630 / Page 44 / batch / warehouse receipt routes, and traces Codeunit 80's Return Receipt Header, Credit Memo Header and Item Journal behavior. The report also documents the stocktake bypasses for invoice-only, combined and batch return posting.

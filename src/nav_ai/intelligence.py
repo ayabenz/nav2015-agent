@@ -15,6 +15,7 @@ from typing import Any
 
 from .control_flow import analyze_control_flow
 from .parser import parse_nav_text, split_objects
+from .semantic_conditions import enrich_control_flow, load_table_sources, parse_record_variables
 
 
 def _connect(path: str | Path) -> sqlite3.Connection:
@@ -223,6 +224,7 @@ def main(argv: list[str] | None = None) -> int:
     cond.add_argument("--source-file", required=True, help="NAV TXT export containing the target object")
     cond.add_argument("--object", dest="object_node", help='optional object identity, e.g. "Codeunit 80"')
     cond.add_argument("--procedure", help="procedure name; omit to analyze the full object CODE section")
+    cond.add_argument("--table-source", action="append", default=[], help="Table TXT metadata export; repeat for multiple tables")
 
     args = parser.parse_args(argv)
     base = Path("data")
@@ -271,6 +273,22 @@ def main(argv: list[str] | None = None) -> int:
                 result = analyze_control_flow(code, parsed["object"]["type"], parsed["object"]["id"],
                                               parsed["object"]["name"], None, args.source_file,
                                               line_offset=line_offset)
+            if args.table_source:
+                variables = parse_record_variables("\\n".join(v["raw"] for v in parsed_block["variables"]))
+                tables = load_table_sources(args.table_source)
+                enrich_control_flow(result["nodes"], variables, tables)
+                result["semantic_resolution"] = {
+                    "enabled": True,
+                    "record_variables": variables,
+                    "table_ids_loaded": sorted(tables),
+                    "runtime_evaluated": False,
+                }
+            else:
+                result["semantic_resolution"] = {
+                    "enabled": False,
+                    "reason": "provide --table-source to resolve Table/Field/Option metadata",
+                    "runtime_evaluated": False,
+                }
         elif args.command == "search":
             with _connect(symbol_path) as symbols:
                 result = symbol_search(symbols, args.terms, args.limit)

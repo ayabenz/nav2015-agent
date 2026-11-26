@@ -14,7 +14,7 @@ The Table 50063 stocktake gate is **not consistently enforced across posting ent
 - Purchase wrappers gate Ship/Receive, but their invoice-only path skips the gate. The Purchase job-queue worker does not add a gate.
 - Transfer shipment/receipt and the inspected warehouse source-document / warehouse-receipt actions do call the corresponding gate.
 
-The highest-value correction is to enforce stocktake at a common posting boundary while passing the actual posting intent (Ship, Receive, Invoice). Simply calling the existing `BlockStocktakeSalesHeader(SalesHeader,FALSE)` at Codeunit 80 is **not sufficient**: for Sales Orders it filters only Qty. to Ship, and for Return Orders only Return Qty. to Receive. An invoice-only posting normally has those quantities at zero and would still escape the gate.
+The highest-value correction is to enforce stocktake at common posting boundaries while passing the actual posting intent (Ship, Receive, Invoice) and to add a posting-time warehouse shipment check. Simply calling the existing `BlockStocktakeSalesHeader(SalesHeader,FALSE)` at Codeunit 80 is **not sufficient**: for Sales Orders it filters only Qty. to Ship, and for Return Orders only Return Qty. to Receive. An invoice-only posting normally has those quantities at zero and would still escape the gate.
 
 ## 1. Sales posting routes
 
@@ -114,3 +114,59 @@ Page 5768 has the gate call on both inspected posting actions. The legacy local 
 - This is static source inspection of the company export and selected entry points. It does not prove that every external integration, custom API, direct Codeunit.RUN, job queue record, or customer-specific extension has been enumerated.
 - The extracted object headers include NAVW17/NAVW18 build markers while the target is described as NAV 2015. Confirm the installed application build before deploying code changes.
 - Runtime tests are required to validate actual quantities, document-type behavior, job queue execution, and transaction rollback behavior.
+
+
+## 7. Return Order / Credit Memo entry points
+
+The return-side pages confirm the same invoice-only gap found on Sales Orders:
+
+| Entry point | Route observed | Stocktake gate | Assessment |
+|---|---|---|---|
+| Page 6630 — Sales Return Order, Post Ship/Receive choice | Codeunit 50081 → Codeunit 80 | Codeunit 50081 OnRun calls `BlockStocktakeSalesHeader(Rec,FALSE)` | Gate present for Return Qty. to Receive. |
+| Page 6630 — Post Invoice/Credit Memo choice | Codeunit 50082 → Codeunit 80 | None | **Gap.** Codeunit 50082 sets Receive=FALSE / Invoice=TRUE for Return Order. |
+| Page 6630 — Post and Print | Codeunit 82 → Codeunit 80 or Codeunit 88 | None | **Gap.** |
+| Page 6630 — Post Batch | Report 6655 → Codeunit 80 | None | **Gap.** Report 6655 sets Receive/Invoice request flags and calls Sales-Post directly. |
+| Page 44 — Sales Credit Memo, Post | Codeunit 81 → Codeunit 80 or Codeunit 88 | None | **Gap.** |
+| Page 44 — Post and Print / Post and Email | Codeunit 82 → Codeunit 80 or Codeunit 88 | None | **Gap.** |
+| Page 44 — Post Batch | Report 298 → Codeunit 80 | None | **Gap.** Report 298 calls Sales-Post directly for Credit Memo records. |
+| Sales Return Order → Warehouse Receipt source creation | Codeunit 5751 `CreateFromSalesReturnOrder` | `BlockStocktakeSalesHeader(SalesHeader,FALSE)` | Gate present at source-document creation. |
+| Warehouse Receipt → Return Order posting | Page 5768 → Page 7342/subform → Codeunit 5760 → Codeunit 80 | Page 5768 calls `BlockStocktakeWarehouseReceiptHeader(Rec)` before both inspected posting actions | Gate present in the inspected UI route; Codeunit 5760 itself has no Codeunit 50107 call. |
+
+Evidence:
+- Page 6630 action definitions around lines 394–443 show Ship/Receive uses Codeunit 50081 and Invoice uses Codeunit 50082. Post and Print around lines 453–480 calls the standard Codeunit 82 wrapper. Post Batch around lines 482–489 invokes Report 6655.
+- Page 44 action definitions around lines 250–300 call Codeunit 81, Codeunit 82, Codeunit 82 PostAndEmail, and Report 298.
+- Report 298 and Report 6655 each call Codeunit 80 directly from their Sales Header data item's OnAfterGetRecord trigger.
+- Codeunit 5760 `PostSourceDocument` around lines 326–412 calls Purchase-Post, Sales-Post and TransferOrder-Post Receipt. It contains no Codeunit 50107 reference. Page 5768 is the inspected UI guard for warehouse receipts, while Codeunit 5705 independently protects transfer receipt posting.
+
+## 8. Warehouse Shipment posting — additional bypass
+
+Warehouse shipment creation and warehouse shipment posting are separate stages. Codeunit 5752 protects selected source-document creation methods, but the later posting stage does not repeat the Table 50063 check.
+
+| Entry point | Route observed | Stocktake gate | Assessment |
+|---|---|---|---|
+| Page 7335 — Post Shipment | Page 7335 → Page 7336 subform `PostShipmentYesNo` → Codeunit 5764 → Codeunit 5763 | None in Page 7335, Page 7336, Codeunit 5764 or Codeunit 5763 | **Gap at posting time.** |
+| Page 7335 — Post and Print | Page 7335 → Page 7336 `PostShipmentPrintYesNo` → Codeunit 5765 → Codeunit 5763 | None | **Gap at posting time.** The action is currently hidden/disabled in this page export, but the callable procedure exists. |
+| Page 7335 — Post Batch | Report 50223 → Codeunit 5763 | None | **Gap.** Batch path bypasses the source-document creation wrapper. |
+| Codeunit 5763 — Whse.-Post Shipment | Iterates warehouse shipment lines, then posts source Sales/Purchase/Transfer documents | No Codeunit 50107 reference in the full exported object | **No central warehouse shipment gate.** |
+| Codeunit 5760 — Whse.-Post Receipt | Iterates warehouse receipt lines, then posts Purchase/Sales Return/Transfer source documents | No Codeunit 50107 reference in the full exported object | UI guard exists on Page 5768; direct invocation is not protected by this codeunit. |
+
+Evidence:
+- Page 7335 Post Shipment action around lines 168–178 delegates to the subform. Post Batch around lines 194–221 calls Report 50223 through `SetPostBatch(FALSE)`.
+- Page 7336 `PostShipmentYesNo` around lines 248–258 runs Codeunit 5764; `PostShipmentPrintYesNo` around lines 260–270 runs Codeunit 5765.
+- Codeunit 5764 and 5765 both configure and run Codeunit 5763; neither calls Codeunit 50107.
+- Codeunit 5763 OnRun around lines 16–22 runs its posting Code and then CheckDeptMAS. Its `PostSourceDocument` procedure around lines 335–465 directly calls Codeunit 80 for Sales Order/Return Receipt source lines, Codeunit 90 for Purchase Return Order source lines, and Codeunit 5704 for Transfer Shipment source lines.
+- Report 50223 around lines 38–87 collects finished, completely picked warehouse shipments and runs Codeunit 5763 for each. No stocktake call is present.
+- Full exported Codeunit 5760 and Codeunit 5763 contain no `BlockStocktake` or `50107` reference.
+
+**Operational consequence:** a warehouse shipment created before a stocktake window begins can remain available to post during the stocktake window. The source-creation gate in Codeunit 5752 does not re-evaluate an already-created warehouse shipment. Manually assembled or otherwise populated warehouse shipments may also avoid that source-creation gate.
+
+**Recommended correction:** add a posting-time check at Codeunit 5763 before source-document posting, evaluating the actual Warehouse Shipment Line quantities and source document type/direction against Table 50063. Preserve the existing Codeunit 5752 checks because they prevent adding blocked source documents to new warehouse shipments. For receipts, consider a corresponding check inside Codeunit 5760 so non-Page-5768 callers cannot bypass the Page 5768 gate. Transfer shipment/receipt still has its own Codeunit 5704/5705 checks; avoid duplicate errors and validate the intended behavior.
+
+## 9. Updated remediation order
+
+1. **Sales posting:** enforce a posting-intent-aware check at Codeunit 80, including Qty. to Invoice.
+2. **Warehouse shipment posting:** add a posting-time gate to Codeunit 5763, not only the source-document creation check in Codeunit 5752.
+3. **Purchase posting:** enforce at the common Purch.-Post boundary with Ship/Receive/Invoice intent; current Codeunits 91/92 gate only Ship or Receive.
+4. **Warehouse receipt posting:** retain Page 5768 checks and consider a central check in Codeunit 5760 for alternate callers.
+5. **Transfer posting:** preserve Codeunit 5704/5705 gates.
+6. Regression-test UI, batch, job queue, warehouse shipment created before a stocktake window, manually assembled warehouse shipments, and direct codeunit execution.

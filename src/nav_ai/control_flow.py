@@ -197,7 +197,7 @@ class _Parser:
 
 def analyze_control_flow(source: str, object_type: str | None = None, object_id: int | None = None,
                          object_name: str | None = None, procedure: str | None = None,
-                         source_file: str = "<memory>") -> dict[str, Any]:
+                         source_file: str = "<memory>", line_offset: int = 0) -> dict[str, Any]:
     """Extract IF/ELSE and CASE structure from a procedure or C/AL code region."""
     parser = _Parser(source)
     nodes = []
@@ -208,6 +208,18 @@ def analyze_control_flow(source: str, object_type: str | None = None, object_id:
             nodes.append(node)
         if parser.i == before:
             parser.i += 1
+    def shift_lines(node: Any) -> None:
+        if isinstance(node, dict):
+            for key in ("line_start", "line_end"):
+                if key in node:
+                    node[key] += line_offset
+            for value in node.values():
+                shift_lines(value)
+        elif isinstance(node, list):
+            for value in node:
+                shift_lines(value)
+
+    shift_lines(nodes)
     return {
         "object": {"type": object_type, "id": object_id, "name": object_name},
         "procedure": procedure,

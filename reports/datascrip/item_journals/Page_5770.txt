@@ -1,0 +1,301 @@
+OBJECT Page 5770 Warehouse Put-away
+{
+  OBJECT-PROPERTIES
+  {
+    Date=09/05/16;
+    Time=07:52:23;
+    Modified=Yes;
+    Version List=[NAVW17.00;DTS:T12,T18];
+  }
+  PROPERTIES
+  {
+    CaptionML=ENU=Warehouse Put-away;
+    SaveValues=Yes;
+    InsertAllowed=No;
+    SourceTable=Table5766;
+    SourceTableView=WHERE(Type=CONST(Put-away));
+    PageType=Document;
+    RefreshOnActivate=Yes;
+    OnOpenPage=BEGIN
+                 ErrorIfUserIsNotWhseEmployee;
+               END;
+
+    OnFindRecord=BEGIN
+                   EXIT(FindFirstAllowedRec(Which));
+                 END;
+
+    OnNextRecord=BEGIN
+                   EXIT(FindNextAllowedRec(Steps));
+                 END;
+
+    OnAfterGetRecord=BEGIN
+                       CurrentLocationCode := "Location Code";
+                     END;
+
+    OnDeleteRecord=BEGIN
+                     CurrPage.UPDATE;
+                   END;
+
+    ActionList=ACTIONS
+    {
+      { 1900000003;0 ;ActionContainer;
+                      ActionContainerType=RelatedInformation }
+      { 100     ;1   ;ActionGroup;
+                      CaptionML=ENU=Put-&away;
+                      Image=CreatePutAway }
+      { 101     ;2   ;Action    ;
+                      ShortCutKey=Shift+Ctrl+L;
+                      CaptionML=ENU=List;
+                      Image=OpportunitiesList;
+                      OnAction=BEGIN
+                                 LookupActivityHeader(CurrentLocationCode,Rec);
+                               END;
+                                }
+      { 17      ;2   ;Action    ;
+                      CaptionML=ENU=Co&mments;
+                      RunObject=Page 5776;
+                      RunPageLink=Table Name=CONST(Whse. Activity Header),
+                                  Type=FIELD(Type),
+                                  No.=FIELD(No.);
+                      Image=ViewComments }
+      { 26      ;2   ;Action    ;
+                      CaptionML=ENU=Registered Put-aways;
+                      RunObject=Page 5797;
+                      RunPageView=SORTING(Whse. Activity No.);
+                      RunPageLink=Type=FIELD(Type),
+                                  Whse. Activity No.=FIELD(No.);
+                      Promoted=Yes;
+                      Image=RegisteredDocs;
+                      PromotedCategory=Process }
+      { 1900000004;0 ;ActionContainer;
+                      ActionContainerType=ActionItems }
+      { 9       ;1   ;ActionGroup;
+                      CaptionML=ENU=F&unctions;
+                      Image=Action }
+      { 35      ;2   ;Action    ;
+                      CaptionML=ENU=Autofill Qty. to Handle;
+                      Image=AutofillQtyToHandle;
+                      OnAction=BEGIN
+                                 AutofillQtyToHandle;
+                               END;
+                                }
+      { 20      ;2   ;Action    ;
+                      CaptionML=ENU=Delete Qty. to Handle;
+                      Image=DeleteQtyToHandle;
+                      OnAction=BEGIN
+                                 DeleteQtyToHandle;
+                               END;
+                                }
+      { 23      ;2   ;Separator  }
+      { 19      ;2   ;Action    ;
+                      CaptionML=ENU=Autofill Processed;
+                      Promoted=Yes;
+                      PromotedIsBig=Yes;
+                      Image=Check;
+                      PromotedCategory=Process;
+                      OnAction=VAR
+                                 lRec_Line@1000 : Record 5767;
+                               BEGIN
+                                 //T18.04
+                                 lRec_Line.RESET;
+                                 lRec_Line.SETRANGE("Activity Type",Type);
+                                 lRec_Line.SETRANGE("No.","No.");
+                                 lRec_Line.MODIFYALL(Processed,TRUE);
+                                 //T18.04
+                               END;
+                                }
+      { 15      ;2   ;Action    ;
+                      CaptionML=ENU=Clear Processed;
+                      Promoted=Yes;
+                      PromotedIsBig=Yes;
+                      Image=UnApply;
+                      PromotedCategory=Process;
+                      OnAction=VAR
+                                 lRec_Line@1000 : Record 5767;
+                               BEGIN
+                                 //T18.04
+                                 lRec_Line.RESET;
+                                 lRec_Line.SETRANGE("Activity Type",Type);
+                                 lRec_Line.SETRANGE("No.","No.");
+                                 lRec_Line.MODIFYALL(Processed,FALSE);
+                                 //T18.04
+                               END;
+                                }
+      { 8       ;1   ;ActionGroup;
+                      CaptionML=ENU=&Registering;
+                      Image=PostOrder }
+      { 25      ;2   ;Action    ;
+                      ShortCutKey=F9;
+                      CaptionML=ENU=&Register Put-away;
+                      Promoted=Yes;
+                      PromotedIsBig=Yes;
+                      Image=RegisterPutAway;
+                      PromotedCategory=Process;
+                      OnAction=BEGIN
+                                 IF WhseRegisterActivityYesNo.CheckAllLineProcessed(Rec) THEN //T18.01
+                                   RegisterPutAwayYesNo
+                                 ELSE //T18.01
+                                   ERROR(Text50050); //T18.01
+                               END;
+                                }
+      { 6       ;1   ;Action    ;
+                      Ellipsis=Yes;
+                      CaptionML=ENU=&Print;
+                      Promoted=Yes;
+                      Image=Print;
+                      PromotedCategory=Process;
+                      OnAction=VAR
+                                 WhsActHdr@1000 : Record 5766;
+                               BEGIN
+                                 //T12.02
+                                 //Standard WhseActPrint.PrintPutAwayHeader(Rec);
+                                 WhsActHdr.RESET;
+                                 WhsActHdr.SETRANGE(WhsActHdr.Type, Type);
+                                 WhsActHdr.SETFILTER(WhsActHdr."No.", "No.");
+                                 IF WhsActHdr.FINDFIRST THEN
+                                   REPORT.RUNMODAL(REPORT::"Form Put-away List (Dev)",TRUE,FALSE,WhsActHdr);
+                                 //End T12.02
+                               END;
+                                }
+    }
+  }
+  CONTROLS
+  {
+    { 1900000001;0;Container;
+                ContainerType=ContentArea }
+
+    { 1   ;1   ;Group     ;
+                CaptionML=ENU=General }
+
+    { 2   ;2   ;Field     ;
+                SourceExpr="No.";
+                Editable=FALSE;
+                OnAssistEdit=BEGIN
+                               IF AssistEdit(xRec) THEN
+                                 CurrPage.UPDATE;
+                             END;
+                              }
+
+    { 16  ;2   ;Field     ;
+                Lookup=No;
+                CaptionML=ENU=Location Code;
+                SourceExpr=CurrentLocationCode;
+                Editable=FALSE }
+
+    { 3   ;2   ;Field     ;
+                SourceExpr="Shipment/Receipt No." }
+
+    { 7   ;2   ;Field     ;
+                SourceExpr="No. Penerimaan" }
+
+    { 4   ;2   ;Field     ;
+                SourceExpr="Assigned User ID" }
+
+    { 14  ;2   ;Field     ;
+                SourceExpr="Assignment Date";
+                Editable=FALSE }
+
+    { 28  ;2   ;Field     ;
+                SourceExpr="Assignment Time";
+                Editable=FALSE }
+
+    { 12  ;2   ;Field     ;
+                OptionCaptionML=ENU=" ,Item,Document,Shelf or Bin,Due Date,,Bin Ranking,Action Type";
+                SourceExpr="Sorting Method";
+                OnValidate=BEGIN
+                             SortingMethodOnAfterValidate;
+                           END;
+                            }
+
+    { 10  ;2   ;Field     ;
+                SourceExpr="First Print Date & Time" }
+
+    { 11  ;2   ;Field     ;
+                SourceExpr="First Scan Date & Time";
+                Editable=false }
+
+    { 13  ;2   ;Field     ;
+                SourceExpr="First Scan User ID" }
+
+    { 97  ;1   ;Part      ;
+                Name=WhseActivityLines;
+                SubPageView=SORTING(Activity Type,No.,Sorting Sequence No.)
+                            WHERE(Breakbulk=CONST(No));
+                SubPageLink=Activity Type=FIELD(Type),
+                            No.=FIELD(No.);
+                PagePartID=Page5771 }
+
+    { 1900000007;0;Container;
+                ContainerType=FactBoxArea }
+
+    { 1901796907;1;Part   ;
+                SubPageLink=No.=FIELD(Item No.);
+                PagePartID=Page9109;
+                ProviderID=97;
+                Visible=TRUE;
+                PartType=Page }
+
+    { 5   ;1   ;Part      ;
+                SubPageLink=Item No.=FIELD(Item No.),
+                            Variant Code=FIELD(Variant Code),
+                            Location Code=FIELD(Location Code);
+                PagePartID=Page9126;
+                ProviderID=97;
+                Visible=false;
+                PartType=Page }
+
+    { 1900383207;1;Part   ;
+                Visible=FALSE;
+                PartType=System;
+                SystemPartID=RecordLinks }
+
+    { 1905767507;1;Part   ;
+                Visible=TRUE;
+                PartType=System;
+                SystemPartID=Notes }
+
+  }
+  CODE
+  {
+    VAR
+      WhseActPrint@1000 : Codeunit 5776;
+      CurrentLocationCode@1002 : Code[10];
+      Text50050@1001 : TextConst 'ENU=All Lines must be processed before Register';
+      WhseRegisterActivityYesNo@1003 : Codeunit 7306;
+
+    LOCAL PROCEDURE AutofillQtyToHandle@1();
+    BEGIN
+      CurrPage.WhseActivityLines.PAGE.AutofillQtyToHandle;
+    END;
+
+    LOCAL PROCEDURE DeleteQtyToHandle@2();
+    BEGIN
+      CurrPage.WhseActivityLines.PAGE.DeleteQtyToHandle;
+    END;
+
+    LOCAL PROCEDURE RegisterPutAwayYesNo@3();
+    BEGIN
+      CurrPage.WhseActivityLines.PAGE.RegisterPutAwayYesNo;
+    END;
+
+    LOCAL PROCEDURE SortingMethodOnAfterValidate@19063061();
+    BEGIN
+      CurrPage.UPDATE;
+    END;
+
+    LOCAL PROCEDURE BreakbulkFilterOnAfterValidate@19055352();
+    BEGIN
+      CurrPage.UPDATE;
+    END;
+
+    BEGIN
+    {
+      T12.01    31 Aug 15   SH    Show fields : "Shipment/Receipt No.", "No. Penerimaan", "First Print Date & Time", "First Scan Date & Time",
+                                  "First Scan User ID"
+      T12.02    22 Okt 15   SY    Change code show preview print
+      T18.01    29 Oct 15   RT    Check All Line before Register
+      T18.04    10 Des 15   RT    Add function to check all & uncheck all process in Line
+    }
+    END.
+  }
+}

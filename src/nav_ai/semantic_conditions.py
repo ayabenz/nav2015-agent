@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Any
 
 _VAR_RE = re.compile(
-    r'^\s*(?:"(?P<quoted>[^"]+)"|(?P<plain>[A-Za-z_][A-Za-z0-9_@]*))'
+    r'^\s*(?:"(?P<quoted>[^"]+)"|(?P<plain>[A-Za-z_][A-Za-z0-9_]*))'
     r'(?:@\d+)?\s*:\s*Record\s+(?P<table_id>\d+)\s*;\s*$',
     re.I,
 )

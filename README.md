@@ -6,6 +6,14 @@ Deterministic first-pass parser untuk Microsoft Dynamics NAV 2015 C/AL object te
 
 ---
 
+## Roadmap dan Status Proyek
+
+Roadmap, progress, riwayat hasil pengujian, dan stocktake runtime test matrix dipelihara di [ROADMAP_TRACKER.md](./ROADMAP_TRACKER.md).
+
+Tracker membedakan hasil automated test, static source audit, keputusan business policy, dan runtime validation. Angka pengujian historis tidak dianggap sebagai hasil full-suite terkini sampai suite dijalankan ulang pada HEAD branch.
+
+---
+
 ## Apa Itu Project Ini?
 
 Project ini adalah seperangkat tools CLI untuk menganalisis source code export Microsoft Dynamics NAV 2015 (C/AL). Tujuannya:
@@ -29,9 +37,9 @@ Tidak memerlukan database eksternal, AI API, atau koneksi internet (Phase 1 mile
 | **nav-search** | `python -m nav_ai.search index --company <company>` | Bangun symbol index SQLite |
 | | `python -m nav_ai.search find --company <company> <terms>` | Cari simbol dalam index |
 | **nav-diff** | `python -m nav_ai.semantic_diff --company <company>` | Perbandingan semantik original vs company |
-| **nav-audit** | `python -m nav_audit --company <company>` | Audit perubahan (REAL / WHITESPACE ONLY / BOUNDARY ARTIFACT) |
+| **nav-audit** | `python -m nav_ai.audit --company <company>` | Audit perubahan (REAL / WHITESPACE ONLY / BOUNDARY ARTIFACT) |
 | **nav-depgraph** | `python -m nav_ai.depgraph --company <company>` | Dependency graph + klasifikasi objek + impact analysis |
-| **clean** | `python clean.py --execute` | Hapus semua file/folder hasil generate |
+| **clean** | `python clean.py --execute` | Hapus semua file hasil generate |
 
 ---
 
@@ -105,31 +113,17 @@ python clean.py --execute
 
 ```
 nav2015-agent/
-├── clean.py                     # Hapus file hasil generate
-├── nav2015_agent.md             # Dokumentasi teknis lengkap
-├── README.md                    # Dokumentasi ini
-├── pyproject.toml               # Konfigurasi paket
+├── clean.py
+├── nav2015_agent.md
+├── README.md
+├── ROADMAP_TRACKER.md           # Roadmap, progress and validation tracker
+├── pyproject.toml
 ├── .gitignore
 ├── .env.example
-├── src/
-│   └── nav_ai/
-│       ├── cli.py               # Entry point nav-ai
-│       ├── ingest.py            # Orkesrasi ingest
-│       ├── parser.py            # Parser inti NAV C/AL
-│       ├── semantic_diff.py     # CLI nav-diff
-│       ├── audit.py             # CLI nav-audit
-│       ├── depgraph.py          # CLI nav-depgraph
-│       └── search.py            # CLI nav-search
-├── tests/                       # Unit tests (pytest)
-├── data/
-│   ├── input/original/          # Baseline export
-│   ├── input/<company>/         # Export company
-│   ├── parsed/<company>/        # Output ingest
-│   ├── snapshots/<company>/     # Snapshot sumber
-│   ├── search/<company>/        # Symbol index SQLite
-│   └── depgraph/<company>/    # Dependency graph DB
-├── extra/                       # Data demo
-└── reports/<company>/           # Laporan diff/audit/depgraph
+├── src/nav_ai/                  # Parser, ingest, diff, audit, depgraph, search
+├── tests/                       # Unit tests
+├── data/                        # Source inputs and generated indexes
+└── reports/<company>/           # Analysis reports
 ```
 
 ---
@@ -145,18 +139,6 @@ Klasifikasi **tidak bergantung** pada `Modified=Yes` atau ID >= 50000. Hanya ber
 | Tidak ada di baseline (company only) | `CUSTOM` |
 | Procedure baru pada standard object | `ADDED` |
 | Procedure berubah pada standard object | `CHANGED` |
-
----
-
-## Hasil Uji
-
-```
-44 passed, 4 failed
-```
-
-4 kegagalan pada `test_real_exports.py` disebabkan file `data/incoming/*.txt` yang sudah dihapus dari working tree (pre-existing, bukan karena perubahan kode).
-
-Semua tes relevan lolos: parser, ingest, diff, audit, depgraph, search, zip support.
 
 ---
 

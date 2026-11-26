@@ -458,3 +458,37 @@ This procedure reconstructs posted transfer tracking from the actual Item Entry 
 3. Trace Transfer Receipt runtime-equivalent paths with different costing methods and application states to validate the +2 link.
 4. Confirm Owner mandatory rules and dimension validation upstream.
 5. Reconcile the NAVW18 object headers against the actual installed NAV build and a matching original baseline.
+
+
+## 16. Same-version baseline comparison — Ownership customization confirmed
+
+A direct source comparison was made against:
+- `reports/original/ownership/Codeunit_22.txt` — Version List `NAVW18.00.00.40938`
+- `reports/original/ownership/Table_14.txt` — Version List `NAVW18.00`
+
+The company Codeunit 22 has the same standard version header as the original Codeunit 22, but adds all of the following code/fields that are absent from the original object:
+- global Record 50035 Ownership Ledger Entry;
+- call to `InsertOwnership` from the posting `Code` procedure;
+- `InsertOwnership` procedure;
+- `CheckRemainingQty` procedure;
+- assignment to Table 32 field `Entry No Plus Satu`.
+
+The original Table 14 does not contain field 50035 `Ownership`; the company Table 14 adds it with an OnValidate check for open Item Ledger Entries at the location.
+
+This is stronger evidence than comparing against a potentially unrelated standard release: **the Ownership Ledger and Location.Ownership gate are company customizations relative to the supplied NAVW18 baseline**. The same-version comparison confirms the feature is not part of the original Table 14 / Codeunit 22 source supplied in `original.zip`.
+
+The Table 32 field 50099 `Entry No Plus Satu` should also be checked against the original Table 32 object before making a complete field-level customization statement. The company Codeunit 22 writes it, and the original Codeunit 22 does not contain that assignment.
+
+## 17. Stocktake object extraction required
+
+The inventory index identifies:
+- Table 50063 — `Setting Blocked Stocktake`, modified, 13 fields, 1 trigger;
+- Page 50169 — `Block Stocktake`, modified, 12 controls and 9 procedures.
+
+These are not yet included in the extracted source folder. They are the next direct source inputs required to establish the configuration schema, date/time field types, default values, validation, and maintenance behavior. Extract them from the existing company archive:
+
+```powershell
+python scripts/export_nav_objects.py --input data/input/datascrip/datascrip.zip --output reports/datascrip/stocktake --objects Table:50063 Page:50169
+```
+
+Then commit/push `reports/datascrip/stocktake` to branch `datascrip`. No new NAV export is required.

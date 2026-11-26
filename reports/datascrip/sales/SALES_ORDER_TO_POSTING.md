@@ -577,4 +577,22 @@ In `BlockStocktakeSalesHeader`, the Qty. to Ship / Return Qty. to Receive filter
 - Selector enablement, multi-value lookups and field clearing: Page 50169, page triggers and controls.
 - Runtime block window, direction, location and item-scope filtering: Codeunit 50107 procedures `BlockStocktakeSalesHeader`, `BlockStocktakePurchaseHeader`, `BlockStocktakeTransferHeader` and `BlockStocktakeWarehouseReceiptHeader`.
 
-The earlier Section 17 extraction instruction is superseded: both source files are now present in the repository. Remaining work is to inspect all callers of Codeunit 50107 and determine whether every relevant posting/warehouse entry point invokes the appropriate gate.
+The earlier Section 17 extraction instruction is superseded: both source files are now present in the repository.
+
+### 19. Stocktake gate coverage across posting entry points
+
+A broader caller and entry-point audit is now documented in [Stocktake Entry-Point Audit](../stocktake/STOCKTAKE_ENTRYPOINT_AUDIT.md).
+
+**Main finding:** stocktake enforcement is not consistent across posting routes. Shipment/receipt routes generally have calls to Codeunit 50107, but multiple invoice-only and alternate posting paths bypass it:
+
+- Page 42 Sales Order invoice action → Codeunit 50082 → Codeunit 80: no stocktake call.
+- Page 42 Post and Print → Codeunit 50084 → Codeunit 80: no stocktake call.
+- Page 43 standard Post / Post and Print / Post and Email → Codeunits 81/82 → Codeunit 80 (or Codeunit 88 job queue): no stocktake call in the inspected wrappers/worker.
+- Report 296 Batch Post Sales Orders and Report 297 Batch Post Sales Invoices call Codeunit 80 directly without a gate.
+- Codeunit 80 itself has no reference to Codeunit 50107 in the exported source.
+- Purchase wrappers Codeunits 91/92 call `BlockStocktakePurchaseHeader` only when Ship OR Receive is selected; invoice-only posting bypasses that call.
+- Transfer shipment/receipt, inspected warehouse source-document creation methods, and both inspected Page 5768 receipt posting actions do invoke the relevant stocktake procedure.
+
+**Important implementation nuance:** moving the existing `BlockStocktakeSalesHeader(SalesHeader,FALSE)` call unchanged into Codeunit 80 would not fix invoice-only Sales Orders or Return Orders. The existing procedure filters those document types by Qty. to Ship or Return Qty. to Receive, respectively. A central posting gate must receive the actual Ship/Receive/Invoice intent and inspect Qty. to Invoice when applicable.
+
+The audit report contains the entry-point matrix, source evidence, purchase-path findings, recommended central enforcement design, regression matrix and scope limitations.

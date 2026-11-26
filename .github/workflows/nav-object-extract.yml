@@ -11,7 +11,7 @@ on:
       output:
         description: "Repository directory for extracted objects"
         required: true
-        default: "reports/datascrip/transfer_wrappers"
+        default: "reports/datascrip/transfer_tables"
         type: string
       objects:
         description: "Space-separated selectors, e.g. Page:43 Page:7335 Page:7336 Page:5769 Report:296 Report:297 Codeunit:81 Codeunit:82 Codeunit:5760 Codeunit:5761 Codeunit:5762 Codeunit:5763 Codeunit:98"
@@ -51,8 +51,8 @@ jobs:
         id: inputs
         env:
           SOURCE: ${{ inputs.source || 'data/input/datascrip/datascrip.zip' }}
-          OUTPUT: ${{ inputs.output || 'reports/datascrip/transfer_wrappers' }}
-          OBJECTS: ${{ inputs.objects || 'Codeunit:5706 Codeunit:5707' }}
+          OUTPUT: ${{ inputs.output || 'reports/datascrip/transfer_tables' }}
+          OBJECTS: ${{ inputs.objects || 'Table:5740 Table:5741 Table:5744 Table:5746' }}
         run: |
           python - <<'PY'
           import os, re

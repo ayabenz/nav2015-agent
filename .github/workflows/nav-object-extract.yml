@@ -52,7 +52,7 @@ jobs:
         env:
           SOURCE: ${{ inputs.source || 'data/input/datascrip/datascrip.zip' }}
           OUTPUT: ${{ inputs.output || 'reports/datascrip/item_journals' }}
-          OBJECTS: ${{ inputs.objects || 'Page:40 Page:392 Page:393 Page:519 Page:1327 Page:201 Page:900 Page:5900 Page:5906 Page:99000831 Page:99000914 Page:7324 Page:7365 Page:7319 Page:50066 Page:50076 Page:50077 Codeunit:22 Codeunit:23 Codeunit:241 Codeunit:242 Codeunit:243 Codeunit:244 Codeunit:900 Codeunit:1012 Codeunit:5407 Codeunit:5814 Codeunit:5815 Codeunit:5816 Codeunit:5817 Codeunit:5818 Codeunit:5819 Codeunit:5895 Codeunit:5987 Codeunit:7301 Codeunit:7302 Codeunit:7303 Codeunit:7304 Codeunit:7324 Report:722 Report:7315 Report:8613 Table:83 Table:210 Table:900 Table:901 Table:7311' }}
+          OBJECTS: ${{ inputs.objects || 'Page:40 Page:392 Page:393 Page:519 Page:1327 Page:201 Page:900 Page:5900 Page:5906 Page:5767 Page:5768 Page:5769 Page:5770 Page:99000831 Page:99000914 Page:7324 Page:7365 Page:7319 Page:50066 Page:50076 Page:50077 Codeunit:22 Codeunit:23 Codeunit:241 Codeunit:242 Codeunit:243 Codeunit:244 Codeunit:900 Codeunit:1001 Codeunit:1012 Codeunit:5407 Codeunit:5814 Codeunit:5815 Codeunit:5816 Codeunit:5817 Codeunit:5818 Codeunit:5819 Codeunit:5895 Codeunit:5980 Codeunit:5987 Codeunit:7301 Codeunit:7302 Codeunit:7303 Codeunit:7304 Codeunit:7324 Report:722 Report:7315 Report:8613 Table:83 Table:210 Table:900 Table:901 Table:7311' }}
         run: |
           python - <<'PY'
           import os, re

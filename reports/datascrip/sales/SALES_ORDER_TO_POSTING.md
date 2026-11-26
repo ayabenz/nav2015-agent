@@ -607,3 +607,8 @@ The expanded audit also covers Sales Return Order / Credit Memo and warehouse sh
 ### 20. Sales Return Order and Credit Memo flow
 
 The related return-side process has been reconstructed separately in [Sales Return Order → Return Receipt / Credit Memo](SALES_RETURN_CREDIT_MEMO_FLOW.md). It distinguishes physical return receipt from customer credit posting, maps the Page 6630 / Page 44 / batch / warehouse receipt routes, and traces Codeunit 80's Return Receipt Header, Credit Memo Header and Item Journal behavior. The report also documents the stocktake bypasses for invoice-only, combined and batch return posting.
+
+
+### 21. Warehouse Shipment flow
+
+The warehouse shipment process is documented in [Warehouse Shipment — Create, Pick and Post](WAREHOUSE_SHIPMENT_POSTING_FLOW.md). It traces Codeunit 5752 source creation, Page 7335/7336, Codeunits 5764/5765/5763, Report 50223, source-line quantity synchronization, source-specific posting and the posting-time stocktake gap. The important distinction is that Codeunit 5752 checks when source documents are added, while Codeunit 5763 currently has no central Table 50063 check when the warehouse shipment is posted.

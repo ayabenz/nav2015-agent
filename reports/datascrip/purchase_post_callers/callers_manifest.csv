@@ -1,0 +1,31 @@
+object_type,object_id,object_name,source_file,matched_references,export_file
+Codeunit,57,Document Totals,AllObjects.txt,Codeunit 90,Codeunit_57.txt
+Codeunit,80,Sales-Post,AllObjects.txt,Codeunit 90,Codeunit_80.txt
+Codeunit,91,Purch.-Post (Yes/No),AllObjects.txt,Purch.-Post symbol,Codeunit_91.txt
+Codeunit,92,Purch.-Post + Print,AllObjects.txt,Purch.-Post symbol,Codeunit_92.txt
+Codeunit,98,Purchase Post via Job Queue,AllObjects.txt,Purch.-Post symbol,Codeunit_98.txt
+Codeunit,439,Approvals Management,AllObjects.txt,Codeunit 90,Codeunit_439.txt
+Codeunit,1313,Correct Posted Purch. Invoice,AllObjects.txt,Purch.-Post symbol,Codeunit_1313.txt
+Codeunit,5760,Whse.-Post Receipt,AllObjects.txt,Codeunit 90,Codeunit_5760.txt
+Codeunit,5763,Whse.-Post Shipment,AllObjects.txt,Codeunit 90,Codeunit_5763.txt
+Codeunit,7324,Whse.-Activity-Post,AllObjects.txt,Codeunit 90,Codeunit_7324.txt
+Page,161,Purchase Statistics,AllObjects.txt,Codeunit 90,Page_161.txt
+Page,233,Apply Vendor Entries,AllObjects.txt,Codeunit 90,Page_233.txt
+Page,403,Purchase Order Statistics,AllObjects.txt,Codeunit 90,Page_403.txt
+Page,1367,Mini Purchase Credit Memos,AllObjects.txt,Purch.-Post symbol,Page_1367.txt
+Page,1369,Mini Purchase Credit Memo,AllObjects.txt,Purch.-Post symbol,Page_1369.txt
+Report,402,Purchase Document - Test,AllObjects.txt,Codeunit 90,Report_402.txt
+Report,404,Purchase - Quote,AllObjects.txt,Codeunit 90,Report_404.txt
+Report,405,Order,AllObjects.txt,Codeunit 90,Report_405.txt
+Report,410,Blanket Purchase Order,AllObjects.txt,Codeunit 90,Report_410.txt
+Report,496,Batch Post Purchase Orders,AllObjects.txt,Codeunit 90,Report_496.txt
+Report,497,Batch Post Purchase Invoices,AllObjects.txt,Codeunit 90,Report_497.txt
+Report,498,Batch Post Purch. Credit Memos,AllObjects.txt,Codeunit 90,Report_498.txt
+Report,499,Delete Invoiced Purch. Orders,AllObjects.txt,Codeunit 90,Report_499.txt
+Report,6641,Return Order,AllObjects.txt,Codeunit 90,Report_6641.txt
+Report,6661,Delete Invd Purch. Ret. Orders,AllObjects.txt,Codeunit 90,Report_6661.txt
+Report,6665,Batch Post Purch. Ret. Orders,AllObjects.txt,Codeunit 90,Report_6665.txt
+Report,50062,Order 2 test,AllObjects.txt,Codeunit 90,Report_50062.txt
+Report,50064,Order 2,AllObjects.txt,Codeunit 90,Report_50064.txt
+Table,38,Purchase Header,AllObjects.txt,Codeunit 90,Table_38.txt
+Table,50046,Purchase Header copy,AllObjects.txt,Codeunit 90,Table_50046.txt

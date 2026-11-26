@@ -22,8 +22,8 @@ The highest-value correction is to enforce stocktake at common posting boundarie
 |---|---|---|---|
 | Page 42 — Post Ship action | Page 42 local `CheckBlockStockTake(FALSE)` → `ActionPostShipClick` → Codeunit 50081 → Codeunit 80 | Legacy local check plus `BlockStocktakeSalesHeader(Rec,FALSE)` in Codeunit 50081 | Gate present. The Page 42 local check is a separate older hard-coded location/category rule, not the Table 50063 rule. |
 | Page 42 — F9 Post, Ship choice | `ActionPostShipClick` → Codeunit 50081 → Codeunit 80 | Codeunit 50081 OnRun | Gate present. F9 does not call the Page 42 local `CheckBlockStockTake`; it relies on Codeunit 50081. |
-| Page 42 — F9 Post, Invoice choice | `ActionPostInvoiceClick` → Codeunit 50082 → Codeunit 80 | None in Codeunit 50082 | **Gap.** Codeunit 50082 sets Ship=FALSE / Invoice=TRUE for Orders and Receive=FALSE / Invoice=TRUE for Return Orders, then calls Sales-Post directly. |
-| Page 42 — Post Invoice action | `ActionPostInvoiceClick` → Codeunit 50082 → Codeunit 80 | None | **Gap**, same route as above. |
+| Page 42 — F9 Post, Invoice choice | `ActionPostInvoiceClick` → Codeunit 50082 → Codeunit 80 | No separate stocktake call in Codeunit 50082 | **Accepted company exception.** The company confirms the invoice-only route intentionally does not repeat Codeunit 50081's check; do not classify this as a defect. |
+| Page 42 — Post Invoice action | `ActionPostInvoiceClick` → Codeunit 50082 → Codeunit 80 | No separate stocktake call | **Accepted company exception**, same route as above. |
 | Page 42 — Post and Print | Codeunit 50084 → Codeunit 80 | None | **Gap.** Codeunit 50084's inspected Code procedure selects invoice-only posting for Orders and Return Orders. |
 | Page 42 — Create Warehouse Shipment | Codeunit 5752 `CreateFromSalesOrder` | `BlockStocktakeSalesHeader(SalesHeader,TRUE)` | Gate present; uses Qty. to Whse. Shipment. |
 | Page 43 — Post | Codeunit 81 → Codeunit 80, or Codeunit 88 when job queue is enabled | None in Codeunit 81 / 88 | **Gap.** Standard wrapper does not invoke Codeunit 50107. |
@@ -66,7 +66,7 @@ Consequences:
 2. The same method cannot safely be used unchanged as a universal invoice-posting gate. An Order invoice-only operation has Qty. to Ship = 0; a Return Order credit-only operation has Return Qty. to Receive = 0. The procedure can exit before checking Table 50063.
 3. A standalone Sales Invoice/Credit Memo document type has no quantity filter in the current procedure, but the inspected Page 43 routes still do not call it.
 
-**Recommended design:** introduce a posting-aware gate, for example `BlockStocktakeSalesPosting(SalesHeader,Ship,Receive,Invoice)`. It should select relevant Sales Line quantities according to the actual operation:
+**Design constraint:** the company has explicitly accepted Codeunit 50082's invoice-only route without a duplicate stocktake check. Do not add a central Codeunit 80 gate or modify Codeunit 50082 in a way that overrides this approved exception. For other sales entry points that the company requires to be protected, use an operation-aware check at the relevant entry point, selecting Sales Line quantities according to the actual operation:
 - Ship: Qty. to Ship;
 - Receive: Return Qty. to Receive;
 - Invoice: Qty. to Invoice;
@@ -74,7 +74,7 @@ Consequences:
 
 Call this gate from Codeunit 80 after it has a reliable Sales Header and posting flags, before any irreversible posting work. Keep warehouse-shipment creation's existing separate check because Qty. to Whse. Shipment is a distinct operational quantity. Avoid relying only on page actions or wrappers, because batch and job-queue routes bypass them.
 
-Before implementation, verify the exact NAV 2015/NAVW18 build and confirm how the posting flags are represented in this customized Codeunit 80; then regression-test Order ship-only, Order invoice-only, Order ship+invoice, Return Order receive-only, Return Order invoice-only, standalone Invoice, standalone Credit Memo, batch, and job-queue routes.
+Before implementation, verify the exact NAV 2015/NAVW18 build and confirm how posting flags are represented. Regression-test the approved Codeunit 50081/50082 behavior as an explicit exception, then separately test other protected/unprotected Sales entry points, standalone Invoice/Credit Memo, batch, and job-queue routes.
 
 ## 3. Purchase posting routes
 
@@ -118,12 +118,12 @@ Page 5768 has the gate call on both inspected posting actions. The legacy local 
 
 ## 7. Return Order / Credit Memo entry points
 
-The return-side pages confirm the same invoice-only gap found on Sales Orders:
+The return-side pages use the same Codeunit 50081/50082 distinction. The company has confirmed that the Codeunit 50082 invoice-only behavior is intentional:
 
 | Entry point | Route observed | Stocktake gate | Assessment |
 |---|---|---|---|
 | Page 6630 — Sales Return Order, Post Ship/Receive choice | Codeunit 50081 → Codeunit 80 | Codeunit 50081 OnRun calls `BlockStocktakeSalesHeader(Rec,FALSE)` | Gate present for Return Qty. to Receive. |
-| Page 6630 — Post Invoice/Credit Memo choice | Codeunit 50082 → Codeunit 80 | None | **Gap.** Codeunit 50082 sets Receive=FALSE / Invoice=TRUE for Return Order. |
+| Page 6630 — Post Invoice/Credit Memo choice | Codeunit 50082 → Codeunit 80 | No separate stocktake call | **Accepted company exception.** Invoice-only intentionally does not repeat the Codeunit 50081 check. |
 | Page 6630 — Post and Print | Codeunit 82 → Codeunit 80 or Codeunit 88 | None | **Gap.** |
 | Page 6630 — Post Batch | Report 6655 → Codeunit 80 | None | **Gap.** Report 6655 sets Receive/Invoice request flags and calls Sales-Post directly. |
 | Page 44 — Sales Credit Memo, Post | Codeunit 81 → Codeunit 80 or Codeunit 88 | None | **Gap.** |

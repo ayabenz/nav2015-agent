@@ -193,3 +193,23 @@ These manifests identify candidate objects; a reference does not by itself prove
 - `reports/datascrip/item_batch_post_callers/callers_manifest.csv`
 
 Related company decisions are tracked in [Issue #3](https://github.com/ayabenz/nav2015-agent/issues/3).
+
+
+## 17. Complete Codeunit 5704/5705 and Codeunit 22 caller cross-check
+
+The complete company export was scanned for direct references to Codeunit 5704 and Codeunit 5705. Four caller objects were found for each:
+
+- Codeunit 5704 (OUT): Codeunits 5706, 5707, 5763 and 7324.
+- Codeunit 5705 (IN): Codeunits 5706, 5707, 5760 and 7324.
+
+Codeunits 5706/5707 are the UI wrappers; 5763/5760 are warehouse shipment/receipt posting; 7324 is warehouse activity posting. Its Transfer Line branch calls Codeunit 5705 for Invt. Put-away and Codeunit 5704 for other transfer activity types. No additional direct transfer posting caller was found in the exported archive.
+
+**Warehouse Activity timing:** Codeunit 7324 performs COMMIT before invoking Codeunit 5704/5705 for Transfer Line. The transfer stocktake check still executes before the downstream transfer inventory posting, but the warehouse activity transaction preceding the call may already be committed. Runtime-test the persisted state when an active stocktake rule causes the transfer posting call to fail.
+
+The same Codeunit 7324 has separate production activity paths: PostConsumptionLine and PostOutputLine construct Item Journal Lines (Consumption and Output) and call Codeunit 22 directly. Those production warehouse-activity paths do not inherit the transfer stocktake gate.
+
+The Codeunit 22 caller manifest contains 21 caller objects. A direct-reference cross-check found explicit Codeunit 50107 / BlockStocktake references only in Codeunits 5704 and 5705. This does not rule out an indirect helper call, dynamic invocation, or external code outside the export.
+
+Additional caller manifests:
+- [Codeunit 5704 callers](../transfer_post_callers/5704/callers_manifest.csv)
+- [Codeunit 5705 callers](../transfer_post_callers/5705/callers_manifest.csv)

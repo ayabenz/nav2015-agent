@@ -35,7 +35,21 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--input", required=True, type=Path)
     ap.add_argument("--output", required=True, type=Path)
+    ap.add_argument("--target-codeunit-id", type=int, default=50107)
     args = ap.parse_args()
+    target_id = args.target_codeunit_id
+    patterns = {
+        f"Codeunit {target_id}": re.compile(
+            rf'(?i)\\b(?:CODEUNIT\\s*::\\s*|Codeunit\\s+)"?{target_id}"?\\b'
+        ),
+        f"Codeunit.RUN({target_id})": re.compile(
+            rf"(?i)\\bCODEUNIT\\s*\\.\\s*RUN\\s*\\(\\s*{target_id}\\b"
+        ),
+    }
+    if target_id == 90:
+        patterns["Purch.-Post symbol"] = re.compile(r'(?i)CODEUNIT\\s*::\\s*"Purch\\.-Post"')
+    if target_id == 50107:
+        patterns.update(REFERENCE_PATTERNS)
     found = {}
     for source_name, raw in source_texts(args.input):
         text = raw.replace("\r\n", "\n").replace("\r", "\n")
@@ -44,9 +58,9 @@ def main():
             end = matches[i + 1].start() if i + 1 < len(matches) else len(text)
             body = text[m.start():end]
             key = (m.group(1).title(), int(m.group(2)))
-            if key == ("Codeunit", 50107):
+            if key == ("Codeunit", target_id):
                 continue
-            hits = [label for label, pattern in REFERENCE_PATTERNS.items() if pattern.search(body)]
+            hits = [label for label, pattern in patterns.items() if pattern.search(body)]
             if hits:
                 if key in found:
                     if found[key]["body"] != body:

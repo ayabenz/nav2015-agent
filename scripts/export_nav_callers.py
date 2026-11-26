@@ -40,14 +40,14 @@ def main():
     target_id = args.target_codeunit_id
     patterns = {
         f"Codeunit {target_id}": re.compile(
-            rf'(?i)\\b(?:CODEUNIT\\s*::\\s*|Codeunit\\s+)"?{target_id}"?\\b'
+            rf'(?i)\b(?:CODEUNIT\s*::\s*|Codeunit\s+)"?{target_id}"?\b'
         ),
         f"Codeunit.RUN({target_id})": re.compile(
-            rf"(?i)\\bCODEUNIT\\s*\\.\\s*RUN\\s*\\(\\s*{target_id}\\b"
+            rf"(?i)\bCODEUNIT\s*\.\s*RUN\s*\(\s*{target_id}\b"
         ),
     }
     if target_id == 90:
-        patterns["Purch.-Post symbol"] = re.compile(r'(?i)CODEUNIT\\s*::\\s*"Purch\\.-Post"')
+        patterns["Purch.-Post symbol"] = re.compile(r'(?i)CODEUNIT\s*::\s*"Purch\.-Post"')
     if target_id == 50107:
         patterns.update(REFERENCE_PATTERNS)
     found = {}

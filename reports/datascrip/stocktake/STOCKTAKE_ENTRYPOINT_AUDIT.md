@@ -170,3 +170,8 @@ Evidence:
 4. **Warehouse receipt posting:** retain Page 5768 checks and consider a central check in Codeunit 5760 for alternate callers.
 5. **Transfer posting:** preserve Codeunit 5704/5705 gates.
 6. Regression-test UI, batch, job queue, warehouse shipment created before a stocktake window, manually assembled warehouse shipments, and direct codeunit execution.
+
+
+## 10. Related process documentation
+
+The detailed warehouse shipment lifecycle, including source line synchronization, pick/tracking validation, source-specific posting and the recommended posting-time gate is documented in [Warehouse Shipment — Create, Pick and Post](../sales/WAREHOUSE_SHIPMENT_POSTING_FLOW.md). The Sales Return Order / Credit Memo process is documented in [Sales Return Order → Return Receipt / Credit Memo](../sales/SALES_RETURN_CREDIT_MEMO_FLOW.md).

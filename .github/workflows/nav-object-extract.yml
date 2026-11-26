@@ -11,12 +11,12 @@ on:
       output:
         description: "Repository directory for extracted objects"
         required: true
-        default: "reports/datascrip/purchase_flow"
+        default: "reports/datascrip/item_journals"
         type: string
       objects:
         description: "Space-separated selectors, e.g. Page:43 Page:7335 Page:7336 Page:5769 Report:296 Report:297 Codeunit:81 Codeunit:82 Codeunit:5760 Codeunit:5761 Codeunit:5762 Codeunit:5763 Codeunit:98"
         required: true
-        default: "Page:50 Page:51 Page:52 Page:54 Page:55 Page:98 Page:254 Page:6640 Page:6641 Page:9307 Page:9308 Page:9309 Page:9311 Page:50076 Page:50077 Codeunit:90 Codeunit:91 Codeunit:92 Codeunit:98 Codeunit:415 Codeunit:5751 Codeunit:5752 Codeunit:5760 Codeunit:5763 Report:496 Report:497 Report:498 Report:6665 Table:38 Table:39"
+        default: "Page:40 Page:392 Page:393 Page:519 Page:7324 Page:7365 Page:50066 Page:50076 Page:50077 Page:102 Page:262 Table:83 Table:7311 Codeunit:22 Codeunit:23 Codeunit:241 Codeunit:5895 Codeunit:7301 Codeunit:7302 Codeunit:7303 Codeunit:7304 Codeunit:7324 Report:722 Report:7315 Report:8613"
         type: string
   push:
     branches:
@@ -51,8 +51,8 @@ jobs:
         id: inputs
         env:
           SOURCE: ${{ inputs.source || 'data/input/datascrip/datascrip.zip' }}
-          OUTPUT: ${{ inputs.output || 'reports/datascrip/purchase_flow' }}
-          OBJECTS: ${{ inputs.objects || 'Page:50 Page:51 Page:52 Page:54 Page:55 Page:98 Page:254 Page:6640 Page:6641 Page:9307 Page:9308 Page:9309 Page:9311 Page:50076 Page:50077 Codeunit:90 Codeunit:91 Codeunit:92 Codeunit:98 Codeunit:415 Codeunit:5751 Codeunit:5752 Codeunit:5760 Codeunit:5763 Report:496 Report:497 Report:498 Report:6665 Table:38 Table:39' }}
+          OUTPUT: ${{ inputs.output || 'reports/datascrip/item_journals' }}
+          OBJECTS: ${{ inputs.objects || 'Page:40 Page:392 Page:393 Page:519 Page:7324 Page:7365 Page:50066 Page:50076 Page:50077 Page:102 Page:262 Table:83 Table:7311 Codeunit:22 Codeunit:23 Codeunit:241 Codeunit:5895 Codeunit:7301 Codeunit:7302 Codeunit:7303 Codeunit:7304 Codeunit:7324 Report:722 Report:7315 Report:8613' }}
         run: |
           python - <<'PY'
           import os, re
@@ -92,13 +92,27 @@ jobs:
             --output reports/datascrip/purchase_post_callers \
             --target-codeunit-id 90
 
+      - name: Discover and export all Codeunit 22 callers
+        run: |
+          python scripts/export_nav_callers.py \
+            --input data/input/datascrip/datascrip.zip \
+            --output reports/datascrip/item_post_callers \
+            --target-codeunit-id 22
+
+      - name: Discover and export all Codeunit 23 callers
+        run: |
+          python scripts/export_nav_callers.py \
+            --input data/input/datascrip/datascrip.zip \
+            --output reports/datascrip/item_batch_post_callers \
+            --target-codeunit-id 23
+
       - name: Commit extracted objects
         env:
           OUTPUT: ${{ steps.inputs.outputs.output }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -- "$OUTPUT" reports/datascrip/stocktake_entrypoints_callers reports/datascrip/purchase_post_callers
+          git add -- "$OUTPUT" reports/datascrip/stocktake_entrypoints_callers reports/datascrip/purchase_post_callers reports/datascrip/item_post_callers reports/datascrip/item_batch_post_callers
           if git diff --cached --quiet; then
             echo "No extracted file changes to commit."
             exit 0

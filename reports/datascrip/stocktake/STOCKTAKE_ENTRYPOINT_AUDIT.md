@@ -246,3 +246,22 @@ These routes are open business-policy decisions until the company confirms wheth
 Detailed caller inventory: [Purchase Post caller manifest](../purchase_post_callers/callers_manifest.csv).
 
 All accepted behavior and open policy questions are tracked in [Issue #3](https://github.com/ayabenz/nav2015-agent/issues/3).
+
+## 13. Item Journal and inventory posting routes
+
+The wider inventory posting audit is documented in [Item Journal and Inventory Posting — Stocktake Audit](../item_journals/INVENTORY_JOURNAL_AND_POSTING_AUDIT.md).
+
+Key findings:
+- Codeunit 22 Item Jnl.-Post Line and Codeunit 23 Item Jnl.-Post Batch have no direct stocktake check.
+- Page 40 Item Journal, Page 1327 Mini Adjust Inventory and Page 393 Item Reclass Journal reach Codeunit 23/22 without a stocktake check.
+- Page 392 Physical Inventory Journal also has no check; this is the stocktake adjustment route and should remain available during stocktake.
+- Assembly (Codeunit 900), Production (Codeunit 5407), Job (Codeunit 1012), Service (Codeunit 5987), Warehouse Activity (Codeunit 7324), Warehouse Journal reclassification (Codeunit 7304), and Undo/reversal codeunits 5814–5819 reach Codeunit 22 without an inspected stocktake check.
+- Codeunit 5895 Inventory Adjustment is primarily value/cost adjustment and should not automatically be treated as a physical quantity movement.
+
+The policy must identify which inventory movements are frozen during stocktake and preserve approved operations such as Physical Inventory Journal. Do not place a blanket gate in Codeunit 22 without that decision.
+
+Caller manifests:
+- [Codeunit 22 callers](../item_post_callers/callers_manifest.csv)
+- [Codeunit 23 callers](../item_batch_post_callers/callers_manifest.csv)
+
+These additional policy questions are tracked in [Issue #3](https://github.com/ayabenz/nav2015-agent/issues/3).

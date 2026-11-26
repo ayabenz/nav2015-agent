@@ -2,6 +2,8 @@
 
 **Scope:** NAVW18 company export, objects Page 6630, Page 44, Table 36/37, Codeunits 80, 50081, 50082, 82, 5751, 5760 and Reports 298/6655. This is source-level reconstruction; runtime behavior and setup-dependent paths still require validation.
 
+**Company-confirmed exception:** Codeunit 50081's Receive/Ship route performs the stocktake check; Codeunit 50082's invoice-only route intentionally does not repeat it. This behavior is accepted by the company and is not a defect.
+
 ## 1. Process overview
 
 A Sales Return Order (Table 36, Document Type = Return Order) has two distinct posting intents:
@@ -87,13 +89,13 @@ Do not infer final sign or inventory effect solely from Entry Type=Sale. The NAV
 ## 5. Stocktake enforcement findings
 
 - Receive-only Return Order through Codeunit 50081 is gated using `BlockStocktakeSalesHeader`, which filters Return Qty. to Receive.
-- Invoice-only Return Order through Codeunit 50082 is not gated.
+- Invoice-only Return Order through Codeunit 50082 is not gated; the company explicitly confirms this is intentional and it must not be treated as a defect.
 - Combined Receive + Invoice through Codeunit 82 is not gated by the wrapper.
 - Batch Return Order through Report 6655 is not gated.
 - Credit Memo through Page 44 / Codeunits 81–82 and Report 298 is not gated in those entry points.
 - Warehouse receipt Page 5768 gates both inspected UI posting actions. Codeunit 5760 itself has no central stocktake call.
 
-This aligns with the broader [Stocktake Entry-Point Audit](../stocktake/STOCKTAKE_ENTRYPOINT_AUDIT.md). The recommended fix is a central posting gate with operation-aware quantities; the existing `BlockStocktakeSalesHeader` must not be called unchanged for invoice-only paths because it only filters Return Qty. to Receive for Return Order.
+This aligns with the broader [Stocktake Entry-Point Audit](../stocktake/STOCKTAKE_ENTRYPOINT_AUDIT.md). **Do not add a duplicate stocktake check to Codeunit 50082 or centralize a new gate in Codeunit 80 solely to cover this invoice-only route**; that would contradict the company-approved exception. Other routes such as Page 44, batch posting, and warehouse posting remain separate policy questions and must not be conflated with the accepted 50082 behavior.
 
 ## 6. Open validation items
 

@@ -1,0 +1,465 @@
+OBJECT Codeunit 415 Release Purchase Document
+{
+  OBJECT-PROPERTIES
+  {
+    Date=05/25/21;
+    Time=11:41:24;
+    Modified=Yes;
+    Version List=NAVW18.00.00.40262,DTS:T35;
+  }
+  PROPERTIES
+  {
+    TableNo=38;
+    OnRun=VAR
+            PurchLine@1000 : Record 39;
+            TempVATAmountLine0@1001 : TEMPORARY Record 290;
+            TempVATAmountLine1@1002 : TEMPORARY Record 290;
+            NotOnlyDropShipment@1003 : Boolean;
+            PostingDate@1004 : Date;
+            PrintPostedDocuments@1005 : Boolean;
+            ApprovalPO@1009 : Codeunit 50104;
+            UserSetup@1008 : Record 91;
+            UserSetup1@1007 : Record 91;
+            UserSetup2@1011 : Record 91;
+            Country@1006 : Record 9;
+            RespCenter@1010 : Record 5714;
+          BEGIN
+            IF Status = Status::Released THEN
+              EXIT;
+
+            //blocked akhir tahun
+            IF "Document Type" IN ["Document Type"::Order] THEN
+            BEGIN
+               CheckDept(Rec)
+            END;
+
+            //Nota Retur AFR 18Feb2021 09:00
+            IF "Document Type" IN ["Document Type"::"Return Order"] THEN
+            BEGIN
+               IF ("Gen. Bus. Posting Group" IN ['P-LOKAL']) THEN BEGIN
+                  "Note Retur" := DIALOG.CONFIRM('Apakah Return PO ini memerlukan Nota Retur ?');
+                  MODIFY(TRUE);
+               END
+            END;
+
+
+            TESTFIELD("Buy-from Vendor No.");
+
+            PurchLine.SETRANGE("Document Type","Document Type");
+            PurchLine.SETRANGE("Document No.","No.");
+            PurchLine.SETFILTER(Type,'>0');
+            PurchLine.SETFILTER(Quantity,'<>0');
+            IF NOT PurchLine.FIND('-') THEN
+              ERROR(Text001,"Document Type","No.");
+            InvtSetup.GET;
+            IF InvtSetup."Location Mandatory" THEN BEGIN
+              PurchLine.SETRANGE(Type,PurchLine.Type::Item);
+              IF PurchLine.FIND('-') THEN
+                REPEAT
+                  IF NOT PurchLine.IsServiceItem THEN
+                    PurchLine.TESTFIELD("Location Code");
+                UNTIL PurchLine.NEXT = 0;
+              PurchLine.SETFILTER(Type,'>0');
+            END;
+            PurchLine.SETRANGE("Drop Shipment",FALSE);
+            NotOnlyDropShipment := PurchLine.FIND('-');
+            PurchLine.RESET;
+
+            PurchSetup.GET;
+            IF PurchSetup."Calc. Inv. Discount" THEN BEGIN
+              PostingDate := "Posting Date";
+              PrintPostedDocuments := "Print Posted Documents";
+              CODEUNIT.RUN(CODEUNIT::"Purch.-Calc.Discount",PurchLine);
+              GET("Document Type","No.");
+              "Print Posted Documents" := PrintPostedDocuments;
+              IF PostingDate <> "Posting Date" THEN
+                VALIDATE("Posting Date",PostingDate);
+            END;
+            {
+            //T35.1
+            IF "Approval Now" = 'COMPLETED APPROVAL' THEN
+            BEGIN
+              "Approval Now" := '';
+              "Approval Sequence" := 0;
+            END;
+            //End T35.1
+            }
+            IF TestPrepayment(Rec) AND ("Document Type" = "Document Type"::Order) THEN BEGIN
+              Status := Status::"Pending Prepayment";
+              MODIFY(TRUE);
+              EXIT;
+            END
+              ;
+            Status := Status::Released;
+
+            // BNY - 12/18/15
+            IF NOT IsFromWMSGlobal THEN
+            BEGIN
+              IF Status = Status::Released THEN
+                "Last Released Date" := TODAY;
+            END;
+            // END
+
+            PurchLine.SetPurchHeader(Rec);
+            PurchLine.CalcVATAmountLines(0,Rec,PurchLine,TempVATAmountLine0);
+            PurchLine.CalcVATAmountLines(1,Rec,PurchLine,TempVATAmountLine1);
+            PurchLine.UpdateVATOnLines(0,Rec,PurchLine,TempVATAmountLine0);
+            PurchLine.UpdateVATOnLines(1,Rec,PurchLine,TempVATAmountLine1);
+
+            MODIFY(TRUE);
+
+            IF NotOnlyDropShipment THEN
+              IF "Document Type" IN ["Document Type"::Order,"Document Type"::"Return Order"] THEN
+                WhsePurchRelease.Release(Rec);
+            {
+            //T35.2
+            IF Status = Status::Released THEN
+                "No. Released" += 1;
+
+            //T35.2a
+            IF ("Responsibility Center"='DIVISI III') AND ("Buy-from Vendor No."='101') THEN
+            BEGIN
+            END
+            ELSE
+            BEGIN
+              RespCenter.RESET;
+              RespCenter.SETFILTER(RespCenter.Code, "Responsibility Center");
+              IF RespCenter.FINDFIRST THEN
+              BEGIN
+                IF RespCenter."Approval PO" THEN
+                BEGIN
+            //End T35.2a
+                  IF "Document Type" = "Document Type"::Order THEN
+                  BEGIN
+                    IF UserSetup.GET(USERID) AND (UserSetup."E-Mail"<>'') THEN
+                      IF ("Pay-to Country/Region Code" <> '') AND (Country.GET("Pay-to Country/Region Code")) AND (Country."Default User (Purchase)" <> '') THEN
+                      BEGIN
+                        UserSetup1.GET(Country."Default User (Purchase)");
+                        UserSetup2.GET("User FRONT ID");
+                        IF UserSetup1."E-Mail" = '' THEN
+                          ERROR('Email untuk user setup %1 harus diisi',UserSetup1."User ID")
+                        ELSE
+                        IF UserSetup2."E-Mail" = '' THEN
+                          ERROR('Email untuk user setup %1 harus diisi',UserSetup2."User ID")
+                        ELSE
+                        BEGIN
+                          IF STRPOS(UserSetup."E-Mail",';') <> 0 THEN
+                            ApprovalPO.KirimEmailPORelease(DELSTR(UserSetup."E-Mail",STRPOS(UserSetup."E-Mail",';')),UserSetup1."E-Mail"+';'+UserSetup2."E-Mail",'',"No.",FORMAT("No. Released"))
+                          ELSE
+                            ApprovalPO.KirimEmailPORelease(UserSetup."E-Mail",UserSetup1."E-Mail"+';'+UserSetup2."E-Mail",'',"No.",FORMAT("No. Released"));
+                        END;
+                      END
+                      ELSE
+                      BEGIN
+                        IF PurchSetup."Default User Purchaser" <> '' THEN
+                        BEGIN
+                          UserSetup1.GET(PurchSetup."Default User Purchaser");
+                          UserSetup2.GET("User FRONT ID");
+                          IF UserSetup1."E-Mail" = '' THEN
+                            ERROR('Email untuk user setup %1 harus diisi',UserSetup1."User ID")
+                          ELSE
+                          IF UserSetup2."E-Mail" = '' THEN
+                            ERROR('Email untuk user setup %1 harus diisi',UserSetup2."User ID")
+                          ELSE
+                          BEGIN
+                            IF STRPOS(UserSetup."E-Mail",';') <> 0 THEN
+                              ApprovalPO.KirimEmailPORelease(DELSTR(UserSetup."E-Mail",STRPOS(UserSetup."E-Mail",';')),UserSetup1."E-Mail"+';'+UserSetup2."E-Mail",'',"No.",FORMAT("No. Released"))
+                            ELSE
+                              ApprovalPO.KirimEmailPORelease(UserSetup."E-Mail",UserSetup1."E-Mail"+';'+UserSetup2."E-Mail",'',"No.",FORMAT("No. Released"));
+                          END;
+                        END;
+                      END;
+                  END;
+                END;
+              END;
+            END;
+            //End T35.2
+            }
+          END;
+
+  }
+  CODE
+  {
+    VAR
+      Text001@1010 : TextConst 'ENU=There is nothing to release for the document of type %1 with the number %2.';
+      PurchSetup@1002 : Record 312;
+      InvtSetup@1000 : Record 313;
+      WhsePurchRelease@1004 : Codeunit 5772;
+      Text002@1005 : TextConst 'ENU=This document can only be released when the approval process is complete.';
+      Text003@1006 : TextConst 'ENU=The approval process must be cancelled or completed to reopen this document.';
+      Text004@1003 : TextConst 'ENU=There are unposted prepayment amounts on the document of type %1 with the number %2.';
+      Text005@1001 : TextConst 'ENU=There are unpaid prepayment invoices that are related to the document of type %1 with the number %2.';
+      Text006@1007 : TextConst 'ENU=Silahkan isi reason untuk line dengan amount 0';
+      IsFromWMSGlobal@1008 : Boolean;
+      Vendor@1009 : Record 23;
+
+    PROCEDURE Reopen@1(VAR PurchHeader@1000 : Record 38);
+    BEGIN
+      WITH PurchHeader DO BEGIN
+        IF Status = Status::Open THEN
+          EXIT;
+
+        //T35.3
+        IF (PurchHeader."Approval Now" <> '') AND (PurchHeader."Approval Now" <> 'COMPLETED APPROVAL') THEN
+          ERROR('Untuk reopen PO ini silakan terlebih dahulu minta reject kepada %1',PurchHeader."Approval Now" );
+        //End T35.3
+
+        IF "Document Type" IN ["Document Type"::Order,"Document Type"::"Return Order"] THEN
+          WhsePurchRelease.Reopen(PurchHeader);
+        Status := Status::Open;
+
+        MODIFY(TRUE);
+      END;
+    END;
+
+    PROCEDURE PerformManualRelease@2(VAR PurchHeader@1002 : Record 38);
+    VAR
+      ApprovalEntry@1004 : Record 454;
+      ApprovalManagement@1001 : Codeunit 439;
+      ApprovedOnly@1005 : Boolean;
+      PurchLine@1000 : Record 39;
+    BEGIN
+      // BNY 29/01/16
+      IF PurchHeader."Shortcut Dimension 1 Code"='' THEN
+        ERROR('Department Code harus diisi');
+      // BNY 29/01/16
+
+      // BNY 11.14.19
+      WITH PurchLine DO
+        BEGIN
+        PurchLine.RESET;
+        PurchLine.SETFILTER("Document No.", PurchHeader."No.");
+        PurchLine.SETFILTER(Type, '<>%1', PurchLine.Type::" ");
+        IF PurchLine.FINDFIRST THEN
+          REPEAT
+            //AGC 3.31.21
+            //IF (PurchLine.Amount = 0) AND (PurchLine."Return Reason Code" = '') THEN
+            IF ((PurchLine.Type=PurchLine.Type::Item) AND (PurchLine.Quantity>0)) THEN
+              IF PurchLine.Amount=0 THEN
+                IF PurchLine."Return Reason Code" = '' THEN
+                  ERROR(Text006)
+                ELSE ;
+            //THEN
+            //AGC END
+              //ERROR(Text006);
+          UNTIL PurchLine.NEXT = 0;
+       END;
+      // BNY 11.14.19
+
+      WITH PurchHeader DO BEGIN
+        IF ApprovalManagement.TestPurchasePrepayment(PurchHeader) THEN
+          ERROR(STRSUBSTNO(Text004,"Document Type","No."));
+        IF ("Document Type" = "Document Type"::Order) AND ApprovalManagement.TestPurchasePayment(PurchHeader) THEN BEGIN
+          IF Status <> Status::"Pending Prepayment" THEN BEGIN
+            Status := Status::"Pending Prepayment";
+            MODIFY;
+            COMMIT;
+          END;
+          ERROR(STRSUBSTNO(Text005,"Document Type","No."));
+        END;
+
+        IF ApprovalManagement.CheckApprPurchaseDocument(PurchHeader) THEN BEGIN
+          CASE Status OF
+            Status::"Pending Approval":
+              ERROR(Text002);
+            Status::Released,Status::"Pending Prepayment":
+              CODEUNIT.RUN(CODEUNIT::"Release Purchase Document",PurchHeader);
+            Status::Open:
+              BEGIN
+                ApprovedOnly := TRUE;
+                ApprovalEntry.SETCURRENTKEY("Table ID","Document Type","Document No.","Sequence No.");
+                ApprovalEntry.SETRANGE("Table ID",DATABASE::"Purchase Header");
+                ApprovalEntry.SETRANGE("Document Type","Document Type");
+                ApprovalEntry.SETRANGE("Document No.","No.");
+                ApprovalEntry.SETFILTER(Status,'<>%1&<>%2',ApprovalEntry.Status::Rejected,ApprovalEntry.Status::Canceled);
+                IF ApprovalEntry.FINDSET THEN BEGIN
+                  REPEAT
+                    IF ApprovalEntry.Status <> ApprovalEntry.Status::Approved THEN
+                      ApprovedOnly := FALSE;
+                  UNTIL NOT ApprovedOnly OR (ApprovalEntry.NEXT = 0);
+
+                  IF ApprovedOnly AND TestApprovalLimit(PurchHeader) THEN
+                    CODEUNIT.RUN(CODEUNIT::"Release Purchase Document",PurchHeader)
+                  ELSE
+                    ERROR(Text002);
+                END ELSE
+                  ERROR(Text002);
+              END;
+          END;
+        END ELSE
+          CODEUNIT.RUN(CODEUNIT::"Release Purchase Document",PurchHeader);
+      END;
+    END;
+
+    PROCEDURE PerformManualReopen@3(VAR PurchHeader@1002 : Record 38);
+    VAR
+      ApprovalManagement@1001 : Codeunit 439;
+    BEGIN
+      WITH PurchHeader DO BEGIN
+        IF ApprovalManagement.CheckApprPurchaseDocument(PurchHeader) THEN BEGIN
+          CASE Status OF
+            Status::"Pending Approval":
+              ERROR(Text003);
+            Status::Open,Status::Released,Status::"Pending Prepayment":
+              Reopen(PurchHeader);
+          END;
+        END ELSE
+          Reopen(PurchHeader);
+      END;
+    END;
+
+    PROCEDURE TestPrepayment@31(PurchaseHeader@1000 : Record 38) : Boolean;
+    VAR
+      PurchaseLines@1001 : Record 39;
+    BEGIN
+      PurchaseLines.SETRANGE("Document Type",PurchaseHeader."Document Type");
+      PurchaseLines.SETRANGE("Document No.",PurchaseHeader."No.");
+      PurchaseLines.SETFILTER("Prepmt. Line Amount",'<>%1',0);
+      IF PurchaseLines.FIND('-') THEN
+        REPEAT
+          IF PurchaseLines."Prepmt. Amt. Inv." <> PurchaseLines."Prepmt. Line Amount" THEN
+            EXIT(TRUE);
+        UNTIL PurchaseLines.NEXT = 0;
+    END;
+
+    PROCEDURE TestApprovalLimit@4(PurchaseHeader@1000 : Record 38) : Boolean;
+    VAR
+      UserSetup@1004 : Record 91;
+      AppManagement@1001 : Codeunit 439;
+      AppAmount@1002 : Decimal;
+      AppAmountLCY@1003 : Decimal;
+    BEGIN
+      AppManagement.CalcPurchaseDocAmount(PurchaseHeader,AppAmount,AppAmountLCY);
+      UserSetup.GET(USERID);
+      IF UserSetup."Unlimited Purchase Approval" THEN
+        EXIT(TRUE);
+
+      IF AppAmountLCY > UserSetup."Purchase Amount Approval Limit" THEN
+        ERROR(Text002);
+
+      EXIT(TRUE);
+    END;
+
+    PROCEDURE SendEmailPORelease@5(PurchHdr@1000 : Record 38);
+    VAR
+      ApprovalPO@1006 : Codeunit 50104;
+      UserSetup@1005 : Record 91;
+      UserSetup1@1004 : Record 91;
+      UserSetup2@1003 : Record 91;
+      Country@1002 : Record 9;
+      RespCenter@1001 : Record 5714;
+    BEGIN
+      //T35.2
+      {
+      IF PurchHdr.Status = PurchHdr.Status::Released THEN
+          PurchHdr."No. Released" += 1;
+      PurchHdr.MODIFY;
+      }
+      //T35.2a
+      IF (PurchHdr."Responsibility Center"='DIVISI III') AND (PurchHdr."Buy-from Vendor No."='101') THEN
+      BEGIN
+      END
+      ELSE
+      BEGIN
+        RespCenter.RESET;
+        RespCenter.SETFILTER(RespCenter.Code, PurchHdr."Responsibility Center");
+        IF RespCenter.FINDFIRST THEN
+        BEGIN
+          IF RespCenter."Approval PO" THEN BEGIN
+            //AGC cek vendor butuh approval PO tidak
+            Vendor.SETRANGE("No.",PurchHdr."Buy-from Vendor No.");
+            IF Vendor.FINDFIRST THEN
+              IF Vendor."Not Include Approval PO"=FALSE THEN
+            //AGC END 5/10/2021
+            BEGIN
+      //End T35.2a
+            IF PurchHdr."Document Type" = PurchHdr."Document Type"::Order THEN
+            BEGIN
+              IF UserSetup.GET(USERID) AND (UserSetup."E-Mail"<>'') THEN
+                IF (PurchHdr."Pay-to Country/Region Code" <> '') AND (Country.GET(PurchHdr."Pay-to Country/Region Code")) AND (Country."Default User (Purchase)" <> '') THEN
+                BEGIN
+                  UserSetup1.GET(Country."Default User (Purchase)");
+                  UserSetup2.GET(PurchHdr."User FRONT ID");
+                  IF UserSetup1."E-Mail" = '' THEN
+                    ERROR('Email untuk user setup %1 harus diisi',UserSetup1."User ID")
+                  ELSE
+                  IF UserSetup2."E-Mail" = '' THEN
+                    ERROR('Email untuk user setup %1 harus diisi',UserSetup2."User ID")
+                  ELSE
+                  BEGIN
+                    IF STRPOS(UserSetup."E-Mail",';') <> 0 THEN
+                      ApprovalPO.KirimEmailPORelease(DELSTR(UserSetup."E-Mail",STRPOS(UserSetup."E-Mail",';')),UserSetup1."E-Mail"+';'+UserSetup2."E-Mail",'',PurchHdr."No.",FORMAT(PurchHdr."No. Released"))
+                    ELSE
+                      ApprovalPO.KirimEmailPORelease(UserSetup."E-Mail",UserSetup1."E-Mail"+';'+UserSetup2."E-Mail",'',PurchHdr."No.",FORMAT(PurchHdr."No. Released"));
+                  END;
+                END
+                ELSE
+                BEGIN
+                  IF PurchSetup."Default User Purchaser" <> '' THEN
+                  BEGIN
+                    UserSetup1.GET(PurchSetup."Default User Purchaser");
+                    UserSetup2.GET(PurchHdr."User FRONT ID");
+                    IF UserSetup1."E-Mail" = '' THEN
+                      ERROR('Email untuk user setup %1 harus diisi',UserSetup1."User ID")
+                    ELSE
+                    IF UserSetup2."E-Mail" = '' THEN
+                      ERROR('Email untuk user setup %1 harus diisi',UserSetup2."User ID")
+                    ELSE
+                    BEGIN
+                      IF STRPOS(UserSetup."E-Mail",';') <> 0 THEN
+                        ApprovalPO.KirimEmailPORelease(DELSTR(UserSetup."E-Mail",STRPOS(UserSetup."E-Mail",';')),UserSetup1."E-Mail"+';'+UserSetup2."E-Mail",'',PurchHdr."No.",FORMAT(PurchHdr."No. Released"))
+                      ELSE
+                        ApprovalPO.KirimEmailPORelease(UserSetup."E-Mail",UserSetup1."E-Mail"+';'+UserSetup2."E-Mail",'',PurchHdr."No.",FORMAT(PurchHdr."No. Released"));
+                    END;
+                  END;
+                END;
+            END;
+          END
+          //AGC
+          //ELSE
+            //MESSAGE('TESTING MESSAGE (HAPUS JIKA NAIK KE LIVE) || Tidak butuh approval PO system');
+          //AGC END
+        END;
+      END;
+      END;
+      //End T35.2
+    END;
+
+    LOCAL PROCEDURE CheckDept@10(recPurchaseHeader@1003 : Record 38);
+    VAR
+      DateAkhir@1001 : Date;
+      DateLama@1002 : Date;
+    BEGIN
+      IF (recPurchaseHeader."Shortcut Dimension 1 Code" = '') THEN
+         ERROR('Dept. Code masih kosong');
+
+      //IF NOT (recSalesHeader."No." IN ['371-16-01582']) THEN
+      //BEGIN
+          {DateAkhir := 010120D;
+          DateLama := 12319999D;
+
+         IF (recPurchaseHeader."Posting Date" >= 010120D)
+            AND
+            (recPurchaseHeader."Shortcut Dimension 1 Code" IN ['103-A','103-B'])
+         THEN
+            ERROR('Dept Code %1 hanya bisa dipakai di tahun 2019',recPurchaseHeader."Shortcut Dimension 1 Code");     }
+
+
+      //END;
+    END;
+
+    PROCEDURE IsFromWHSReceipt@6(IsFromWMS@1000 : Boolean);
+    BEGIN
+      IsFromWMSGlobal := IsFromWMS;
+    END;
+
+    BEGIN
+    {
+      T35.1   25 Nov 2015   SY    Update if Complete Approval
+      T35.2   25 Nov 2015   SY    Check user setup
+      T35.3   26 Nov 2015   SY    Check Approval Now if Reopen
+      T35.2a  09 Jan 2015   SY    Check if Divisi III or Vendor 101
+    }
+    END.
+  }
+}

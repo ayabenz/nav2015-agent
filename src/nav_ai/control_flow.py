@@ -160,10 +160,6 @@ class _Parser:
             arms.append({"labels": labels, "label_span": self.span(label_start, label_end), "body": body})
             if self.peek(";"):
                 self.take()
-            elif not self.peek("END"):
-                # Recovery: consume one token rather than looping forever.
-                self.diagnostics.append(f"Unexpected CASE token at line {self.tokens[self.i]['line']}")
-                self.i += 1
         if self.peek("END"):
             self.take()
             if self.peek(";"):

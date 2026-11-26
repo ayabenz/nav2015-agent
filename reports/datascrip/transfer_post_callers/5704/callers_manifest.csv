@@ -1,0 +1,5 @@
+object_type,object_id,object_name,source_file,matched_references,export_file
+Codeunit,5706,TransferOrder-Post (Yes/No),AllObjects.txt,Codeunit 5704,Codeunit_5706.txt
+Codeunit,5707,TransferOrder-Post + Print,AllObjects.txt,Codeunit 5704,Codeunit_5707.txt
+Codeunit,5763,Whse.-Post Shipment,AllObjects.txt,Codeunit 5704,Codeunit_5763.txt
+Codeunit,7324,Whse.-Activity-Post,AllObjects.txt,Codeunit 5704,Codeunit_7324.txt

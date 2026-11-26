@@ -16,7 +16,7 @@ on:
       objects:
         description: "Space-separated selectors, e.g. Page:43 Page:7335 Page:7336 Page:5769 Report:296 Report:297 Codeunit:81 Codeunit:82 Codeunit:5760 Codeunit:5761 Codeunit:5762 Codeunit:5763 Codeunit:98"
         required: true
-        default: "Page:50054 Page:50055 Page:50056 Page:50057 Page:50058 Page:50060 Page:50061 Page:50062 Page:50063 Page:50073 Page:50074 Page:50075 Page:50078 Page:50079 Table:50013 Table:50014 Table:50017 Table:50051 Table:50052 Table:50053 Table:50054 Table:50055 Table:50056 Table:50057 Codeunit:50100 Codeunit:50101 Codeunit:50102 Report:50137 Report:50355 Page:40 Codeunit:241"
+        default: "Page:50054 Page:50055 Page:50056 Page:50057 Page:50058 Page:50060 Page:50061 Page:50062 Page:50063 Page:50073 Page:50074 Page:50075 Page:50078 Page:50079 Table:50013 Table:50014 Table:50017 Table:50051 Table:50052 Table:50053 Table:50054 Table:50055 Table:50056 Table:50057 Codeunit:50100 Codeunit:50101 Codeunit:50102 Report:50137 Report:50355 Page:40 Codeunit:241 Codeunit:23"
         type: string
   push:
     branches:

@@ -81,8 +81,8 @@ jobs:
 
       - name: Discover and export all Codeunit 50107 callers
         run: |
-          python scripts/export_nav_callers.py \\
-            --input data/input/datascrip/datascrip.zip \\
+          python scripts/export_nav_callers.py \
+            --input data/input/datascrip/datascrip.zip \
             --output reports/datascrip/stocktake_callers
 
       - name: Commit extracted objects

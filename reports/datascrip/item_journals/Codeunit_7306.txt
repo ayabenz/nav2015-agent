@@ -1,0 +1,178 @@
+OBJECT Codeunit 7306 Whse.-Act.-Register (Yes/No)
+{
+  OBJECT-PROPERTIES
+  {
+    Date=09/29/21;
+    Time=12:17:36;
+    Modified=Yes;
+    Version List=[NAVW17.00;DTS:T18,T09];
+  }
+  PROPERTIES
+  {
+    TableNo=5767;
+    OnRun=BEGIN
+            WhseActivLine.COPY(Rec);
+            Code;
+            COPY(WhseActivLine);
+          END;
+
+  }
+  CODE
+  {
+    VAR
+      Text001@1001 : TextConst 'ENU=Do you want to register the %1 Document?';
+      WhseActivLine@1007 : Record 5767;
+      WhseActivityRegister@1008 : Codeunit 7307;
+      WMSMgt@1000 : Codeunit 7302;
+      Text002@1002 : TextConst 'ENU=The document %1 is not supported.';
+      gVar_Finish@1003 : Boolean;
+      gVar_UserID@1004 : Code[50];
+      gVar_FromHH@1005 : Boolean;
+
+    LOCAL PROCEDURE Code@1();
+    VAR
+      lCU_WhseActRegister@1000 : Codeunit 7307;
+      lRec_WhseActHeader@1001 : Record 5766;
+    BEGIN
+      WITH WhseActivLine DO BEGIN
+        IF ("Activity Type" = "Activity Type"::"Invt. Movement") AND
+           NOT ("Source Document" IN ["Source Document"::" ",
+                                      "Source Document"::"Prod. Consumption",
+                                      "Source Document"::"Assembly Consumption"])
+        THEN
+          ERROR(Text002,"Source Document");
+
+        UpdateQtyToHandlePlace(WhseActivLine); //T09.01
+        WMSMgt.CheckBalanceQtyToHandle(WhseActivLine);
+
+        IF GUIALLOWED THEN //T09.01
+          IF NOT CONFIRM(Text001,FALSE,"Activity Type") THEN
+            EXIT;
+
+        IF gVar_Finish THEN //T18.01
+          //T09.02 lCU_WhseActRegister.PickFinished(WhseActivLine); //T18.01
+          lCU_WhseActRegister.PickFinished(WhseActivLine,gVar_UserID,gVar_FromHH); //T09.02
+        //T09.03
+        lRec_WhseActHeader.RESET;
+        lRec_WhseActHeader.SETRANGE(Type,"Activity Type");
+        lRec_WhseActHeader.SETRANGE("No.","No.");
+        IF lRec_WhseActHeader.FINDFIRST THEN
+          lCU_WhseActRegister.SetAssigned(lRec_WhseActHeader,gVar_UserID,gVar_FromHH);
+        //T09.03
+        WhseActivityRegister.setFromHH(gVar_UserID, gVar_FromHH); // BNY 21.09.29
+        WhseActivityRegister.RUN(WhseActivLine);
+        CLEAR(WhseActivityRegister);
+      END;
+    END;
+
+    PROCEDURE SetFinish@2(par_Finish@1000 : Boolean;par_UserID@1001 : Code[50];par_FromHH@1002 : Boolean);
+    BEGIN
+      gVar_Finish := par_Finish; //T18.01
+      gVar_UserID := par_UserID; //T09.02
+      gVar_FromHH := par_FromHH; //T09.02
+    END;
+
+    PROCEDURE UpdateQtyToHandlePlace@3(par_CurrWhseActLine@1000 : Record 5767);
+    VAR
+      lRec_WhseActLineTake@1004 : Record 5767;
+      lRec_WhseActLinePlace@1005 : Record 5767;
+      lVar_TotQtyToHandleTake@1006 : Decimal;
+    BEGIN
+      //T09.01
+      IF (par_CurrWhseActLine."Activity Type" = par_CurrWhseActLine."Activity Type"::Pick) AND
+         (par_CurrWhseActLine."Action Type" = par_CurrWhseActLine."Action Type"::Take) AND (par_CurrWhseActLine."From Handheld" = TRUE) THEN BEGIN
+
+        CLEAR(lVar_TotQtyToHandleTake);
+        //Find total of "Take"
+        lRec_WhseActLineTake.RESET;
+        lRec_WhseActLineTake.SETRANGE("Activity Type",par_CurrWhseActLine."Activity Type");
+        lRec_WhseActLineTake.SETRANGE("No.",par_CurrWhseActLine."No.");
+        lRec_WhseActLineTake.SETRANGE("Action Type",par_CurrWhseActLine."Action Type");
+        lRec_WhseActLineTake.SETRANGE("Whse. Document No.",par_CurrWhseActLine."Whse. Document No.");
+        lRec_WhseActLineTake.SETRANGE("Whse. Document Type",par_CurrWhseActLine."Whse. Document Type");
+        lRec_WhseActLineTake.SETRANGE("Whse. Document Line No.",par_CurrWhseActLine."Whse. Document Line No.");
+        IF lRec_WhseActLineTake.FINDSET THEN
+          REPEAT
+            lVar_TotQtyToHandleTake += lRec_WhseActLineTake."Qty. to Handle";
+          UNTIL lRec_WhseActLineTake.NEXT = 0;
+
+        //Update 'Qty. to Handle' for "Place" if "Take" is modified by Handheld
+        lRec_WhseActLinePlace.RESET;
+        lRec_WhseActLinePlace.SETCURRENTKEY("Whse. Document No.","Whse. Document Type","Activity Type","Whse. Document Line No.","Action Type","Unit of Measure Code","Original Breakbulk","Breakbulk No.","Lot No.","Serial No.","Assemble to Order");
+        lRec_WhseActLinePlace.SETRANGE("Whse. Document No.",par_CurrWhseActLine."Whse. Document No.");
+        lRec_WhseActLinePlace.SETRANGE("Whse. Document Type",par_CurrWhseActLine."Whse. Document Type");
+        lRec_WhseActLinePlace.SETRANGE("Activity Type",par_CurrWhseActLine."Activity Type");
+        lRec_WhseActLinePlace.SETRANGE("Whse. Document Line No.",par_CurrWhseActLine."Whse. Document Line No.");
+        lRec_WhseActLinePlace.SETRANGE("Action Type",par_CurrWhseActLine."Action Type"::Place);
+        IF lRec_WhseActLinePlace.FINDFIRST THEN BEGIN
+          IF lRec_WhseActLinePlace."Qty. to Handle (Base)" = 0 THEN BEGIN
+            lRec_WhseActLinePlace.VALIDATE("Qty. to Handle (Base)",lVar_TotQtyToHandleTake);
+            lRec_WhseActLinePlace.MODIFY;
+          END;
+        END;
+      END;
+      //T09.01
+    END;
+
+    PROCEDURE CheckAllLineProcessed@4(par_WhseActHeader@1000 : Record 5766) : Boolean;
+    VAR
+      lVar_WhseAvtLine@1001 : Record 5767;
+    BEGIN
+      //T18.02
+      lVar_WhseAvtLine.RESET;
+      lVar_WhseAvtLine.SETRANGE("Activity Type",par_WhseActHeader.Type);
+      lVar_WhseAvtLine.SETRANGE("No.",par_WhseActHeader."No.");
+      IF par_WhseActHeader.Type = par_WhseActHeader.Type::Pick THEN
+        lVar_WhseAvtLine.SETRANGE("Action Type",lVar_WhseAvtLine."Action Type"::Take)
+      ELSE IF par_WhseActHeader.Type = par_WhseActHeader.Type::"Put-away" THEN
+        lVar_WhseAvtLine.SETRANGE("Action Type",lVar_WhseAvtLine."Action Type"::Place);
+      IF lVar_WhseAvtLine.FINDSET THEN
+        REPEAT
+          IF NOT lVar_WhseAvtLine.Processed THEN
+            EXIT(FALSE);
+
+          // BNY 21.09.20
+          IF gVar_FromHH AND (lVar_WhseAvtLine."Confirmed Item No." = '') THEN
+            EXIT(FALSE);
+          // BNY 21.09.20
+
+        UNTIL lVar_WhseAvtLine.NEXT = 0;
+      EXIT(TRUE);
+      //T18.02
+    END;
+
+    PROCEDURE SetAssigned@5(par_WhseActHeader@1000 : Record 5766;par_userID@1001 : Code[50]);
+    VAR
+      assignmentDateTime@1002 : DateTime;
+    BEGIN
+      //T09.03
+      // BNY 21.09.29
+      assignmentDateTime := CURRENTDATETIME;
+      IF gVar_FromHH THEN
+        assignmentDateTime := assignmentDateTime + (7 * 60 * 60 * 1000);
+
+      par_WhseActHeader."Assigned User ID" := par_userID;
+      par_WhseActHeader."Assignment Date" := TODAY;
+      par_WhseActHeader."Assignment Time" := DT2TIME(assignmentDateTime);
+      // BNY 21.09.29
+      //T09.03
+    END;
+
+    PROCEDURE setFromHH@42(parUserID@1000 : Code[50];parFromHH@1001 : Boolean);
+    BEGIN
+      gVar_UserID := parUserID;
+      gVar_FromHH := parFromHH;
+    END;
+
+    BEGIN
+    {
+      T18.01    11 Aug 15   RT    Set Status finish
+      T09.01    19 Sep 15   RT    avoid callback to 3rd party apps (for handheld)
+                                  create function to change "Qty. to Handle" in 'Place' line for balancing ('Take' line is modified by Handheld)
+      T18.02    29 Oct 15   RT    Check "Processed" before Register Whse. Pick
+      T09.02    15 Dec 15   DTS   Add user HH
+      T09.03    21 Dec 15   RT    Call function to set User & Datetime when Register / Finish
+    }
+    END.
+  }
+}

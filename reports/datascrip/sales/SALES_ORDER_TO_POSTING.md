@@ -649,3 +649,15 @@ The separate Ownership Transfer journal is documented in [Ownership Transfer Jou
 This is not a physical Transfer Order. Codeunit 50051 redistributes quantity between Owner balances at one Ownership-enabled Location by inserting paired negative/positive rows into Table 50035. The inspected procedure does not create Item Ledger Entries or move inventory between locations.
 
 No Codeunit 50107 stocktake call was found in this journal path. Its stocktake applicability is therefore recorded as a business-policy question, not a confirmed bypass: the company needs to decide whether stocktake freezes ownership reclassification as well as physical inventory movement. The report also records a balance-validation grouping risk where Location Code is not included in the grouping filters.
+
+### 25. P2B downstream posting and stocktake
+
+P2B workflow and downstream routes are documented in [P2B — Workflow, Downstream Posting, and Stocktake Audit](../p2b/P2B_POSTING_AND_STOCKTAKE_AUDIT.md).
+
+Key result:
+- P2B Transfer Order / Loan and WMS Item Journal routes generate transfer documents and reach Codeunit 5704/5705 at final posting, so they inherit OUT/IN stocktake checks.
+- P2B non-WMS Item Journal creates Negative Adjustment lines; actual posting later goes through Page 40 → Codeunit 241 → Codeunit 23 → Codeunit 22. No stocktake call was found in the inspected posting path.
+- P2B same-location WMS ownership route creates Ownership Transfer journal lines for later manual posting through Codeunit 50051; it changes Owner attribution at the same location, not physical inventory.
+- Whether stocktake should block the two latter journal routes is an open company-policy decision, not a confirmed defect.
+
+The accepted Sales Return Order / Credit Memo behavior and these P2B policy questions are tracked in [Issue #3](https://github.com/ayabenz/nav2015-agent/issues/3).

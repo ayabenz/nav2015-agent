@@ -73,15 +73,18 @@ These are recorded analysis outputs, not a claim that every NAV object or indire
 
 **Goal:** explain why a NAV procedure takes a particular branch by connecting C/AL conditions to the underlying table, field, variable and option values. This extends the existing symbol index and dependency graph; it does not replace or rebuild them.
 
-- [ ] Inventory and parse C/AL control-flow constructs: IF / THEN / ELSE / ELSEIF and CASE / OF / ELSE; preserve nested block structure and source line ranges.
+- [x] Initial conservative parser for nested IF / THEN / ELSE and CASE / OF / ELSE; preserve branch structure and source spans. ELSEIF is represented as nested ELSE → IF where syntax permits.
+- [ ] Expand grammar coverage and validate against representative Datascrip C/AL procedures; handle edge cases in statement boundaries and CASE labels.
 - [ ] Normalize condition expressions: operands, comparison operators, boolean operators, parentheses, constants and enum/option members.
 - [ ] Resolve Record variables and field references to NAV Table / Field identities, including qualified Option values such as Record.Status::Released.
 - [ ] Resolve field metadata and OptionString values from parsed table definitions; distinguish Option fields, ordinary text/code/numeric/date fields and unresolved expressions.
 - [ ] Build branch paths with parent/child relationships and explicit TRUE / FALSE / CASE-match / CASE-default outcomes.
 - [ ] Track local variable assignments and record-field values sufficiently to explain predicates whose operands are assigned earlier in the procedure.
 - [ ] Trace relevant values across direct procedure calls where parameter and Record-variable flow can be resolved safely.
-- [ ] Add nav-intel conditions and object/procedure integration; return source file, line range, resolution confidence and unresolved operands.
-- [ ] Add unit fixtures for nested IF/ELSE, ELSEIF, CASE, Option values, field comparisons, variable assignments and unresolved/dynamic expressions.
+- [x] Add initial nav-intel conditions command with explicit source-file and optional object/procedure selection; return branch tree, raw predicates and source spans.
+- [ ] Resolve source files automatically from the symbol index and integrate conditions into object/procedure queries.
+- [x] Add unit fixtures for nested IF/ELSE, CASE arms/default, comment/string masking and source line spans.
+- [ ] Add fixtures for ELSEIF, Option values, field comparisons, variable assignments and unresolved/dynamic expressions.
 - [ ] Document static-analysis limits and avoid presenting inferred branch reachability as runtime fact.
 - [ ] Add optional runtime evaluation only as a separate later capability, requiring an explicitly supplied read-only record snapshot / runtime evidence.
 

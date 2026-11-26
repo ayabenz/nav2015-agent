@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 """Exact / keyword symbol search over NAV TXT exports (roadmap P1.26).
 
-nav-search index data/input/datascrip.zip          # parse every object into a SQLite symbol index
-nav-search find "Sales Header" --exact             # exact (case-insensitive) name match
-nav-search find sales post --kind procedure        # keyword: every term must appear in name or object name
-nav-search find --id 50076                         # object id, field id or variable id
+nav-search <company> index [inputs...]             # parse every object into a SQLite symbol index
+nav-search <company> find [terms...] [options]     # search symbols in data/search/<company>/search.db
+nav-search <company> "Sales Header" --exact        # exact (case-insensitive) name match
+nav-search <company> sales post --kind procedure   # keyword: every term in name or object name
+nav-search <company> --id 50076                    # object id, field id or variable id
 Kinds: object, field, procedure, variable, trigger. Lines are absolute line numbers in the source file.
 """
 from __future__ import annotations
@@ -115,12 +116,11 @@ def format_rows(rows):
 
 def main(argv=None):
     ap = argparse.ArgumentParser(prog="nav-search", description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("company", help="Company name (uses data/input/{company} for index, data/search/{company}/search.db for find)")
     sub = ap.add_subparsers(dest="cmd", required=True)
     ix = sub.add_parser("index", help="build the symbol index")
-    ix.add_argument("--company", required=True, help="Company name (uses data/input/{company})")
     ix.add_argument("inputs", nargs="*", help="Input file(s) or folder(s) (overrides company)")
     fd = sub.add_parser("find", help="search the index")
-    fd.add_argument("--company", required=True, help="Company name (uses data/search/{company}/search.db)")
     fd.add_argument("terms", nargs="*")
     fd.add_argument("--exact", action="store_true")
     fd.add_argument("--id", type=int, dest="num", help="object id, field id or variable id")
@@ -133,20 +133,14 @@ def main(argv=None):
 
     # Resolve input paths for index
     if a.cmd == "index":
-        if a.inputs:
-            input_paths = a.inputs
-        elif a.company:
-            input_paths = [f"data/input/{a.company}"]
-        else:
-            print("Error: provide input path(s) or --company", file=sys.stderr)
-            return 2
+        input_paths = a.inputs if a.inputs else [f"data/input/{a.company}"]
         objects, counts, skipped = build_index(input_paths, db_path)
         print(f"indexed {objects} object(s): {counts}  skipped {len(skipped)}  -> {db_path}")
         for s in skipped[:5]: print("  skipped:", s)
         return 0
 
     if not db_path.exists():
-        print(f"index not found: {db_path} (run: nav-search index <company> or --db <path>)", file=sys.stderr); return 2
+        print(f"index not found: {db_path} (run: nav-search <company> index or --db <path>)", file=sys.stderr); return 2
     db = sqlite3.connect(db_path)
     try:
         rows, total = search(db, a.terms, a.exact, a.num, a.kind, a.object_type, a.object_id, a.limit)

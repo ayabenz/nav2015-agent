@@ -26,11 +26,11 @@ Tidak memerlukan database eksternal, AI API, atau koneksi internet (Phase 1 mile
 | Tool | Command | Kegunaan |
 |------|---------|----------|
 | **nav-ai** | `python -m nav_ai.cli ingest <company>` | Ingest export NAV (`.txt`/`.zip`/folder) → inventory JSON/CSV + snapshots |
-| **nav-search** | `python -m nav_ai.search index --company <company>` | Bangun symbol index SQLite |
-| | `python -m nav_ai.search find --company <company> <terms>` | Cari simbol dalam index |
-| **nav-diff** | `python -m nav_ai.semantic_diff --company <company>` | Perbandingan semantik original vs company |
-| **nav-audit** | `python -m nav_audit --company <company>` | Audit perubahan (REAL / WHITESPACE ONLY / BOUNDARY ARTIFACT) |
-| **nav-depgraph** | `python -m nav_ai.depgraph --company <company>` | Dependency graph + klasifikasi objek + impact analysis |
+| **nav-search** | `python -m nav_ai.search <company> index` | Bangun symbol index SQLite |
+| | `python -m nav_ai.search <company> find <terms>` | Cari simbol dalam index |
+| **nav-diff** | `python -m nav_ai.semantic_diff <company>` | Perbandingan semantik original vs company |
+| **nav-audit** | `python -m nav_ai.audit <company>` | Audit perubahan (REAL / WHITESPACE ONLY / BOUNDARY ARTIFACT) |
+| **nav-depgraph** | `python -m nav_ai.depgraph <company>` | Dependency graph + klasifikasi objek + impact analysis |
 | **clean** | `python clean.py --execute` | Hapus semua file/folder hasil generate |
 
 ---
@@ -78,22 +78,22 @@ Dependensi utama: `pandas>=2.0`, `openpyxl>=3.1` (dev: `pytest>=8.0`).
 python -m nav_ai.cli ingest datascrip
 
 # 2. Build symbol index
-python -m nav_ai.search index --company datascrip
+python -m nav_ai.search datascrip index
 
 # 3. Cari simbol
-python -m nav_ai.search find --company datascrip --exact "Sales Header" --type Table
+python -m nav_ai.search datascrip find --exact "Sales Header" --type Table
 
 # 4. Semantic diff vs baseline
-python -m nav_ai.semantic_diff --company datascrip --output diff.xlsx
+python -m nav_ai.semantic_diff datascrip --output diff.xlsx
 
 # 5. Audit perubahan
-python -m nav_ai.audit --company datascrip --output audit.xlsx
+python -m nav_ai.audit datascrip --output audit.xlsx
 
 # 6. Dependency graph
-python -m nav_ai.depgraph --company datascrip --diff diff.xlsx --excel NAV_Dependency_Report.xlsx
+python -m nav_ai.depgraph datascrip --diff diff.xlsx --excel NAV_Dependency_Report.xlsx
 
 # 7. Impact analysis (transitive dependents)
-python -m nav_ai.depgraph --company datascrip --impact "Codeunit 80.Sales-Post"
+python -m nav_ai.depgraph datascrip --impact "Codeunit 80.Sales-Post"
 
 # 8. Clean generated files
 python clean.py --execute

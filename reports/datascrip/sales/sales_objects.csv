@@ -1,9 +1,0 @@
-node,type,id,name,origin,in_original,semantic_change,procedures,out_edges,in_edges
-Codeunit 12,Codeunit,12,Gen. Jnl.-Post Line,MODIFIED_STANDARD,1,1,138,54,30
-Codeunit 80,Codeunit,80,Sales-Post,MODIFIED_STANDARD,1,1,150,256,60
-Page 42,Page,42,Sales Order,MODIFIED_STANDARD,1,1,26,131,37
-Table 17,Table,17,G/L Entry,MODIFIED_STANDARD,1,1,9,37,163
-Table 21,Table,21,Cust. Ledger Entry,MODIFIED_STANDARD,1,1,8,32,252
-Table 32,Table,32,Item Ledger Entry,MODIFIED_STANDARD,1,1,19,33,339
-Table 36,Table,36,Sales Header,MODIFIED_STANDARD,1,1,84,206,362
-Table 37,Table,37,Sales Line,MODIFIED_STANDARD,1,1,120,246,499

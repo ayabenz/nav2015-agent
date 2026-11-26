@@ -23,8 +23,8 @@ def summarize(a, b):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--company", required=True, help="Company name (uses data/input/{company})")
-    ap.add_argument("--output", default="NAV_Audit_Report.xlsx")
+    ap.add_argument("company", help="Company name (uses data/input/{company})")
+    ap.add_argument("--output", default="audit_report.xlsx")
     args = ap.parse_args()
     orig, comp = n.load_original("data/input/original"), n.load_company(f"data/input/{args.company}")
     args.output = f"reports/{args.company}/{args.output}"

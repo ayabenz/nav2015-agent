@@ -22,6 +22,7 @@ TO_DELETE_DIRS = [
     ROOT / "data" / "snapshots",
     ROOT / "data" / "search",
     ROOT / "data" / "depgraph",
+    ROOT / "reports" ,
 ]
 
 # File yang akan dihapus (hasil generate)
@@ -42,15 +43,7 @@ TO_DELETE_FILES = [
 
 # File yang TIDAK boleh dihapus (dilestarikan)
 PRESERVE = {
-    ROOT / "reports" / "archive",
-    ROOT / "reports" / ".gitkeep",
-    ROOT / "reports" / "NAV_Semantic_Source_Diff_Report_v3.xlsx",
-    ROOT / "reports" / "NAV_Audit_Report_v2.xlsx",
-    ROOT / "reports" / "NAV_Dependency_Report.xlsx",
-    ROOT / "reports" / "PILOT_REPORT.json",
     ROOT / "data" / "input",
-    ROOT / "data" / "comparison",
-    ROOT / "extra",
     ROOT / "src",
     ROOT / "tests",
     ROOT / "pyproject.toml",
@@ -61,6 +54,16 @@ PRESERVE = {
     ROOT / ".pytest_cache",
     ROOT / ".venv",
 }
+
+def format_bytes(size: float, decimal: bool = False) -> str:
+    step = 1000.0 if decimal else 1024.0
+    units = ["B", "KB", "MB", "GB", "TB", "PB"] if decimal else ["B", "KiB", "MiB", "GiB", "TiB", "PiB"]
+    
+    for unit in units:
+        if abs(size) < step:
+            return f"{size:.2f} {unit}"
+        size /= step
+    return f"{size:.2f} {'EB' if decimal else 'EiB'}"
 
 
 def list_to_delete():
@@ -93,19 +96,19 @@ def main(execute: bool = False) -> None:
                 if f.is_file():
                     try:
                         size += f.stat().st_size
+                        print(f"{f}  ({format_bytes(f.stat().st_size)})")
                     except OSError:
                         pass
         else:
             try:
                 size = path.stat().st_size
+                print(f"  [{kind}] {path}  ({format_bytes(f.stat().st_size)})")
             except OSError:
                 pass
         total_size += size
-        size_mb = size / (1024 * 1024)
-        print(f"  [{kind}] {path}  ({size_mb:.2f} MB)")
 
     print("-" * 60)
-    print(f"Total: {total_size / (1024 * 1024):.2f} MB")
+    print(f"Total: ({format_bytes(total_size)})")
     print("=" * 60)
 
     if not execute:

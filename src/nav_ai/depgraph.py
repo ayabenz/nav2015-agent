@@ -394,10 +394,10 @@ def reach(edges, start, reverse, kinds=("CALL",)):
 def main():
     ap = argparse.ArgumentParser()
     #ap.add_argument("--original",help="Original (standard) NAV export TXT",default="data/input/original")
-    ap.add_argument("--company", required=True, help="Company export ZIP")
-    ap.add_argument("--diff", required=True, help="Semantic Source Diff report (.xlsx)")
+    ap.add_argument("company", help="Company export directory")
+    ap.add_argument("--diff", help="Semantic Source Diff report (.xlsx)", default="semantic_source_diff_report.xlsx")
     #ap.add_argument("--db", default="data/depgraph/depgraph.db")
-    ap.add_argument("--excel", default="NAV_Dependency_Report.xlsx")
+    ap.add_argument("--excel", default="dependency_report.xlsx")
     ap.add_argument("--impact", action="append", default=[], help='node, e.g. "Codeunit 80.PostItemJnlLine": transitive dependents')
     ap.add_argument("--kinds", default="CALL", help="edge kinds followed by --impact (default CALL; add REF for loose navigation links)")
     args = ap.parse_args()
@@ -410,8 +410,8 @@ def main():
     # procedure changes from sibling files when available.
     if diff_path.lower().endswith(".csv"):
         base = diff_path[:-4]
-        co, ca, cc = parse_diff(Path(f"{base}_Object_Semantic_Summary.csv"))
-        _, pa, pc = parse_diff(Path(f"{base}_Procedure_Changes.csv"))
+        co, ca, cc = parse_diff(Path(f"{base}_object_semantic_summary.csv"))
+        _, pa, pc = parse_diff(Path(f"{base}_procedure_changes.csv"))
         changed_objs, added, changed = co, ca | pa, cc | pc
     else:
         changed_objs, added, changed = parse_diff(diff_path)

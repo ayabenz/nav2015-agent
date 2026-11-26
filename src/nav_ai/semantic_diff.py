@@ -261,8 +261,8 @@ def write_report(out, objects, procs, sections):
 def main():
     ap=argparse.ArgumentParser()
     #ap.add_argument("--original",help="Original NAV object export TXT",default="data/input/original")
-    ap.add_argument("--company",required=True,help="Company object export ZIP containing TXT files")
-    ap.add_argument("--output",default="NAV_Semantic_Source_Diff_Report.xlsx")
+    ap.add_argument("company",help="Company name (uses data/input/{company})")
+    ap.add_argument("--output",default="semantic_source_diff_report.xlsx")
     args=ap.parse_args()
     original_dir = "data/input/original"
     company_dir = f"data/input/{args.company}"

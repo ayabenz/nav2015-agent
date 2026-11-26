@@ -144,13 +144,13 @@ python -m nav_ai.cli ingest datascrip
 ### Tool 2: `nav-search index` — Bangun Symbol Index
 
 ```powershell
-python -m nav_ai.search index --company <company> [inputs...]
+python -m nav_ai.search <company> index [inputs...]
 ```
 
 **Parameter:**
 | Parameter | Tipe | Wajib | Keterangan |
 |-----------|------|-------|------------|
-| `--company` | flag | Ya | Nama company, DB di `data/search/<company>/search.db` |
+| `company` | positional | Ya | Nama company, DB di `data/search/<company>/search.db` |
 | `inputs` | positional | Tidak | File/folder input (override; default: `data/input/<company>/`) |
 
 **Output:** `data/search/<company>/search.db`
@@ -158,10 +158,10 @@ python -m nav_ai.search index --company <company> [inputs...]
 **Contoh:**
 ```powershell
 # Gunakan data/input/datascrip/ secara default
-python -m nav_ai.search index --company datascrip
+python -m nav_ai.search datascrip index
 
 # Override input path
-python -m nav_ai.search index --company datascrip extra/datascrip.zip
+python -m nav_ai.search datascrip index extra/datascrip.zip
 ```
 
 ---
@@ -169,13 +169,13 @@ python -m nav_ai.search index --company datascrip extra/datascrip.zip
 ### Tool 3: `nav-search find` — Cari Simbol
 
 ```powershell
-python -m nav_ai.search find --company <company> [terms...] [options]
+python -m nav_ai.search <company> find [terms...] [options]
 ```
 
 **Parameter:**
 | Parameter | Tipe | Wajib | Keterangan |
 |-----------|------|-------|------------|
-| `--company` | flag | Ya | Nama company, DB di `data/search/<company>/search.db` |
+| `company` | positional | Ya | Nama company, DB di `data/search/<company>/search.db` |
 | `terms` | positional | Tidak | Kata kunci pencarian (kosong = error) |
 | `--exact` | flag | Tidak | Case-insensitive whole-name match |
 | `--id` / `--num` | int | Tidak | Object id, field id, atau variable id |
@@ -187,16 +187,16 @@ python -m nav_ai.search find --company <company> [terms...] [options]
 **Contoh:**
 ```powershell
 # Pencarian eksak (case-insensitive)
-python -m nav_ai.search find --company datascrip --exact "Sales Header" --type Table
+python -m nav_ai.search datascrip find --exact "Sales Header" --type Table
 
 # Pencarian kata kunci (semua term harus ada)
-python -m nav_ai.search find --company datascrip sales post --kind procedure
+python -m nav_ai.search datascrip find sales post --kind procedure
 
 # Pencarian berdasarkan ID
-python -m nav_ai.search find --company datascrip --id 50076
+python -m nav_ai.search datascrip find --id 50076
 
 # Filter tipe + limit
-python -m nav_ai.search find --company datascrip "Customer" --type Table --limit 20
+python -m nav_ai.search datascrip find "Customer" --type Table --limit 20
 ```
 
 ---
@@ -204,13 +204,13 @@ python -m nav_ai.search find --company datascrip "Customer" --type Table --limit
 ### Tool 4: `nav-diff` — Semantic Diff
 
 ```powershell
-python -m nav_ai.semantic_diff --company <company> [--output <file>]
+python -m nav_ai.semantic_diff <company> [--output <file>]
 ```
 
 **Parameter:**
 | Parameter | Tipe | Wajib | Keterangan |
 |-----------|------|-------|------------|
-| `--company` | flag | Ya | Original: `data/input/original/`, Company: `data/input/<company>/` |
+| `company` | positional | Ya | Original: `data/input/original/`, Company: `data/input/<company>/` |
 | `--output` | string | Tidak | Nama file output (default: `diff.xlsx`); disimpan di `reports/<company>/` |
 
 **Output:** `reports/<company>/<output>` (Excel)
@@ -218,7 +218,7 @@ Sheet: Dashboard, Object Semantic Summary, Procedure Changes, Section Changes
 
 **Contoh:**
 ```powershell
-python -m nav_ai.semantic_diff --company datascrip --output diff.xlsx
+python -m nav_ai.semantic_diff datascrip --output diff.xlsx
 # Disimpan di: reports/datascrip/diff.xlsx
 ```
 
@@ -227,13 +227,13 @@ python -m nav_ai.semantic_diff --company datascrip --output diff.xlsx
 ### Tool 5: `nav-audit` — Audit Perubahan
 
 ```powershell
-python -m nav_ai.audit --company <company> [--output <file>]
+python -m nav_ai.audit <company> [--output <file>]
 ```
 
 **Parameter:**
 | Parameter | Tipe | Wajib | Keterangan |
 |-----------|------|-------|------------|
-| `--company` | flag | Ya | Original: `data/input/original/`, Company: `data/input/<company>/` |
+| `company` | positional | Ya | Original: `data/input/original/`, Company: `data/input/<company>/` |
 | `--output` | string | Tidak | Nama file output (default: `audit.xlsx`); disimpan di `reports/<company>/` |
 
 **Output:** `reports/<company>/<output>` (Excel)
@@ -241,7 +241,7 @@ Klasifikasi: `REAL`, `WHITESPACE ONLY`, `BOUNDARY ARTIFACT`
 
 **Contoh:**
 ```powershell
-python -m nav_ai.audit --company datascrip --output audit.xlsx
+python -m nav_ai.audit datascrip --output audit.xlsx
 # Disimpan di: reports/datascrip/audit.xlsx
 ```
 
@@ -250,13 +250,13 @@ python -m nav_ai.audit --company datascrip --output audit.xlsx
 ### Tool 6: `nav-depgraph` — Dependency Graph
 
 ```powershell
-python -m nav_ai.depgraph --company <company> [--diff <file>] [--excel <file>] [--impact <node>]
+python -m nav_ai.depgraph <company> [--diff <file>] [--excel <file>] [--impact <node>]
 ```
 
 **Parameter:**
 | Parameter | Tipe | Wajib | Keterangan |
 |-----------|------|-------|------------|
-| `--company` | flag | Ya | Digunakan untuk input dan output paths |
+| `company` | positional | Ya | Digunakan untuk input dan output paths |
 | `--diff` | string | Tidak | Nama file diff report di `reports/<company>/` |
 | `--excel` | string | Tidak | Nama file Excel output di `reports/<company>/` |
 | `--impact` | string | Tidak | Query transitive dependents untuk node (contoh: `Codeunit 80.Sales-Post`) |
@@ -269,10 +269,10 @@ python -m nav_ai.depgraph --company <company> [--diff <file>] [--excel <file>] [
 **Contoh:**
 ```powershell
 # Build dependency graph
-python -m nav_ai.depgraph --company datascrip --diff NAV_Semantic_Source_Diff_Report.xlsx --excel NAV_Dependency_Report.xlsx
+python -m nav_ai.depgraph datascrip --diff NAV_Semantic_Source_Diff_Report.xlsx --excel NAV_Dependency_Report.xlsx
 
 # Query transitive dependents (impact analysis)
-python -m nav_ai.depgraph --company datascrip --impact "Codeunit 80.Sales-Post"
+python -m nav_ai.depgraph datascrip --impact "Codeunit 80.Sales-Post"
 ```
 
 ---
@@ -284,22 +284,22 @@ python -m nav_ai.depgraph --company datascrip --impact "Codeunit 80.Sales-Post"
 python -m nav_ai.cli ingest datascrip
 
 # 2. Build symbol index
-python -m nav_ai.search index --company datascrip
+python -m nav_ai.search datascrip index
 
 # 3. Cari simbol
-python -m nav_ai.search find --company datascrip --exact "Sales Header" --type Table
+python -m nav_ai.search datascrip find --exact "Sales Header" --type Table
 
 # 4. Semantic diff (original vs company)
-python -m nav_ai.semantic_diff --company datascrip --output diff.xlsx
+python -m nav_ai.semantic_diff datascrip --output diff.xlsx
 
 # 5. Audit perubahan
-python -m nav_ai.audit --company datascrip --output audit.xlsx
+python -m nav_ai.audit datascrip --output audit.xlsx
 
 # 6. Dependency graph
-python -m nav_ai.depgraph --company datascrip --diff diff.xlsx --excel NAV_Dependency_Report.xlsx
+python -m nav_ai.depgraph datascrip --diff diff.xlsx --excel NAV_Dependency_Report.xlsx
 
 # 7. Impact analysis (transitive dependents)
-python -m nav_ai.depgraph --company datascrip --impact "Codeunit 80.Sales-Post"
+python -m nav_ai.depgraph datascrip --impact "Codeunit 80.Sales-Post"
 ```
 
 ---

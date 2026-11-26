@@ -51,8 +51,8 @@ jobs:
         id: inputs
         env:
           SOURCE: ${{ inputs.source || 'data/input/datascrip/datascrip.zip' }}
-          OUTPUT: ${{ inputs.output || 'reports/datascrip/transfer_tables' }}
-          OBJECTS: ${{ inputs.objects || 'Table:5740 Table:5741 Table:5744 Table:5746' }}
+          OUTPUT: ${{ inputs.output || 'reports/datascrip/transfer_variants' }}
+          OBJECTS: ${{ inputs.objects || 'Page:50000 Page:50004 Page:50115 Page:50116 Page:5742 Report:5702 Codeunit:5708' }}
         run: |
           python - <<'PY'
           import os, re

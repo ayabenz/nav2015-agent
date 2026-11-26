@@ -234,20 +234,21 @@ def main(argv: list[str] | None = None) -> int:
             objects = split_objects(source)
             if not objects:
                 raise ValueError(f"No NAV OBJECT found in source file: {args.source_file}")
-            parsed_objects = [parse_nav_text(block, args.source_file) for _, block in objects]
-            if args.object_node:
-                wanted = args.object_node.casefold()
-                parsed_objects = [p for p in parsed_objects
-                                  if f"{p['object']['type']} {p['object']['id']}".casefold() == wanted
-                                  or p["object"]["name"].casefold() == wanted]
-            if len(parsed_objects) != 1:
+            selected = []
+            for object_match, block in objects:
+                parsed_candidate = parse_nav_text(block, args.source_file)
+                identity = parsed_candidate["object"]
+                if args.object_node:
+                    wanted = args.object_node.casefold()
+                    if (f"{identity['type']} {identity['id']}".casefold() != wanted
+                            and identity["name"].casefold() != wanted):
+                        continue
+                selected.append((object_match, block, parsed_candidate))
+            if len(selected) != 1:
                 raise ValueError('Source file must resolve to exactly one object; use --object "Type ID"')
-            parsed = parsed_objects[0]
-            # Select the exact object block so all reported line numbers are object-local.
-            block = next(block for _, block in objects
-                         if (lambda o: o["type"] == parsed["object"]["type"] and o["id"] == parsed["object"]["id"])(
-                             parse_nav_text(block, args.source_file)["object"]))
-            parsed_block = parse_nav_text(block, args.source_file)
+            object_match, block, parsed_block = selected[0]
+            parsed = parsed_block
+            file_line_offset = source.count("\n", 0, object_match.start())
             if args.procedure:
                 matches = [p for p in parsed_block["procedures"] if p["name"].casefold() == args.procedure.casefold()]
                 if len(matches) != 1:
@@ -257,15 +258,19 @@ def main(argv: list[str] | None = None) -> int:
                 if begin is None:
                     raise ValueError(f"Procedure {args.procedure!r} has no BEGIN block")
                 code = "\n".join(raw_lines[begin:])
+                line_offset = file_line_offset + matches[0]["line_start"] + begin - 1
                 result = analyze_control_flow(code, parsed["object"]["type"], parsed["object"]["id"],
-                                              parsed["object"]["name"], matches[0]["name"], args.source_file)
+                                              parsed["object"]["name"], matches[0]["name"], args.source_file,
+                                              line_offset=line_offset)
             else:
                 section = parsed_block["sections"].get("CODE")
                 if not section:
                     raise ValueError("Selected object has no CODE section")
                 code = "\n".join(block.splitlines()[section["line_start"] - 1:section["line_end"]])
+                line_offset = file_line_offset + section["line_start"] - 1
                 result = analyze_control_flow(code, parsed["object"]["type"], parsed["object"]["id"],
-                                              parsed["object"]["name"], None, args.source_file)
+                                              parsed["object"]["name"], None, args.source_file,
+                                              line_offset=line_offset)
         elif args.command == "search":
             with _connect(symbol_path) as symbols:
                 result = symbol_search(symbols, args.terms, args.limit)

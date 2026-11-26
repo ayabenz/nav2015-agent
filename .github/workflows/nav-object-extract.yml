@@ -16,7 +16,7 @@ on:
       objects:
         description: "Space-separated selectors, e.g. Page:43 Page:7335 Page:7336 Page:5769 Report:296 Report:297 Codeunit:81 Codeunit:82 Codeunit:5760 Codeunit:5761 Codeunit:5762 Codeunit:5763 Codeunit:98"
         required: true
-        default: "Page:50152 Page:50153 Page:50156 Page:50161 Table:50036 Table:50037 Report:50168 Report:50190 Report:50220 Codeunit:50200"
+        default: "Codeunit:50051"
         type: string
   push:
     branches:
@@ -52,7 +52,7 @@ jobs:
         env:
           SOURCE: ${{ inputs.source || 'data/input/datascrip/datascrip.zip' }}
           OUTPUT: ${{ inputs.output || 'reports/datascrip/ownership_transfer' }}
-          OBJECTS: ${{ inputs.objects || 'Page:50152 Page:50153 Page:50156 Page:50161 Table:50036 Table:50037 Report:50168 Report:50190 Report:50220 Codeunit:50200' }}
+          OBJECTS: ${{ inputs.objects || 'Codeunit:50051' }}
         run: |
           python - <<'PY'
           import os, re

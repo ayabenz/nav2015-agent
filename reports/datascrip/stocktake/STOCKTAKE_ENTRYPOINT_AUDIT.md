@@ -265,3 +265,8 @@ Caller manifests:
 - [Codeunit 23 callers](../item_batch_post_callers/callers_manifest.csv)
 
 These additional policy questions are tracked in [Issue #3](https://github.com/ayabenz/nav2015-agent/issues/3).
+
+
+## 14. Runtime validation
+
+The source-level findings are converted into executable NAV scenarios in the [Stocktake Runtime Validation Test Plan](./STOCKTAKE_RUNTIME_TEST_PLAN.md). Cases distinguish company-approved behavior from policy questions that must be confirmed before a result is classified as a defect.

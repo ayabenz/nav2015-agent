@@ -1,0 +1,6 @@
+object_type,object_id,object_name,source_file,matched_references,export_file
+Codeunit,241,Item Jnl.-Post,AllObjects.txt,Codeunit 23,Codeunit_241.txt
+Codeunit,242,Item Jnl.-Post+Print,AllObjects.txt,Codeunit 23,Codeunit_242.txt
+Codeunit,243,Item Jnl.-B.Post,AllObjects.txt,Codeunit 23,Codeunit_243.txt
+Codeunit,244,Item Jnl.-B.Post+Print,AllObjects.txt,Codeunit 23,Codeunit_244.txt
+Page,1327,Mini Adjust Inventory,AllObjects.txt,Codeunit 23;Item Jnl.-Post Batch symbol,Page_1327.txt

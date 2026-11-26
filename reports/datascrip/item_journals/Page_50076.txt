@@ -1,0 +1,182 @@
+OBJECT Page 50076 Adjustment Purchase Journals
+{
+  OBJECT-PROPERTIES
+  {
+    Date=01/14/16;
+    Time=09:32:02;
+    Modified=Yes;
+    Version List=DTS:T07;
+  }
+  PROPERTIES
+  {
+    SaveValues=Yes;
+    InsertAllowed=No;
+    DeleteAllowed=No;
+    ModifyAllowed=No;
+    SourceTable=Table25;
+    DelayedInsert=Yes;
+    SourceTableView=SORTING(Entry No.)
+                    ORDER(Ascending)
+                    WHERE(Document Type=FILTER(Invoice),
+                          Open=FILTER(Yes));
+    PageType=List;
+    CardPageID=Adjustment Purchase Journal;
+    AutoSplitKey=Yes;
+    OnInit=BEGIN
+             ERROR('under development');
+           END;
+
+    OnOpenPage=BEGIN
+                 PDate := WORKDATE;
+               END;
+
+  }
+  CONTROLS
+  {
+    { 1   ;0   ;Container ;
+                ContainerType=ContentArea }
+
+    { 2   ;1   ;Group     ;
+                Name=Group;
+                GroupType=Repeater }
+
+    { 3   ;2   ;Field     ;
+                SourceExpr="Posting Date" }
+
+    { 4   ;2   ;Field     ;
+                SourceExpr="Document Type" }
+
+    { 5   ;2   ;Field     ;
+                SourceExpr="Document No." }
+
+    { 6   ;2   ;Field     ;
+                SourceExpr="Bal. Account Type" }
+
+    { 7   ;2   ;Field     ;
+                SourceExpr="Bal. Account No." }
+
+    { 8   ;2   ;Field     ;
+                SourceExpr="Applies-to Doc. No." }
+
+    { 9   ;2   ;Field     ;
+                SourceExpr="Vendor No." }
+
+    { 10  ;2   ;Field     ;
+                SourceExpr=Description }
+
+    { 11  ;2   ;Field     ;
+                SourceExpr="Global Dimension 1 Code" }
+
+    { 12  ;2   ;Field     ;
+                SourceExpr="Global Dimension 2 Code" }
+
+    { 13  ;2   ;Field     ;
+                SourceExpr="Currency Code" }
+
+    { 14  ;2   ;Field     ;
+                SourceExpr="Original Amount" }
+
+    { 15  ;2   ;Field     ;
+                SourceExpr=Amount }
+
+    { 16  ;2   ;Field     ;
+                SourceExpr="Purchase (LCY)" }
+
+    { 17  ;2   ;Field     ;
+                SourceExpr="Remaining Amount" }
+
+    { 38  ;2   ;Field     ;
+                CaptionML=ENU=Rem. Amt. (%);
+                SourceExpr=RemAmtPercentage }
+
+    { 18  ;2   ;Field     ;
+                SourceExpr="Amount (LCY)" }
+
+    { 19  ;2   ;Field     ;
+                SourceExpr="Remaining Amt. (LCY)" }
+
+    { 20  ;2   ;Field     ;
+                SourceExpr="Closed by Entry No." }
+
+    { 21  ;2   ;Field     ;
+                SourceExpr="Due Date" }
+
+    { 22  ;2   ;Field     ;
+                SourceExpr="Pmt. Discount Date" }
+
+    { 23  ;2   ;Field     ;
+                SourceExpr="Pmt. Disc. Tolerance Date" }
+
+    { 24  ;2   ;Field     ;
+                SourceExpr="Original Pmt. Disc. Possible" }
+
+    { 25  ;2   ;Field     ;
+                SourceExpr="Remaining Pmt. Disc. Possible" }
+
+    { 26  ;2   ;Field     ;
+                SourceExpr="Max. Payment Tolerance" }
+
+    { 27  ;2   ;Field     ;
+                SourceExpr=Open }
+
+    { 28  ;2   ;Field     ;
+                SourceExpr="Closed at Date" }
+
+    { 29  ;2   ;Field     ;
+                SourceExpr="On Hold" }
+
+    { 30  ;2   ;Field     ;
+                SourceExpr="User ID" }
+
+    { 31  ;2   ;Field     ;
+                SourceExpr="Source Code" }
+
+    { 32  ;2   ;Field     ;
+                SourceExpr="Reason Code" }
+
+    { 33  ;2   ;Field     ;
+                SourceExpr=Reversed }
+
+    { 34  ;2   ;Field     ;
+                SourceExpr="Reversed by Entry No." }
+
+    { 35  ;2   ;Field     ;
+                SourceExpr="Reversed Entry No." }
+
+    { 36  ;2   ;Field     ;
+                SourceExpr="Entry No." }
+
+  }
+  CODE
+  {
+    VAR
+      GenJnlManagement@1025 : Codeunit 230;
+      CurrentJnlBatchName@1024 : Code[10];
+      GenJnlLine@1023 : Record 81;
+      GenJnlLine2@1022 : Record 81;
+      LineNo@1021 : Integer;
+      Balance@1020 : Decimal;
+      TotalBalance@1019 : Decimal;
+      ShowBalance@1018 : Boolean;
+      ShowTotalBalance@1017 : Boolean;
+      StrAccountNo@1016 : Code[10];
+      PDate@1015 : Date;
+      WndDialog@1014 : Dialog;
+      Iteration@1013 : Integer;
+      WndVariable@1012 : Decimal;
+      RoundedWndVar@1011 : Integer;
+      TotalRecord@1010 : Decimal;
+      Divide@1009 : Decimal;
+      StringParameter@1008 : Text[200];
+      IsDeleted@1007 : Boolean;
+      RemAmtPercentage@1006 : Decimal;
+      LimitRemAmt@1005 : Decimal;
+      LimitRemAmt2@1004 : Decimal;
+      TypeFilter@1003 : 'No Filter,<=,=,Range';
+      strFilterInv@1001 : Text[1024];
+      CustLedgEntry@1000 : Record 21;
+
+    BEGIN
+    END.
+  }
+}

@@ -1,0 +1,519 @@
+OBJECT Page 50077 Adjustment Purchase Journal
+{
+  OBJECT-PROPERTIES
+  {
+    Date=02/16/16;
+    Time=13:46:34;
+    Modified=Yes;
+    Version List=DTS:T07;
+  }
+  PROPERTIES
+  {
+    SaveValues=Yes;
+    InsertAllowed=No;
+    ModifyAllowed=No;
+    SourceTable=Table25;
+    DelayedInsert=Yes;
+    SourceTableView=SORTING(Entry No.)
+                    ORDER(Ascending);
+    PageType=Worksheet;
+    SourceTableTemporary=Yes;
+    OnInit=BEGIN
+             //ERROR('under development');
+             DELETEALL;
+
+             gRec_VLE.RESET;
+             gRec_VLE.SETCURRENTKEY("Document Type","Vendor No.","Posting Date","Currency Code");
+             //T07.02 gRec_VLE.SETRANGE("Document Type", gRec_VLE."Document Type"::Invoice);
+             //gRec_VLE.SETFILTER("Document Type", '<>%1', gRec_VLE."Document Type"::Payment); //T07.02
+             gRec_VLE.SETRANGE(Open, TRUE);
+             gRec_VLE.SETRANGE(Transferred, FALSE);
+             IF gRec_VLE.FINDSET THEN BEGIN
+               REPEAT
+                 INIT;
+                 Rec := gRec_VLE;
+                 INSERT;
+               UNTIL gRec_VLE.NEXT = 0;
+             END;
+
+             RESET;
+           END;
+
+    OnOpenPage=BEGIN
+                 PDate := WORKDATE;
+                 StrAccountNo := '76360';
+                 CurrentJnlBatchName := 'P-INVAD';
+                 CLEAR(TypeFilter);
+                 CLEAR(LimitRemAmt);
+                 CLEAR(LimitRemAmt2);
+                 gRec_PurchSetup.GET;
+                 gRec_PurchSetup.TESTFIELD("Adj. Sisa Hutang Jnl. Templ.");
+                 GenJnlLine.SETRANGE("Journal Template Name",gRec_PurchSetup."Adj. Sisa Hutang Jnl. Templ.");
+                 GenJnlLine.SETRANGE("Journal Batch Name",CurrentJnlBatchName);
+                 CALCFIELDS("Remaining Amount");
+               END;
+
+    OnAfterGetRecord=BEGIN
+                       IF RemAmtPersen <> 0 THEN
+                         RemAmtPercentage := 100*"Remaining Amount"/RemAmtPersen
+                       ELSE
+                         RemAmtPercentage := 0;
+                     END;
+
+    ActionList=ACTIONS
+    {
+      { 41      ;    ;ActionContainer;
+                      CaptionML=ENU=Option;
+                      ActionContainerType=ActionItems }
+      { 45      ;1   ;Action    ;
+                      CaptionML=ENU=Export to Purchase Journal;
+                      Promoted=Yes;
+                      Image=TransferToGeneralJournal;
+                      PromotedCategory=Process;
+                      OnAction=VAR
+                                 LDocNo@1000 : Code[20];
+                                 lRec_GenJnlTemplate@1001 : Record 80;
+                                 lRec_DimEntry@1002 : Record 480;
+                                 lRec_VLE@1003 : Record 25;
+                               BEGIN
+                                 IF NOT CONFIRM('Are you sure want to Export Purchase Journal?',TRUE) THEN
+                                   EXIT;
+
+                                 gRec_PurchSetup.GET;
+                                 gRec_PurchSetup.TESTFIELD("Adj. Sisa Hutang Jnl. Templ.");
+                                 lRec_GenJnlTemplate.RESET;
+                                 lRec_GenJnlTemplate.GET(gRec_PurchSetup."Adj. Sisa Hutang Jnl. Templ.");
+                                 GenJnlLine.SETRANGE("Journal Template Name",gRec_PurchSetup."Adj. Sisa Hutang Jnl. Templ.");
+                                 GenJnlLine.SETRANGE("Journal Batch Name",CurrentJnlBatchName);
+                                 IF GenJnlLine.FIND('+') THEN
+                                    LineNo := GenJnlLine."Line No."
+                                 ELSE
+                                    LineNo := 0;
+                                 IF FIND('-') THEN
+                                 BEGIN
+                                    TotalRecord := COUNT;
+                                    Divide := 10000 / TotalRecord;
+                                    Iteration := 0;
+                                    WndVariable := 0;
+                                    RoundedWndVar := 0;
+                                    StringParameter := 'Update Entry No ...\' + TextBox + '\' + Bar;
+                                    WndDialog.OPEN(StringParameter,TotalRecord,RoundedWndVar,"Entry No.",Iteration);
+                                    REPEAT
+                                       Iteration := Iteration + 1;
+                                       WndVariable := Iteration * Divide;
+                                       RoundedWndVar := ROUND (WndVariable,1);
+                                       LineNo += 10000;
+                                       GenJnlLine2.INIT;
+                                       GenJnlLine2.VALIDATE("Journal Template Name",gRec_PurchSetup."Adj. Sisa Hutang Jnl. Templ.");
+                                       GenJnlLine2.VALIDATE("Journal Batch Name",CurrentJnlBatchName);
+                                       GenJnlLine2."Line No." := LineNo;
+                                       GenJnlLine2."User Front ID":=USERID;
+                                       GenJnlLine2.SetUpNewLine(GenJnlLine,Balance,TRUE);
+                                       IF LDocNo = '' THEN
+                                          LDocNo := GenJnlLine2."Document No.";
+                                       IF (LDocNo <> '') AND (GenJnlLine2."Document No." = '') THEN
+                                          GenJnlLine2.VALIDATE("Document No.",LDocNo);
+
+                                       IF PDate = 0D THEN
+                                          GenJnlLine2.VALIDATE("Posting Date",WORKDATE)
+                                       ELSE
+                                          GenJnlLine2.VALIDATE("Posting Date",PDate);
+
+                                       GenJnlLine2.VALIDATE("Account No.",StrAccountNo);
+                                       GenJnlLine2.VALIDATE("Bal. Account Type",GenJnlLine."Bal. Account Type"::Vendor);
+                                       GenJnlLine2.VALIDATE("Bal. Account No.","Vendor No.");
+
+                                       // get Salesperson dim
+                                       {get Purchaser direct from VLE //T00.03
+                                       gRec_GLSetup.GET;
+                                       lRec_DimEntry.RESET;
+                                       lRec_DimEntry.SETRANGE("Dimension Set ID","Dimension Set ID");
+                                       lRec_DimEntry.SETRANGE("Dimension Code",gRec_GLSetup."Shortcut Dimension 4 Code");
+                                       IF lRec_DimEntry.FINDFIRST THEN
+                                         GenJnlLine2.VALIDATE("Salespers./Purch. Code",lRec_DimEntry."Dimension Value Code");
+                                       }
+                                       GenJnlLine2.VALIDATE("Salespers./Purch. Code","Purchaser Code"); //T00.03
+                                       GenJnlLine2.VALIDATE("Shortcut Dimension 1 Code","Global Dimension 1 Code");
+                                       GenJnlLine2.VALIDATE("Shortcut Dimension 2 Code","Global Dimension 2 Code");
+                                       GenJnlLine2.VALIDATE("Applies-to Doc. Type",Rec."Document Type");
+                                       GenJnlLine2.VALIDATE("Applies-to Doc. No.","Document No.");
+                                       GenJnlLine2.VALIDATE("Currency Code","Currency Code");
+                                       GenJnlLine2.VALIDATE("Source Code",lRec_GenJnlTemplate."Source Code");
+
+                                       GenJnlLine2.VALIDATE(Amount,GetRemainingAmount("Entry No."));
+
+                                       GenJnlLine2.INSERT;
+                                       //T00.02 - START
+                                       //Transferred := TRUE;
+                                       //MODIFY;
+                                       lRec_VLE.RESET;
+                                       lRec_VLE.SETRANGE("Entry No.","Entry No.");
+                                       IF lRec_VLE.FINDFIRST THEN BEGIN
+                                         lRec_VLE.Transferred := TRUE;
+                                         lRec_VLE.MODIFY;
+                                       END;
+                                       DELETE;
+                                       //T00.02 - END
+                                       WndDialog.UPDATE;
+                                       LDocNo := INCSTR(LDocNo);
+                                    UNTIL NEXT = 0;
+                                    WndDialog.CLOSE;
+                                    MESSAGE('%1 line(s) exported to %2 journal, batch %3.',TotalRecord,gRec_PurchSetup."Adj. Sisa Hutang Jnl. Templ.",CurrentJnlBatchName);
+                                 END;
+                               END;
+                                }
+      { 47      ;    ;ActionContainer;
+                      ActionContainerType=Reports }
+      { 46      ;1   ;Action    ;
+                      CaptionML=ENU=Print Detail;
+                      Promoted=Yes;
+                      Image=Report;
+                      PromotedCategory=Report;
+                      OnAction=BEGIN
+                                 //Print Detail
+                               END;
+                                }
+    }
+  }
+  CONTROLS
+  {
+    { 1   ;0   ;Container ;
+                ContainerType=ContentArea }
+
+    { 37  ;1   ;Field     ;
+                CaptionML=ENU=Posting Date;
+                ToolTipML=ENU=Posting Date;
+                SourceExpr=PDate }
+
+    { 39  ;1   ;Field     ;
+                CaptionML=ENU=Account No.;
+                SourceExpr=StrAccountNo;
+                TableRelation="G/L Account" }
+
+    { 40  ;1   ;Field     ;
+                CaptionML=ENU=Batch Name;
+                SourceExpr=CurrentJnlBatchName;
+                OnLookup=BEGIN
+                           CurrPage.SAVERECORD;
+                           GenJnlManagement.LookupName(CurrentJnlBatchName,GenJnlLine);
+                           GenJnlLine.SETRANGE("Journal Batch Name",CurrentJnlBatchName);
+                           CurrPage.UPDATE(FALSE);
+                         END;
+                          }
+
+    { 42  ;1   ;Field     ;
+                CaptionML=ENU=Filter Rem. Amt (%);
+                SourceExpr=TypeFilter;
+                OnValidate=BEGIN
+                             IF TypeFilter = 0 THEN
+                             BEGIN
+                               CLEAR(LimitRemAmt);
+                               CLEAR(LimitRemAmt2);
+                               MARKEDONLY(TRUE);
+                               CLEARMARKS;
+                               {
+                               IF FIND('-') THEN
+                               REPEAT
+                                  MARK(FALSE);
+                               UNTIL NEXT = 0;
+                               MARKEDONLY(FALSE);
+                               }
+                               RESET;
+                               CurrPage.UPDATE(FALSE);
+                             END
+                             ELSE
+                               SetLimitRemAmt(LimitRemAmt,LimitRemAmt2);
+                           END;
+                            }
+
+    { 43  ;1   ;Field     ;
+                CaptionML=ENU="           from";
+                SourceExpr=LimitRemAmt;
+                OnValidate=BEGIN
+                             SetLimitRemAmt(LimitRemAmt,LimitRemAmt2)
+                           END;
+                            }
+
+    { 44  ;1   ;Field     ;
+                CaptionML=ENU="           to";
+                SourceExpr=LimitRemAmt2;
+                OnValidate=BEGIN
+                             SetLimitRemAmt(LimitRemAmt,LimitRemAmt2);
+                           END;
+                            }
+
+    { 2   ;1   ;Group     ;
+                Name=Group;
+                GroupType=Repeater }
+
+    { 3   ;2   ;Field     ;
+                SourceExpr="Posting Date" }
+
+    { 4   ;2   ;Field     ;
+                SourceExpr="Document Type" }
+
+    { 5   ;2   ;Field     ;
+                SourceExpr="Document No." }
+
+    { 6   ;2   ;Field     ;
+                SourceExpr="Bal. Account Type" }
+
+    { 7   ;2   ;Field     ;
+                SourceExpr="Bal. Account No." }
+
+    { 8   ;2   ;Field     ;
+                SourceExpr="Applies-to Doc. No." }
+
+    { 9   ;2   ;Field     ;
+                SourceExpr="Vendor No." }
+
+    { 10  ;2   ;Field     ;
+                SourceExpr=Description }
+
+    { 11  ;2   ;Field     ;
+                SourceExpr="Global Dimension 1 Code" }
+
+    { 12  ;2   ;Field     ;
+                SourceExpr="Global Dimension 2 Code" }
+
+    { 13  ;2   ;Field     ;
+                SourceExpr="Currency Code" }
+
+    { 14  ;2   ;Field     ;
+                SourceExpr="Original Amount" }
+
+    { 15  ;2   ;Field     ;
+                SourceExpr=Amount }
+
+    { 16  ;2   ;Field     ;
+                SourceExpr="Purchase (LCY)" }
+
+    { 17  ;2   ;Field     ;
+                SourceExpr="Remaining Amount" }
+
+    { 38  ;2   ;Field     ;
+                CaptionML=ENU=Rem. Amt. (%);
+                SourceExpr=RemAmtPercentage;
+                Editable=false }
+
+    { 18  ;2   ;Field     ;
+                SourceExpr="Amount (LCY)" }
+
+    { 19  ;2   ;Field     ;
+                SourceExpr="Remaining Amt. (LCY)" }
+
+    { 20  ;2   ;Field     ;
+                SourceExpr="Closed by Entry No." }
+
+    { 21  ;2   ;Field     ;
+                SourceExpr="Due Date" }
+
+    { 22  ;2   ;Field     ;
+                SourceExpr="Pmt. Discount Date" }
+
+    { 23  ;2   ;Field     ;
+                SourceExpr="Pmt. Disc. Tolerance Date" }
+
+    { 24  ;2   ;Field     ;
+                SourceExpr="Original Pmt. Disc. Possible" }
+
+    { 25  ;2   ;Field     ;
+                SourceExpr="Remaining Pmt. Disc. Possible" }
+
+    { 26  ;2   ;Field     ;
+                SourceExpr="Max. Payment Tolerance" }
+
+    { 27  ;2   ;Field     ;
+                SourceExpr=Open }
+
+    { 28  ;2   ;Field     ;
+                SourceExpr="Closed at Date" }
+
+    { 29  ;2   ;Field     ;
+                SourceExpr="On Hold" }
+
+    { 30  ;2   ;Field     ;
+                SourceExpr="User ID" }
+
+    { 31  ;2   ;Field     ;
+                SourceExpr="Source Code" }
+
+    { 32  ;2   ;Field     ;
+                SourceExpr="Reason Code" }
+
+    { 33  ;2   ;Field     ;
+                SourceExpr=Reversed }
+
+    { 34  ;2   ;Field     ;
+                SourceExpr="Reversed by Entry No." }
+
+    { 35  ;2   ;Field     ;
+                SourceExpr="Reversed Entry No." }
+
+    { 36  ;2   ;Field     ;
+                SourceExpr="Entry No." }
+
+  }
+  CODE
+  {
+    VAR
+      GenJnlManagement@1025 : Codeunit 230;
+      CurrentJnlBatchName@1024 : Code[10];
+      GenJnlLine@1023 : Record 81;
+      GenJnlLine2@1022 : Record 81;
+      LineNo@1021 : Integer;
+      Balance@1020 : Decimal;
+      TotalBalance@1019 : Decimal;
+      ShowBalance@1018 : Boolean;
+      ShowTotalBalance@1017 : Boolean;
+      StrAccountNo@1016 : Code[10];
+      PDate@1015 : Date;
+      WndDialog@1014 : Dialog;
+      Iteration@1013 : Integer;
+      WndVariable@1012 : Decimal;
+      RoundedWndVar@1011 : Integer;
+      TotalRecord@1010 : Decimal;
+      Divide@1009 : Decimal;
+      StringParameter@1008 : Text[200];
+      IsDeleted@1007 : Boolean;
+      RemAmtPercentage@1006 : Decimal;
+      LimitRemAmt@1005 : Decimal;
+      LimitRemAmt2@1004 : Decimal;
+      TypeFilter@1003 : 'No Filter,<=,=,Range';
+      strFilterInv@1001 : Text[1024];
+      TextBox@1002 : TextConst 'ENU=Entry No.    #3#######################\';
+      Bar@1026 : TextConst 'ENU=Progress     @2#######################\';
+      gRec_PurchSetup@1027 : Record 312;
+      gRec_GLSetup@1028 : Record 98;
+      gRec_VLE@1000 : Record 25;
+
+    PROCEDURE GetRemainingAmount@1000000027(EntryNo@1000000000 : Integer) : Decimal;
+    VAR
+      LDetVendLedgEntry@1000000001 : Record 380;
+      TotalRemainingAmount@1000000002 : Decimal;
+    BEGIN
+      TotalRemainingAmount := 0;
+      LDetVendLedgEntry.RESET;
+      LDetVendLedgEntry.SETCURRENTKEY("Vendor Ledger Entry No.","Posting Date");
+      LDetVendLedgEntry.SETRANGE("Vendor Ledger Entry No.",EntryNo);
+      REPEAT
+         TotalRemainingAmount += LDetVendLedgEntry.Amount;
+      UNTIL LDetVendLedgEntry.NEXT = 0;
+      EXIT(TotalRemainingAmount);
+    END;
+
+    PROCEDURE SetDeletedRecord@1000000000(Active@1000000000 : Boolean);
+    BEGIN
+      IsDeleted := Active;
+    END;
+
+    PROCEDURE SetLimitRemAmt@1000000001(PLimitRemAmt@1000000000 : Decimal;PLimitRemAmt2@1000000005 : Decimal);
+    VAR
+      LRemAmtPercentage@1000000001 : Decimal;
+      LDetVendLedgEntry@1000000002 : Record 380;
+      LAmount@1000000003 : Decimal;
+      LRemAmount@1000000004 : Decimal;
+    BEGIN
+      IF TypeFilter > 0 THEN
+      BEGIN
+         //MARKEDONLY(FALSE);
+         RESET;
+         IF FINDSET THEN
+         REPEAT
+            LAmount := 0;
+            LRemAmount := 0;
+            LDetVendLedgEntry.RESET;
+            LDetVendLedgEntry.SETCURRENTKEY("Vendor Ledger Entry No.","Entry Type","Posting Date");
+            LDetVendLedgEntry.SETRANGE("Vendor Ledger Entry No.","Entry No.");
+            IF LDetVendLedgEntry.FIND('-') THEN
+            BEGIN
+               REPEAT
+                  IF LDetVendLedgEntry."Entry Type" IN [
+                  LDetVendLedgEntry."Entry Type"::"Initial Entry",
+                  LDetVendLedgEntry."Entry Type"::"Unrealized Loss",
+                  LDetVendLedgEntry."Entry Type"::"Unrealized Gain",
+                  LDetVendLedgEntry."Entry Type"::"Realized Loss",
+                  LDetVendLedgEntry."Entry Type"::"Realized Gain",
+                  LDetVendLedgEntry."Entry Type"::"Payment Discount",
+                  LDetVendLedgEntry."Entry Type"::"Payment Discount (VAT Excl.)",
+                  LDetVendLedgEntry."Entry Type"::"Payment Discount (VAT Adjustment)",
+                  LDetVendLedgEntry."Entry Type"::"Payment Tolerance",
+                  LDetVendLedgEntry."Entry Type"::"Payment Discount Tolerance",
+                  LDetVendLedgEntry."Entry Type"::"Payment Tolerance (VAT Excl.)",
+                  LDetVendLedgEntry."Entry Type"::"Payment Tolerance (VAT Adjustment)",
+                  LDetVendLedgEntry."Entry Type"::"Payment Discount Tolerance (VAT Excl.)",
+                  LDetVendLedgEntry."Entry Type"::"Payment Discount Tolerance (VAT Adjustment)"] THEN
+                     LAmount += LDetVendLedgEntry.Amount
+                  ELSE IF (LDetVendLedgEntry."Entry Type"=LDetVendLedgEntry."Entry Type"::Application) AND
+                  (LDetVendLedgEntry."Document Type"=LDetVendLedgEntry."Document Type"::"Credit Memo")THEN
+                     LAmount += LDetVendLedgEntry.Amount;   //tambahan hendra 30 Maret 2010
+                  LRemAmount += LDetVendLedgEntry.Amount;
+               UNTIL LDetVendLedgEntry.NEXT = 0;
+               IF (LAmount <> 0) THEN
+                 LRemAmtPercentage := 100*LRemAmount/LAmount
+               ELSE
+                 LRemAmtPercentage := 0
+            END;
+            IF (TypeFilter = 1) AND (LRemAmtPercentage <= PLimitRemAmt) THEN
+               MARK(TRUE)
+            ELSE
+            IF (TypeFilter = 2) AND (LRemAmtPercentage = PLimitRemAmt) THEN
+               MARK(TRUE)
+            ELSE
+            IF (TypeFilter = 3) AND (PLimitRemAmt <= LRemAmtPercentage) AND (LRemAmtPercentage <= PLimitRemAmt2) THEN
+               MARK(TRUE)
+            ELSE
+               MARK(FALSE);
+         UNTIL NEXT = 0;
+         MARKEDONLY(TRUE);
+         CurrPage.UPDATE(FALSE);
+      END;
+    END;
+
+    PROCEDURE RemAmtPersen@1000000002() : Decimal;
+    VAR
+      LAmount@1000000000 : Decimal;
+      LDetVendLedgEntry@1000000001 : Record 380;
+    BEGIN
+            LAmount := 0;
+            LDetVendLedgEntry.RESET;
+            LDetVendLedgEntry.SETCURRENTKEY("Vendor Ledger Entry No.","Entry Type","Posting Date");
+            LDetVendLedgEntry.SETRANGE("Vendor Ledger Entry No.","Entry No.");
+            IF LDetVendLedgEntry.FIND('-') THEN
+            BEGIN
+               REPEAT
+                  IF LDetVendLedgEntry."Entry Type" IN [
+                  LDetVendLedgEntry."Entry Type"::"Initial Entry",
+                  LDetVendLedgEntry."Entry Type"::"Unrealized Loss",
+                  LDetVendLedgEntry."Entry Type"::"Unrealized Gain",
+                  LDetVendLedgEntry."Entry Type"::"Realized Loss",
+                  LDetVendLedgEntry."Entry Type"::"Realized Gain",
+                  LDetVendLedgEntry."Entry Type"::"Payment Discount",
+                  LDetVendLedgEntry."Entry Type"::"Payment Discount (VAT Excl.)",
+                  LDetVendLedgEntry."Entry Type"::"Payment Discount (VAT Adjustment)",
+                  LDetVendLedgEntry."Entry Type"::"Payment Tolerance",
+                  LDetVendLedgEntry."Entry Type"::"Payment Discount Tolerance",
+                  LDetVendLedgEntry."Entry Type"::"Payment Tolerance (VAT Excl.)",
+                  LDetVendLedgEntry."Entry Type"::"Payment Tolerance (VAT Adjustment)",
+                  LDetVendLedgEntry."Entry Type"::"Payment Discount Tolerance (VAT Excl.)",
+                  LDetVendLedgEntry."Entry Type"::"Payment Discount Tolerance (VAT Adjustment)"] THEN
+                     LAmount += LDetVendLedgEntry.Amount
+                  ELSE IF (LDetVendLedgEntry."Entry Type"=LDetVendLedgEntry."Entry Type"::Application) AND
+                  (LDetVendLedgEntry."Document Type"=LDetVendLedgEntry."Document Type"::"Credit Memo")THEN
+                     LAmount += LDetVendLedgEntry.Amount;   //tambahan hendra 30 Maret 2010
+               UNTIL LDetVendLedgEntry.NEXT = 0;
+            END;
+            EXIT(LAmount);
+    END;
+
+    BEGIN
+    {
+      T07.01    RT    20NOV2015   Add filter on page Properties
+      T00.01    SH    14 Jan 15   Change source table to temporary
+      T00.02    RT    19 Jan 15   Modify real VLE
+      T00.03    RT    21 Jan 15   Get Purchaser from Ledger Entry
+      T07.02    RT    03 Feb 15   Show exclude payment
+    }
+    END.
+  }
+}

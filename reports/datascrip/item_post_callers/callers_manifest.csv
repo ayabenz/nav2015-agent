@@ -1,0 +1,22 @@
+object_type,object_id,object_name,source_file,matched_references,export_file
+Codeunit,23,Item Jnl.-Post Batch,AllObjects.txt,Codeunit 22,Codeunit_23.txt
+Codeunit,80,Sales-Post,AllObjects.txt,Codeunit 22,Codeunit_80.txt
+Codeunit,90,Purch.-Post,AllObjects.txt,Codeunit 22,Codeunit_90.txt
+Codeunit,900,Assembly-Post,AllObjects.txt,Codeunit 22,Codeunit_900.txt
+Codeunit,1012,Job Jnl.-Post Line,AllObjects.txt,Codeunit 22,Codeunit_1012.txt
+Codeunit,5407,Prod. Order Status Management,AllObjects.txt,Codeunit 22,Codeunit_5407.txt
+Codeunit,5704,TransferOrder-Post Shipment,AllObjects.txt,Codeunit 22,Codeunit_5704.txt
+Codeunit,5705,TransferOrder-Post Receipt,AllObjects.txt,Codeunit 22,Codeunit_5705.txt
+Codeunit,5814,Undo Return Shipment Line,AllObjects.txt,Codeunit 22,Codeunit_5814.txt
+Codeunit,5815,Undo Sales Shipment Line,AllObjects.txt,Codeunit 22,Codeunit_5815.txt
+Codeunit,5816,Undo Return Receipt Line,AllObjects.txt,Codeunit 22,Codeunit_5816.txt
+Codeunit,5817,Undo Posting Management,AllObjects.txt,Codeunit 22,Codeunit_5817.txt
+Codeunit,5818,Undo Service Shipment Line,AllObjects.txt,Codeunit 22,Codeunit_5818.txt
+Codeunit,5819,Undo Service Consumption Line,AllObjects.txt,Codeunit 22,Codeunit_5819.txt
+Codeunit,5895,Inventory Adjustment,AllObjects.txt,Codeunit 22,Codeunit_5895.txt
+Codeunit,5987,Serv-Posting Journals Mgt.,AllObjects.txt,Codeunit 22,Codeunit_5987.txt
+Codeunit,7304,Whse. Jnl.-Register Batch,AllObjects.txt,Codeunit 22,Codeunit_7304.txt
+Codeunit,7324,Whse.-Activity-Post,AllObjects.txt,Codeunit 22,Codeunit_7324.txt
+Page,521,Application Worksheet,AllObjects.txt,Codeunit 22,Page_521.txt
+Page,522,View Applied Entries,AllObjects.txt,Codeunit 22,Page_522.txt
+Table,83,Item Journal Line,AllObjects.txt,Codeunit 22,Table_83.txt

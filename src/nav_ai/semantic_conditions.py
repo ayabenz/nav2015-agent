@@ -66,7 +66,7 @@ def parse_table_metadata(source: str, source_file: str = "<memory>") -> dict[str
             "id": int(field_match.group("id")),
             "name": field_match.group("name").strip(),
             "data_type": field_match.group("type").strip(),
-            "option_values": [x.strip() for x in options.group(1).split(",")] if options else [],
+            "option_values": [x.strip() for x in options.group(1).rstrip(" }\\t").split(",")] if options else [],
             "source_file": source_file,
             "line": start + 1,
         }

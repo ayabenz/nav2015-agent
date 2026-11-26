@@ -17,7 +17,8 @@ nav-ai = "nav_ai.cli:main"
 nav-diff = "nav_ai.semantic_diff:main"
 nav-audit = "nav_ai.audit:main"
 nav-depgraph = "nav_ai.depgraph:main"
-nav-search = "nav_ai.search:main"\nnav-intel = "nav_ai.intelligence:main"
+nav-search = "nav_ai.search:main"
+nav-intel = "nav_ai.intelligence:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]

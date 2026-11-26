@@ -16,7 +16,7 @@ on:
       objects:
         description: "Space-separated selectors, e.g. Page:43 Report:296 Report:297 Codeunit:81 Codeunit:82 Codeunit:98"
         required: true
-        default: "Page:43 Report:296 Codeunit:98"
+        default: "Page:43 Report:296 Report:297 Codeunit:81 Codeunit:82 Codeunit:98"
         type: string
   push:
     branches:
@@ -52,7 +52,7 @@ jobs:
         env:
           SOURCE: ${{ inputs.source || 'data/input/datascrip/datascrip.zip' }}
           OUTPUT: ${{ inputs.output || 'reports/datascrip/stocktake_entrypoints' }}
-          OBJECTS: ${{ inputs.objects || 'Page:43 Report:296 Codeunit:98' }}
+          OBJECTS: ${{ inputs.objects || 'Page:43 Report:296 Report:297 Codeunit:81 Codeunit:82 Codeunit:98' }}
         run: |
           python - <<'PY'
           import os, re

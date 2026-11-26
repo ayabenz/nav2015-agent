@@ -24,6 +24,7 @@ on:
     paths:
       - ".github/workflows/nav-object-extract.yml"
       - "scripts/export_nav_objects.py"
+      - "scripts/export_nav_callers.py"
 
 permissions:
   contents: write
@@ -78,13 +79,19 @@ jobs:
             --output "${{ steps.inputs.outputs.output }}" \
             --objects ${{ steps.inputs.outputs.objects }}
 
+      - name: Discover and export all Codeunit 50107 callers
+        run: |
+          python scripts/export_nav_callers.py \\
+            --input data/input/datascrip/datascrip.zip \\
+            --output reports/datascrip/stocktake_callers
+
       - name: Commit extracted objects
         env:
           OUTPUT: ${{ steps.inputs.outputs.output }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -- "$OUTPUT"
+          git add -- "$OUTPUT" reports/datascrip/stocktake_callers
           if git diff --cached --quiet; then
             echo "No extracted file changes to commit."
             exit 0

@@ -177,7 +177,7 @@ The manifest contains 31 objects referencing Codeunit 90 or the `Purch.-Post` sy
 | Page 52 Purchase Credit Memo | Wrapper check may be skipped before C90 defaults Ship=TRUE | Needs runtime/policy confirmation |
 | Batch Reports 496/497/498/6665 | Direct C90 | No check found |
 | Job Queue C98 | Check at enqueue only; none at execution | Timing gap |
-| Warehouse Receipt C5760 Purchase Line | Direct C90 | No posting-time check |
+| Warehouse Receipt Page 5768 → C5760 Purchase Line | Page-level stocktake check before posting; C5760 itself has no internal check | Protected through the inspected UI; direct/alternate C5760 callers remain unprotected |
 | Warehouse Shipment C5763 Purchase Line | Direct C90 | No posting-time check |
 | Warehouse Activity C7324 Purchase Line | Direct C90 | No posting-time check |
 | Correct Posted Purchase Invoice C1313 | Direct C90 | No check found |
@@ -206,6 +206,7 @@ The requirement should be applied to the actual physical operation (Receive/Ship
 - `reports/datascrip/purchase_flow/Codeunit_5751.txt`
 - `reports/datascrip/purchase_flow/Codeunit_5752.txt`
 - `reports/datascrip/purchase_flow/Codeunit_5760.txt`
+- `reports/datascrip/item_journals/Page_5768.txt` (Warehouse Receipt UI gate)
 - `reports/datascrip/purchase_flow/Codeunit_5763.txt`
 - `reports/datascrip/purchase_post_callers/Codeunit_1313.txt`
 - `reports/datascrip/purchase_post_callers/Codeunit_7324.txt`

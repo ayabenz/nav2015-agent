@@ -158,13 +158,13 @@ Evidence:
 - Report 50223 around lines 38–87 collects finished, completely picked warehouse shipments and runs Codeunit 5763 for each. No stocktake call is present.
 - Full exported Codeunit 5760 and Codeunit 5763 contain no `BlockStocktake` or `50107` reference.
 
-**Operational consequence:** a warehouse shipment created before a stocktake window begins can remain available to post during the stocktake window. The source-creation gate in Codeunit 5752 does not re-evaluate an already-created warehouse shipment. Manually assembled or otherwise populated warehouse shipments may also avoid that source-creation gate.
+**Operational consequence:** a warehouse shipment created before a stocktake window begins can remain available to post during the stocktake window for source types whose final posting route has no stocktake check. The transfer source path is an important exception: Codeunit 5763 delegates Transfer Line posting to Codeunit 5704, which re-checks OUT before posting. Sales/Purchase source paths do not receive that transfer-specific protection. The source-creation gate in Codeunit 5752 does not re-evaluate an already-created Sales/Purchase warehouse shipment. Manually assembled or otherwise populated warehouse shipments may also avoid source-creation checks.
 
 **Recommended correction:** add a posting-time check at Codeunit 5763 before source-document posting, evaluating the actual Warehouse Shipment Line quantities and source document type/direction against Table 50063. Preserve the existing Codeunit 5752 checks because they prevent adding blocked source documents to new warehouse shipments. For receipts, consider a corresponding check inside Codeunit 5760 so non-Page-5768 callers cannot bypass the Page 5768 gate. Transfer shipment/receipt still has its own Codeunit 5704/5705 checks; avoid duplicate errors and validate the intended behavior.
 
 ## 9. Updated remediation order
 
-1. **Sales posting:** enforce a posting-intent-aware check at Codeunit 80, including Qty. to Invoice.
+1. **Sales posting:** preserve company-approved entry-point behavior. Codeunit 50082's missing duplicate stocktake call is an intentional company exception; do not add a check solely for consistency. Audit other sales callers and warehouse/batch routes separately, and place checks at the appropriate unprotected entry points.
 2. **Warehouse shipment posting:** add a posting-time gate to Codeunit 5763, not only the source-document creation check in Codeunit 5752.
 3. **Purchase posting:** enforce at the common Purch.-Post boundary with Ship/Receive/Invoice intent; current Codeunits 91/92 gate only Ship or Receive.
 4. **Warehouse receipt posting:** retain Page 5768 checks and consider a central check in Codeunit 5760 for alternate callers.
@@ -175,3 +175,54 @@ Evidence:
 ## 10. Related process documentation
 
 The detailed warehouse shipment lifecycle, including source line synchronization, pick/tracking validation, source-specific posting and the recommended posting-time gate is documented in [Warehouse Shipment — Create, Pick and Post](../sales/WAREHOUSE_SHIPMENT_POSTING_FLOW.md). The Sales Return Order / Credit Memo process is documented in [Sales Return Order → Return Receipt / Credit Memo](../sales/SALES_RETURN_CREDIT_MEMO_FLOW.md).
+
+## 11. Company-confirmed behavior and additional posting routes
+
+### 11.1 Sales Return Order / Credit Memo — accepted exception
+
+The company confirms that the current Codeunit 50081 / 50082 behavior is intentional:
+- Codeunit 50081 checks stocktake before calling Codeunit 80.
+- Codeunit 50082 calls Codeunit 80 without the same stocktake check.
+- Do not treat the missing duplicate check in Codeunit 50082 as a defect or add one solely for consistency.
+
+The rule is to follow the company's approved entry-point behavior, not to centralize every stocktake check in Codeunit 80.
+
+### 11.2 Transfer Order, Loan and Return Loan
+
+The inspected direct and warehouse routes use Codeunit 5704 for OUT and Codeunit 5705 for IN. Both call the stocktake checker at the start of posting, before irreversible posting work. Warehouse shipment/receipt paths for Transfer Line delegate to these codeunits and therefore retain the posting-time check.
+
+Detailed analyses:
+- [Transfer Order — Stocktake, Ownership, and Posting Flow](../transfer_flow/TRANSFER_ORDER_STOCKTAKE_AND_POSTING_FLOW.md)
+- [Loan and Return Loan — Stocktake and Posting Flow](../transfer_flow/LOAN_AND_RETURN_LOAN_POSTING_FLOW.md)
+
+### 11.3 P2B-generated downstream documents
+
+P2B is a workflow/document-generation step; the final posting path depends on Posting To and location type.
+
+| P2B route | Downstream document | Final posting route | Stocktake finding |
+|---|---|---|---|
+| Item Journal, non-WMS location | Negative Adjustment Item Journal lines | Page 40 → Codeunit 241 → Codeunit 23 → Codeunit 22 | No Codeunit 50107 check found in the inspected actual posting path |
+| Item Journal, WMS/Ownership location | Transfer Order with Transfer to Item Journal flag | Codeunit 5704/5705 | OUT/IN checks run at final posting |
+| Transfer Order / Loan | Transfer Order / Loan document | Codeunit 5704/5705 | OUT/IN checks run at final posting |
+| Transfer Order, same WMS location | Ownership Transfer journal lines | Page 50152 → Codeunit 50051 | No stocktake call; changes owner attribution at same location, not physical stock |
+
+The P2B Item Journal non-WMS route only creates journal lines during P2B Posting; the actual inventory posting happens later from Page 40. The actual Page 40 → 241 → 23 → 22 route has no inspected Codeunit 50107 call.
+
+Detailed analysis: [P2B — Workflow, Downstream Posting, and Stocktake Audit](../p2b/P2B_POSTING_AND_STOCKTAKE_AUDIT.md).
+
+### 11.4 Ownership Transfer journal
+
+Ownership Transfer redistributes quantity between Owner balances at one Ownership-enabled Location. Codeunit 50051 inserts paired negative/positive Ownership Ledger entries and does not post a physical Item Ledger movement. No Codeunit 50107 call was found.
+
+Whether stocktake should freeze this reclassification is a separate business-policy decision, not a confirmed bypass.
+
+Detailed analysis: [Ownership Transfer Journal — Posting and Stocktake Relationship](../ownership_transfer/OWNERSHIP_TRANSFER_POSTING_AND_STOCKTAKE.md).
+
+### 11.5 Open business decisions
+
+The following routes need explicit company confirmation before remediation:
+1. Whether stocktake should block non-WMS P2B-generated Negative Adjustment Item Journals at actual Item Journal posting.
+2. Whether stocktake should block same-location Ownership Transfer journal posting.
+3. Whether the Sales/Purchase source paths through Codeunit 5763 and direct Codeunit 5760 callers are expected to be blocked, while preserving the approved Sales Return Order / Credit Memo exception.
+
+These decisions are tracked in [Issue #3](https://github.com/ayabenz/nav2015-agent/issues/3). The issue also records the accepted Codeunit 50082 behavior.

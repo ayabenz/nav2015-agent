@@ -1,0 +1,78 @@
+name: NAV transfer posting caller audit
+
+on:
+  workflow_dispatch:
+    inputs:
+      source:
+        description: "Repository path to NAV TXT/ZIP source"
+        required: true
+        default: "data/input/datascrip/datascrip.zip"
+        type: string
+  push:
+    branches:
+      - datascrip
+    paths:
+      - ".github/workflows/nav-transfer-callers.yml"
+      - "scripts/export_nav_callers.py"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: nav-transfer-callers-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  extract:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Validate source
+        id: inputs
+        env:
+          SOURCE: ${{ inputs.source || 'data/input/datascrip/datascrip.zip' }}
+        run: |
+          python - <<'PY'
+          import os
+          from pathlib import Path
+          source = Path(os.environ["SOURCE"])
+          if not source.is_file() or source.suffix.lower() not in {".zip", ".txt"}:
+              raise SystemExit(f"Invalid source file: {source}")
+          with open(os.environ["GITHUB_OUTPUT"], "a") as f:
+              f.write(f"source={source.as_posix()}\\n")
+          PY
+
+      - name: Discover callers of Codeunit 5704
+        run: |
+          python scripts/export_nav_callers.py \
+            --input "${{ steps.inputs.outputs.source }}" \
+            --output reports/datascrip/transfer_post_callers/5704 \
+            --target-codeunit-id 5704
+
+      - name: Discover callers of Codeunit 5705
+        run: |
+          python scripts/export_nav_callers.py \
+            --input "${{ steps.inputs.outputs.source }}" \
+            --output reports/datascrip/transfer_post_callers/5705 \
+            --target-codeunit-id 5705
+
+      - name: Commit caller manifests
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -- reports/datascrip/transfer_post_callers
+          if git diff --cached --quiet; then
+            echo "No caller changes."
+            exit 0
+          fi
+          git commit -m "audit(nav): export transfer posting callers"
+          git push

@@ -17,7 +17,7 @@
 | Business-rule confirmation | PARTIAL | Accepted behavior documented in Issue #3; other policy decisions remain open |
 | NAV runtime validation | BLOCKED | Requires isolated non-production NAV 2015 test company and matching Datascrip build |
 | Remediation implementation | NOT STARTED / gated | Do not change posting logic until policy is confirmed and runtime cases are reproducible |
-| AI-assisted NAV reasoning / agent workflows | PLANNED | Build on deterministic parser, symbol index, semantic diff and dependency graph; keep source evidence traceable |
+| Deterministic Code Intelligence query layer | IMPLEMENTED — first vertical slice | `nav-intel` queries existing symbol/graph SQLite databases; object/procedure/callers/callees/impact/table usage; tests added, execution pending |\n| AI-assisted NAV reasoning / agent workflows | PLANNED | Build on deterministic query layer, parser, symbol index, semantic diff and dependency graph; keep source evidence traceable |
 
 ## 2. Roadmap
 

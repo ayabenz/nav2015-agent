@@ -126,3 +126,18 @@ nav-intel --company datascrip conditions --source-file "data/input/datascrip/Cod
 The source file must contain one resolvable object (or use `--object` to select one object from a multi-object export). Omit `--procedure` to analyze the object's CODE section. The command currently requires an explicit source file; automatic source-file resolution from the symbol index is a subsequent integration step.
 
 **Current limits:** predicates are retained as source text and are not yet semantically resolved to Table/Field IDs or OptionString values. Assignment/data-flow, cross-procedure value propagation, full C/AL grammar coverage and runtime evaluation are not implemented. Unsupported statements are preserved as opaque statement nodes. Treat diagnostics and source spans as part of the evidence.
+
+
+## Semantic resolution: Record fields and Option members
+
+The next increment adds `nav_ai.semantic_conditions`. It resolves qualified C/AL references such as `tblStocktake."Start Date"` using the Record variable declaration and an explicit Table TXT export. Resolved references include Table ID/name, Field ID/name/type, metadata source and line. Option members are checked against the field's OptionString; a value not present in the metadata is marked `unverified`, not silently accepted.
+
+Example against the actual Stocktake source exports:
+
+```powershell
+nav-intel --company datascrip --json conditions --source-file "reports/datascrip/ownership/Codeunit_50107.txt" --object "Codeunit 50107" --procedure "BlockStocktakeSalesHeader" --table-source "reports/datascrip/stocktake/Table_50063.txt"
+```
+
+Repeat `--table-source` for each additional Table export needed by the analyzed procedure. The resolver currently handles qualified `RecordVariable.Field` references. Unqualified field names inside C/AL `WITH` scopes, RecordRef/FieldRef, dynamic expressions and cross-procedure data flow remain unresolved by design. The output remains static and always sets `runtime_evaluated=false`.
+
+The resolver is deliberately conservative: missing variable declarations, Table exports or fields produce explicit unresolved reasons. Option members absent from OptionString are marked unverified; no runtime branch is inferred.

@@ -13,6 +13,9 @@ from collections import defaultdict, deque
 from pathlib import Path
 from typing import Any
 
+from .control_flow import analyze_control_flow
+from .parser import parse_nav_text, split_objects
+
 
 def _connect(path: str | Path) -> sqlite3.Connection:
     p = Path(path)
@@ -216,12 +219,54 @@ def main(argv: list[str] | None = None) -> int:
     tab.add_argument("node", help='canonical table node, e.g. "Table 36"')
     tab.add_argument("--usage", choices=("READ", "WRITE", "VAR", "SOURCE", "RELATION", "REF"))
 
+    cond = sub.add_parser("conditions", help="extract IF/ELSE and CASE paths from a C/AL source export")
+    cond.add_argument("--source-file", required=True, help="NAV TXT export containing the target object")
+    cond.add_argument("--object", dest="object_node", help='optional object identity, e.g. "Codeunit 80"')
+    cond.add_argument("--procedure", help="procedure name; omit to analyze the full object CODE section")
+
     args = parser.parse_args(argv)
     base = Path("data")
     graph_path = base / "depgraph" / args.company / "depgraph.db"
     symbol_path = base / "search" / args.company / "search.db"
     try:
-        if args.command == "search":
+        if args.command == "conditions":
+            source = Path(args.source_file).read_text(encoding="utf-8-sig", errors="replace")
+            objects = split_objects(source)
+            if not objects:
+                raise ValueError(f"No NAV OBJECT found in source file: {args.source_file}")
+            parsed_objects = [parse_nav_text(block, args.source_file) for _, block in objects]
+            if args.object_node:
+                wanted = args.object_node.casefold()
+                parsed_objects = [p for p in parsed_objects
+                                  if f"{p['object']['type']} {p['object']['id']}".casefold() == wanted
+                                  or p["object"]["name"].casefold() == wanted]
+            if len(parsed_objects) != 1:
+                raise ValueError('Source file must resolve to exactly one object; use --object "Type ID"')
+            parsed = parsed_objects[0]
+            # Select the exact object block so all reported line numbers are object-local.
+            block = next(block for _, block in objects
+                         if (lambda o: o["type"] == parsed["object"]["type"] and o["id"] == parsed["object"]["id"])(
+                             parse_nav_text(block, args.source_file)["object"]))
+            parsed_block = parse_nav_text(block, args.source_file)
+            if args.procedure:
+                matches = [p for p in parsed_block["procedures"] if p["name"].casefold() == args.procedure.casefold()]
+                if len(matches) != 1:
+                    raise ValueError(f"Expected one procedure named {args.procedure!r}; found {len(matches)}")
+                raw_lines = matches[0]["raw"].splitlines()
+                begin = next((i for i, line in enumerate(raw_lines) if line.strip().upper() == "BEGIN"), None)
+                if begin is None:
+                    raise ValueError(f"Procedure {args.procedure!r} has no BEGIN block")
+                code = "\n".join(raw_lines[begin:])
+                result = analyze_control_flow(code, parsed["object"]["type"], parsed["object"]["id"],
+                                              parsed["object"]["name"], matches[0]["name"], args.source_file)
+            else:
+                section = parsed_block["sections"].get("CODE")
+                if not section:
+                    raise ValueError("Selected object has no CODE section")
+                code = "\n".join(block.splitlines()[section["line_start"] - 1:section["line_end"]])
+                result = analyze_control_flow(code, parsed["object"]["type"], parsed["object"]["id"],
+                                              parsed["object"]["name"], None, args.source_file)
+        elif args.command == "search":
             with _connect(symbol_path) as symbols:
                 result = symbol_search(symbols, args.terms, args.limit)
         else:

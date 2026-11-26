@@ -63,7 +63,7 @@ jobs:
               raise SystemExit(f"Invalid source file: {source}")
           if output.is_absolute() or ".." in output.parts or not str(output).strip():
               raise SystemExit(f"Unsafe output directory: {output}")
-          if not objects or any(not re.fullmatch(r"[A-Za-z]+:\\d+", item) for item in objects):
+          if not objects or any(not re.fullmatch(r"[A-Za-z]+:\d+", item) for item in objects):
               raise SystemExit("Objects must be space-separated Type:ID selectors")
           with open(os.environ["GITHUB_OUTPUT"], "a") as f:
               f.write(f"source={source.as_posix()}\n")

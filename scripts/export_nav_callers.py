@@ -9,15 +9,15 @@ import zipfile
 from pathlib import Path
 
 OBJECT_RE = re.compile(
-    r"^OBJECT\\s+(Table|Page|Codeunit|Report|XMLport|MenuSuite|Form|Dataport|Query)\\s+(\\d+)\\s+(.+?)\\s*$",
+    r"^OBJECT\s+(Table|Page|Codeunit|Report|XMLport|MenuSuite|Form|Dataport|Query)\s+(\d+)\s+(.+?)\s*$",
     re.IGNORECASE | re.MULTILINE,
 )
 REFERENCE_PATTERNS = {
-    "Codeunit 50107": re.compile(r"(?i)\\b(?:CODEUNIT\\s*::\\s*|Codeunit\\s+)\\"?50107\\"?\\b"),
-    "BlockStocktakeSalesHeader": re.compile(r"(?i)\\bBlockStocktakeSalesHeader\\b"),
-    "BlockStocktakePurchaseHeader": re.compile(r"(?i)\\bBlockStocktakePurchaseHeader\\b"),
-    "BlockStocktakeTransferHeader": re.compile(r"(?i)\\bBlockStocktakeTransferHeader\\b"),
-    "BlockStocktakeWarehouseReceiptHeader": re.compile(r"(?i)\\bBlockStocktakeWarehouseReceiptHeader\\b"),
+    "Codeunit 50107": re.compile(r'(?i)\b(?:CODEUNIT\s*::\s*|Codeunit\s+)"?50107"?\b'),
+    "BlockStocktakeSalesHeader": re.compile(r"(?i)\bBlockStocktakeSalesHeader\b"),
+    "BlockStocktakePurchaseHeader": re.compile(r"(?i)\bBlockStocktakePurchaseHeader\b"),
+    "BlockStocktakeTransferHeader": re.compile(r"(?i)\bBlockStocktakeTransferHeader\b"),
+    "BlockStocktakeWarehouseReceiptHeader": re.compile(r"(?i)\bBlockStocktakeWarehouseReceiptHeader\b"),
 }
 
 def source_texts(path: Path):
@@ -38,7 +38,7 @@ def main():
     args = ap.parse_args()
     found = {}
     for source_name, raw in source_texts(args.input):
-        text = raw.replace("\\r\\n", "\\n").replace("\\r", "\\n")
+        text = raw.replace("\r\n", "\n").replace("\r", "\n")
         matches = list(OBJECT_RE.finditer(text))
         for i, m in enumerate(matches):
             end = matches[i + 1].start() if i + 1 < len(matches) else len(text)
@@ -61,7 +61,7 @@ def main():
         w.writerow(["object_type", "object_id", "object_name", "source_file", "matched_references", "export_file"])
         for (kind, oid), item in sorted(found.items()):
             filename = f"{kind}_{oid}.txt"
-            (args.output / filename).write_text(item["body"].rstrip() + "\\n", encoding="utf-8")
+            (args.output / filename).write_text(item["body"].rstrip() + "\n", encoding="utf-8")
             w.writerow([kind, oid, item["name"], item["source"], ";".join(item["hits"]), filename])
             print(f"{kind} {oid} {item['name']}: {', '.join(item['hits'])}")
     print(f"Exported {len(found)} caller objects; manifest: {manifest}")

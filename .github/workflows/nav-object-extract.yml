@@ -118,4 +118,5 @@ jobs:
             exit 0
           fi
           git commit -m "Extract NAV objects from source archive"
+          git pull --rebase origin "$GITHUB_REF_NAME"
           git push

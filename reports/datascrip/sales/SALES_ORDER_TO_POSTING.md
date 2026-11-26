@@ -661,3 +661,16 @@ Key result:
 - Whether stocktake should block the two latter journal routes is an open company-policy decision, not a confirmed defect.
 
 The accepted Sales Return Order / Credit Memo behavior and these P2B policy questions are tracked in [Issue #3](https://github.com/ayabenz/nav2015-agent/issues/3).
+
+### 26. Purchase posting and stocktake
+
+Purchase Order, Purchase Invoice, Purchase Return Order and Purchase Credit Memo routes are documented in [Purchase Posting — Stocktake Entry-Point Audit](../purchase_flow/PURCHASE_POSTING_STOCKTAKE_AUDIT.md).
+
+Key result:
+- Normal Purchase Order Receive and Purchase Return Order Ship through Codeunits 91/92 perform stocktake validation before Codeunit 90.
+- Codeunit 90 has no stocktake call. Purchase Invoice defaults Receive=TRUE and Purchase Credit Memo defaults Ship=TRUE inside Codeunit 90, after the wrapper's conditional check.
+- Batch reports, warehouse receipt/shipment, warehouse activity, purchase invoice correction, and some Mini Purchase Credit Memo routes call Codeunit 90 directly.
+- Codeunit 98 Job Queue checks only at enqueue via the wrapper; execution does not recheck stocktake.
+- Purchase warehouse source creation checks stocktake in Codeunits 5751/5752, but actual purchase posting via Codeunits 5760/5763 does not repeat the check.
+
+These routes are open policy questions until the company confirms which purchase operations must be blocked during stocktake. They are tracked in [Issue #3](https://github.com/ayabenz/nav2015-agent/issues/3).

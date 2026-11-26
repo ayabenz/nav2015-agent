@@ -22,7 +22,7 @@ Project ini adalah seperangkat tools CLI untuk menganalisis source code export M
 - **Symbol Search** — Indexing semua simbol (objek, field, prosedur, variabel, trigger) ke SQLite untuk pencarian cepat.
 - **Semantic Diff** — Membandingkan export company terhadap baseline untuk mendeteksi perubahan semantik.
 - **Audit** — Verifikasi perubahan: apakah perubahan nyata (`REAL`), hanya whitespace (`WHITESPACE ONLY`), atau artefak batas file (`BOUNDARY ARTIFACT`).
-- **Dependency Graph** — Membangun graph dependensi antar objek, klasifikasi objek (CUSTOM / MODIFIED_STANDARD / STANDARD_UNCHANGED), dan analisis impact (transitive dependents).
+- **Dependency Graph** — Membangun graph dependensi antar objek, klasifikasi objek (CUSTOM / MODIFIED_STANDARD / STANDARD_UNCHANGED), dan analisis impact (transitive dependents).\n- **Code Intelligence** — Query object/procedure, callers/callees, impact, symbol search, dan table READ/WRITE usage dari SQLite index yang sudah ada. Lihat [docs/CODE_INTELLIGENCE.md](./docs/CODE_INTELLIGENCE.md).
 - **Clean** — Menghapus semua file hasil generate agar working tree kembali bersih.
 
 Tidak memerlukan database eksternal, AI API, atau koneksi internet (Phase 1 milestone).
@@ -38,7 +38,7 @@ Tidak memerlukan database eksternal, AI API, atau koneksi internet (Phase 1 mile
 | | `python -m nav_ai.search find --company <company> <terms>` | Cari simbol dalam index |
 | **nav-diff** | `python -m nav_ai.semantic_diff --company <company>` | Perbandingan semantik original vs company |
 | **nav-audit** | `python -m nav_ai.audit --company <company>` | Audit perubahan (REAL / WHITESPACE ONLY / BOUNDARY ARTIFACT) |
-| **nav-depgraph** | `python -m nav_ai.depgraph --company <company>` | Dependency graph + klasifikasi objek + impact analysis |
+| **nav-depgraph** | `python -m nav_ai.depgraph --company <company>` | Dependency graph + klasifikasi objek + impact analysis |\n| **nav-intel** | `nav-intel --company <company> impact \\\"Codeunit 80.PostItemJnlLine\\\"` | Evidence-oriented object, procedure, caller, impact and table queries |
 | **clean** | `python clean.py --execute` | Hapus semua file hasil generate |
 
 ---

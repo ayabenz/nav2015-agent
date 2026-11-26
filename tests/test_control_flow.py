@@ -52,3 +52,15 @@ def test_condition_source_lines_are_retained():
     node = result["nodes"][0]
     assert node["condition_span"]["line_start"] == 2
     assert node["line_start"] == 2
+
+
+def test_absolute_source_line_offset_is_applied_recursively():
+    result = analyze_control_flow(
+        "IF X = 1 THEN\n  DoIt;\nELSE\n  Stop;",
+        line_offset=120,
+    )
+    node = result["nodes"][0]
+    assert node["line_start"] == 121
+    assert node["condition_span"]["line_start"] == 121
+    assert node["true_branch"]["line_start"] == 122
+    assert node["false_branch"]["line_start"] == 124

@@ -1,0 +1,1155 @@
+OBJECT Table 5740 Transfer Header
+{
+  OBJECT-PROPERTIES
+  {
+    Date=12/08/25;
+    Time=00:04:50;
+    Modified=Yes;
+    Version List=[NAVW18.00;DTS:T20,T30,T24];
+  }
+  PROPERTIES
+  {
+    OnInsert=BEGIN
+               GetInventorySetup;
+               IF "No." = '' THEN BEGIN
+                 TestNoSeries;
+                 NoSeriesMgt.InitSeries(GetNoSeriesCode,xRec."No. Series","Posting Date","No.","No. Series");
+               END;
+               //T20.7
+               TransShptHeader.SETRANGE("Transfer Order No.","No.");
+                 IF TransShptHeader.FIND('-') THEN
+                    ERROR(Text50051);
+               //End T20.7
+               InitRecord;
+               VALIDATE("Shipment Date",WORKDATE);
+             END;
+
+    OnDelete=VAR
+               TransLine@1000 : Record 5741;
+               InvtCommentLine@1001 : Record 5748;
+             BEGIN
+               TESTFIELD(Status,Status::Open);
+
+               WhseRequest.SETRANGE("Source Type",DATABASE::"Transfer Line");
+               WhseRequest.SETRANGE("Source No.","No.");
+               WhseRequest.DELETEALL(TRUE);
+
+               HandleItemTrackingDeletion;
+               TransLine.SETRANGE("Document No.","No.");
+               TransLine.DELETEALL(TRUE);
+
+               InvtCommentLine.SETRANGE("Document Type",InvtCommentLine."Document Type"::"Transfer Order");
+               InvtCommentLine.SETRANGE("No.","No.");
+               InvtCommentLine.DELETEALL;
+             END;
+
+    OnRename=BEGIN
+               ERROR(Text000,TABLECAPTION);
+             END;
+
+    CaptionML=ENU=Transfer Header;
+    LookupPageID=Page5742;
+  }
+  FIELDS
+  {
+    { 1   ;   ;No.                 ;Code20        ;OnValidate=BEGIN
+                                                                IF "No." <> xRec."No." THEN BEGIN
+                                                                  GetInventorySetup;
+                                                                  NoSeriesMgt.TestManual(GetNoSeriesCode);
+                                                                  "No. Series" := '';
+                                                                END;
+                                                              END;
+
+                                                   CaptionML=ENU=No. }
+    { 2   ;   ;Transfer-from Code  ;Code10        ;TableRelation=IF (Transfer Type=CONST(Transfer)) Location WHERE (Use As In-Transit=FILTER(No),
+                                                                                                                    Use as Loan=FILTER(No),
+                                                                                                                    Use in P2B=FILTER(No))
+                                                                                                                    ELSE IF (Transfer Type=CONST(Loan)) Location WHERE (Use As In-Transit=FILTER(No),
+                                                                                                                                                                        Use as Loan=FILTER(No),
+                                                                                                                                                                        Use in P2B=FILTER(No))
+                                                                                                                                                                        ELSE IF (Transfer Type=CONST(Return Loan)) Location WHERE (Use As In-Transit=FILTER(No),
+                                                                                                                                                                                                                                   Use as Loan=FILTER(Yes),
+                                                                                                                                                                                                                                   Use in P2B=FILTER(No));
+                                                   OnValidate=VAR
+                                                                Location@1000 : Record 14;
+                                                                Confirmed@1001 : Boolean;
+                                                              BEGIN
+                                                                //T20.1
+                                                                IF "Transfer Type" = "Transfer Type"::"Return Loan" THEN BEGIN
+                                                                  IF "Transfer-from Code" = 'DUNEX' THEN
+                                                                    "Transfer-from Code" := 'PLG';
+                                                                END;
+                                                                //End T20.1
+
+                                                                TestStatusOpen;
+
+                                                                //T20.2
+                                                                IF ExistLine("No.") THEN
+                                                                   ERROR('Line must be deleted ... ');
+                                                                //End T20.2
+
+                                                                //T20.3 Change codes by SY
+                                                                {
+                                                                IF ("Transfer-from Code" = "Transfer-to Code") AND
+                                                                   ("Transfer-from Code" <> '')
+                                                                THEN
+                                                                }
+                                                                IF Location.GET("Transfer-from Code") THEN IsWMSFromLocation:= Location.Ownership;
+                                                                IF Location.GET("Transfer-to Code") THEN IsWMSToLocation:= Location.Ownership;
+                                                                IF NOT(IsWMSFromLocation) AND NOT(IsWMSToLocation) THEN
+                                                                   IF ("Transfer-from Code" = "Transfer-to Code") AND
+                                                                   ("Transfer-from Code" <> '') THEN
+                                                                //End T20.3 Change codes by SY
+                                                                  ERROR(
+                                                                    Text001,
+                                                                    FIELDCAPTION("Transfer-from Code"),FIELDCAPTION("Transfer-to Code"),
+                                                                    TABLECAPTION,"No.");
+                                                                IF xRec."Transfer-from Code" <> "Transfer-from Code" THEN BEGIN
+                                                                  IF HideValidationDialog OR
+                                                                     (xRec."Transfer-from Code" = '')
+                                                                  THEN
+                                                                    Confirmed := TRUE
+                                                                  ELSE
+                                                                    Confirmed := CONFIRM(Text002,FALSE,FIELDCAPTION("Transfer-from Code"));
+                                                                  IF Confirmed THEN BEGIN
+                                                                    IF Location.GET("Transfer-from Code") THEN BEGIN
+                                                                      //kosongkan jika pilih ulang  - AFR
+                                                                      "From Location Ownership" := '';
+
+                                                                      "Transfer-from Name" := Location.Name;
+                                                                      "Transfer-from Name 2" := Location."Name 2";
+                                                                      "Transfer-from Address" := Location.Address;
+                                                                      "Transfer-from Address 2" := Location."Address 2";
+                                                                      "Transfer-from Post Code" := Location."Post Code";
+                                                                      "Transfer-from City" := Location.City;
+                                                                      "Transfer-from County" := Location.County;
+                                                                      "Trsf.-from Country/Region Code" := Location."Country/Region Code";
+                                                                      "Transfer-from Contact" := Location.Contact;
+                                                                      "Outbound Whse. Handling Time" := Location."Outbound Whse. Handling Time";
+                                                                      TransferRoute.GetTransferRoute(
+                                                                        "Transfer-from Code","Transfer-to Code","In-Transit Code",
+                                                                        "Shipping Agent Code","Shipping Agent Service Code");
+                                                                      TransferRoute.GetShippingTime(
+                                                                        "Transfer-from Code","Transfer-to Code",
+                                                                        "Shipping Agent Code","Shipping Agent Service Code",
+                                                                        "Shipping Time");
+                                                                      TransferRoute.CalcReceiptDate(
+                                                                        "Shipment Date",
+                                                                        "Receipt Date",
+                                                                        "Shipping Time",
+                                                                        "Outbound Whse. Handling Time",
+                                                                        "Inbound Whse. Handling Time",
+                                                                        "Transfer-from Code",
+                                                                        "Transfer-to Code",
+                                                                        "Shipping Agent Code",
+                                                                        "Shipping Agent Service Code");
+                                                                      TransLine.LOCKTABLE;
+                                                                      TransLine.SETRANGE("Document No.","No.");
+                                                                      IF TransLine.FINDSET THEN;
+                                                                      MODIFY;
+                                                                    END;
+                                                                    UpdateTransLines(FIELDNO("Transfer-from Code"));
+                                                                  END ELSE BEGIN
+                                                                    "Transfer-from Code" := xRec."Transfer-from Code";
+                                                                    EXIT;
+                                                                  END;
+                                                                END;
+                                                              END;
+
+                                                   CaptionML=ENU=Transfer-from Code;
+                                                   Description=T20 Change table relation }
+    { 3   ;   ;Transfer-from Name  ;Text50        ;CaptionML=ENU=Transfer-from Name }
+    { 4   ;   ;Transfer-from Name 2;Text50        ;CaptionML=ENU=Transfer-from Name 2 }
+    { 5   ;   ;Transfer-from Address;Text50       ;CaptionML=ENU=Transfer-from Address }
+    { 6   ;   ;Transfer-from Address 2;Text50     ;CaptionML=ENU=Transfer-from Address 2 }
+    { 7   ;   ;Transfer-from Post Code;Code20     ;TableRelation=IF (Trsf.-from Country/Region Code=CONST()) "Post Code"
+                                                                 ELSE IF (Trsf.-from Country/Region Code=FILTER(<>'')) "Post Code" WHERE (Country/Region Code=FIELD(Trsf.-from Country/Region Code));
+                                                   OnValidate=BEGIN
+                                                                PostCode.ValidatePostCode(
+                                                                  "Transfer-from City","Transfer-from Post Code",
+                                                                  "Transfer-from County","Trsf.-from Country/Region Code",(CurrFieldNo <> 0) AND GUIALLOWED);
+                                                              END;
+
+                                                   ValidateTableRelation=No;
+                                                   TestTableRelation=No;
+                                                   CaptionML=ENU=Transfer-from Post Code }
+    { 8   ;   ;Transfer-from City  ;Text30        ;TableRelation=IF (Trsf.-from Country/Region Code=CONST()) "Post Code".City
+                                                                 ELSE IF (Trsf.-from Country/Region Code=FILTER(<>'')) "Post Code".City WHERE (Country/Region Code=FIELD(Trsf.-from Country/Region Code));
+                                                   OnValidate=BEGIN
+                                                                PostCode.ValidateCity(
+                                                                  "Transfer-from City","Transfer-from Post Code",
+                                                                  "Transfer-from County","Trsf.-from Country/Region Code",(CurrFieldNo <> 0) AND GUIALLOWED);
+                                                              END;
+
+                                                   ValidateTableRelation=No;
+                                                   TestTableRelation=No;
+                                                   CaptionML=ENU=Transfer-from City }
+    { 9   ;   ;Transfer-from County;Text30        ;CaptionML=ENU=Transfer-from County }
+    { 10  ;   ;Trsf.-from Country/Region Code;Code10;
+                                                   TableRelation=Country/Region;
+                                                   CaptionML=ENU=Trsf.-from Country/Region Code }
+    { 11  ;   ;Transfer-to Code    ;Code10        ;TableRelation=IF (Transfer Type=CONST(Transfer)) Location WHERE (Use As In-Transit=FILTER(No),
+                                                                                                                    Use as Loan=FILTER(No),
+                                                                                                                    Use in P2B=FILTER(No))
+                                                                                                                    ELSE IF (Transfer Type=CONST(Loan)) Location WHERE (Use As In-Transit=FILTER(No),
+                                                                                                                                                                        Use as Loan=FILTER(Yes),
+                                                                                                                                                                        Use in P2B=FILTER(No))
+                                                                                                                                                                        ELSE IF (Transfer Type=CONST(Return Loan)) Location WHERE (Use As In-Transit=FILTER(No),
+                                                                                                                                                                                                                                   Use as Loan=FILTER(No),
+                                                                                                                                                                                                                                   Use in P2B=FILTER(No));
+                                                   OnValidate=VAR
+                                                                Location@1000 : Record 14;
+                                                                Confirmed@1001 : Boolean;
+                                                                Rec_Location@1002 : Record 14;
+                                                              BEGIN
+                                                                //T20.4
+                                                                IF "Transfer Type" = "Transfer Type"::"Return Loan" THEN BEGIN
+                                                                  IF "Transfer-to Code" = 'DUNEX' THEN
+                                                                    "Transfer-to Code" := 'PLG';
+                                                                END;
+                                                                //End T20.4
+
+                                                                TestStatusOpen;
+
+                                                                //T20.5
+                                                                IF ExistLine("No.")AND("Transfer Type"<>"Transfer Type"::"Return Loan") THEN
+                                                                   ERROR('Line must be deleted ... ');
+                                                                //End T20.5
+
+                                                                //T24.01
+                                                                IF ("Transfer-to Code" <> '') THEN BEGIN
+                                                                  Rec_Location.GET("Transfer-to Code");
+                                                                  IF Rec_Location."Use As In-Transit" THEN
+                                                                    ERROR('Tidak bisa pakai Location In-Transit. Silahkan pilih Location lain.');
+
+                                                                  IF "Transfer Type" = "Transfer Type"::Transfer THEN BEGIN
+                                                                    IF Rec_Location."Use as Loan" THEN
+                                                                      ERROR('Tidak bisa pakai Location Loan. Silahkan pilih Location lain.');
+
+                                                                    IF "P2B Document No." = '' THEN BEGIN
+                                                                      IF Rec_Location."Use in P2B" THEN
+                                                                        ERROR('Tidak bisa pakai Location P2B. Silahkan pilih Location lain.');
+                                                                    END;
+                                                                  END;
+
+                                                                  IF "Transfer Type" = "Transfer Type"::Loan THEN BEGIN
+                                                                    IF NOT Rec_Location."Use as Loan" THEN
+                                                                      ERROR('Harus pakai Location Loan. Silahkan pilih Location lain.');
+
+                                                                    IF Rec_Location."Use in P2B" THEN
+                                                                      ERROR('Tidak bisa pakai Location P2B. Silahkan pilih Location lain.');
+                                                                  END;
+
+                                                                  IF "Transfer Type" = "Transfer Type"::"Return Loan" THEN BEGIN
+                                                                    IF Rec_Location."Use as Loan" THEN
+                                                                      ERROR('Tidak bisa pakai Location Loan. Silahkan pilih Location lain.');
+
+                                                                    IF Rec_Location."Use in P2B" THEN
+                                                                      ERROR('Tidak bisa pakai Location P2B. Silahkan pilih Location lain.');
+                                                                  END;
+                                                                END;
+                                                                //T24.01
+
+
+                                                                //T20.6 Change codes by SY
+                                                                {
+                                                                IF ("Transfer-from Code" = "Transfer-to Code") AND
+                                                                   ("Transfer-to Code" <> '')
+                                                                THEN
+                                                                }
+                                                                IF Location.GET("Transfer-from Code") THEN IsWMSFromLocation:= Location.Ownership;
+                                                                IF Location.GET("Transfer-to Code") THEN IsWMSToLocation:= Location.Ownership;
+                                                                IF NOT(IsWMSFromLocation) AND NOT(IsWMSToLocation) THEN
+                                                                   IF ("Transfer-from Code" = "Transfer-to Code") AND
+                                                                   ("Transfer-from Code" <> '') THEN
+                                                                //End T20.6 Change codes by SY
+                                                                  ERROR(
+                                                                    Text001,
+                                                                    FIELDCAPTION("Transfer-from Code"),FIELDCAPTION("Transfer-to Code"),
+                                                                    TABLECAPTION,"No.");
+                                                                IF xRec."Transfer-to Code" <> "Transfer-to Code" THEN BEGIN
+                                                                  IF HideValidationDialog OR
+                                                                     (xRec."Transfer-to Code" = '')
+                                                                  THEN
+                                                                    Confirmed := TRUE
+                                                                  ELSE
+                                                                    Confirmed := CONFIRM(Text002,FALSE,FIELDCAPTION("Transfer-to Code"));
+                                                                  IF Confirmed THEN BEGIN
+                                                                    IF Location.GET("Transfer-to Code") THEN BEGIN
+                                                                      //kosongkan jika pilih ulang  - AFR
+                                                                      "To Location Ownership" := '';
+
+                                                                      "Transfer-to Name" := Location.Name;
+                                                                      "Transfer-to Name 2" := Location."Name 2";
+                                                                      "Transfer-to Address" := Location.Address;
+                                                                      "Transfer-to Address 2" := Location."Address 2";
+                                                                      "Transfer-to Post Code" := Location."Post Code";
+                                                                      "Transfer-to City" := Location.City;
+                                                                      "Transfer-to County" := Location.County;
+                                                                      "Trsf.-to Country/Region Code" := Location."Country/Region Code";
+                                                                      "Transfer-to Contact" := Location.Contact;
+                                                                      "Inbound Whse. Handling Time" := Location."Inbound Whse. Handling Time";
+                                                                      TransferRoute.GetTransferRoute(
+                                                                        "Transfer-from Code","Transfer-to Code","In-Transit Code",
+                                                                        "Shipping Agent Code","Shipping Agent Service Code");
+                                                                      TransferRoute.GetShippingTime(
+                                                                        "Transfer-from Code","Transfer-to Code",
+                                                                        "Shipping Agent Code","Shipping Agent Service Code",
+                                                                        "Shipping Time");
+                                                                      TransferRoute.CalcReceiptDate(
+                                                                        "Shipment Date",
+                                                                        "Receipt Date",
+                                                                        "Shipping Time",
+                                                                        "Outbound Whse. Handling Time",
+                                                                        "Inbound Whse. Handling Time",
+                                                                        "Transfer-from Code",
+                                                                        "Transfer-to Code",
+                                                                        "Shipping Agent Code",
+                                                                        "Shipping Agent Service Code");
+                                                                      TransLine.LOCKTABLE;
+                                                                      TransLine.SETRANGE("Document No.","No.");
+                                                                      IF TransLine.FINDSET THEN;
+                                                                      MODIFY;
+                                                                    END;
+                                                                    UpdateTransLines(FIELDNO("Transfer-to Code"));
+                                                                  END ELSE BEGIN
+                                                                    "Transfer-to Code" := xRec."Transfer-to Code";
+                                                                    EXIT;
+                                                                  END;
+                                                                END;
+                                                              END;
+
+                                                   ValidateTableRelation=No;
+                                                   CaptionML=ENU=Transfer-to Code;
+                                                   Description=T20 Change table relation }
+    { 12  ;   ;Transfer-to Name    ;Text50        ;CaptionML=ENU=Transfer-to Name }
+    { 13  ;   ;Transfer-to Name 2  ;Text50        ;CaptionML=ENU=Transfer-to Name 2 }
+    { 14  ;   ;Transfer-to Address ;Text50        ;CaptionML=ENU=Transfer-to Address }
+    { 15  ;   ;Transfer-to Address 2;Text50       ;CaptionML=ENU=Transfer-to Address 2 }
+    { 16  ;   ;Transfer-to Post Code;Code20       ;TableRelation="Post Code" WHERE (Code=FILTER(<>00000));
+                                                   OnValidate=BEGIN
+                                                                PostCode.ValidatePostCode(
+                                                                  "Transfer-to City","Transfer-to Post Code","Transfer-to County",
+                                                                  "Trsf.-to Country/Region Code",(CurrFieldNo <> 0) AND GUIALLOWED);
+                                                              END;
+
+                                                   TestTableRelation=No;
+                                                   CaptionML=ENU=Transfer-to Post Code }
+    { 17  ;   ;Transfer-to City    ;Text30        ;TableRelation=IF (Trsf.-to Country/Region Code=CONST()) "Post Code".City
+                                                                 ELSE IF (Trsf.-to Country/Region Code=FILTER(<>'')) "Post Code".City WHERE (Country/Region Code=FIELD(Trsf.-to Country/Region Code));
+                                                   OnValidate=BEGIN
+                                                                PostCode.ValidateCity(
+                                                                  "Transfer-to City","Transfer-to Post Code","Transfer-to County",
+                                                                  "Trsf.-to Country/Region Code",(CurrFieldNo <> 0) AND GUIALLOWED);
+                                                              END;
+
+                                                   ValidateTableRelation=No;
+                                                   TestTableRelation=No;
+                                                   CaptionML=ENU=Transfer-to City }
+    { 18  ;   ;Transfer-to County  ;Text30        ;CaptionML=ENU=Transfer-to County }
+    { 19  ;   ;Trsf.-to Country/Region Code;Code10;TableRelation=Country/Region;
+                                                   CaptionML=ENU=Trsf.-to Country/Region Code }
+    { 20  ;   ;Posting Date        ;Date          ;CaptionML=ENU=Posting Date }
+    { 21  ;   ;Shipment Date       ;Date          ;OnValidate=BEGIN
+                                                                TestStatusOpen;
+                                                                TransferRoute.CalcReceiptDate(
+                                                                  "Shipment Date",
+                                                                  "Receipt Date",
+                                                                  "Shipping Time",
+                                                                  "Outbound Whse. Handling Time",
+                                                                  "Inbound Whse. Handling Time",
+                                                                  "Transfer-from Code",
+                                                                  "Transfer-to Code",
+                                                                  "Shipping Agent Code",
+                                                                  "Shipping Agent Service Code");
+                                                                UpdateTransLines(FIELDNO("Shipment Date"));
+                                                              END;
+
+                                                   CaptionML=ENU=Shipment Date }
+    { 22  ;   ;Receipt Date        ;Date          ;OnValidate=BEGIN
+                                                                TestStatusOpen;
+                                                                TransferRoute.CalcShipmentDate(
+                                                                  "Shipment Date",
+                                                                  "Receipt Date",
+                                                                  "Shipping Time",
+                                                                  "Outbound Whse. Handling Time",
+                                                                  "Inbound Whse. Handling Time",
+                                                                  "Transfer-from Code",
+                                                                  "Transfer-to Code",
+                                                                  "Shipping Agent Code",
+                                                                  "Shipping Agent Service Code");
+                                                                UpdateTransLines(FIELDNO("Receipt Date"));
+                                                              END;
+
+                                                   CaptionML=ENU=Receipt Date }
+    { 23  ;   ;Status              ;Option        ;OnValidate=BEGIN
+                                                                UpdateTransLines(FIELDNO(Status));
+                                                              END;
+
+                                                   CaptionML=ENU=Status;
+                                                   OptionCaptionML=ENU=Open,Released;
+                                                   OptionString=Open,Released;
+                                                   Editable=No }
+    { 24  ;   ;Comment             ;Boolean       ;FieldClass=FlowField;
+                                                   CalcFormula=Exist("Inventory Comment Line" WHERE (Document Type=CONST(Transfer Order),
+                                                                                                     No.=FIELD(No.)));
+                                                   CaptionML=ENU=Comment;
+                                                   Editable=No }
+    { 25  ;   ;Shortcut Dimension 1 Code;Code20   ;TableRelation="Dimension Value".Code WHERE (Global Dimension No.=CONST(1));
+                                                   OnValidate=BEGIN
+                                                                ValidateShortcutDimCode(1,"Shortcut Dimension 1 Code");
+                                                              END;
+
+                                                   CaptionML=ENU=Shortcut Dimension 1 Code;
+                                                   CaptionClass='1,2,1' }
+    { 26  ;   ;Shortcut Dimension 2 Code;Code20   ;TableRelation="Dimension Value".Code WHERE (Global Dimension No.=CONST(2));
+                                                   OnValidate=BEGIN
+                                                                ValidateShortcutDimCode(2,"Shortcut Dimension 2 Code");
+                                                              END;
+
+                                                   CaptionML=ENU=Shortcut Dimension 2 Code;
+                                                   CaptionClass='1,2,2' }
+    { 27  ;   ;In-Transit Code     ;Code10        ;TableRelation=Location WHERE (Use As In-Transit=CONST(Yes));
+                                                   OnValidate=BEGIN
+                                                                TestStatusOpen;
+                                                                UpdateTransLines(FIELDNO("In-Transit Code"));
+                                                              END;
+
+                                                   CaptionML=ENU=In-Transit Code }
+    { 28  ;   ;No. Series          ;Code10        ;TableRelation="No. Series";
+                                                   CaptionML=ENU=No. Series }
+    { 29  ;   ;Last Shipment No.   ;Code20        ;TableRelation="Transfer Shipment Header";
+                                                   CaptionML=ENU=Last Shipment No.;
+                                                   Editable=No }
+    { 30  ;   ;Last Receipt No.    ;Code20        ;TableRelation="Transfer Receipt Header";
+                                                   CaptionML=ENU=Last Receipt No.;
+                                                   Editable=No }
+    { 31  ;   ;Transfer-from Contact;Text50       ;CaptionML=ENU=Transfer-from Contact }
+    { 32  ;   ;Transfer-to Contact ;Text50        ;CaptionML=ENU=Transfer-to Contact }
+    { 33  ;   ;External Document No.;Code35       ;CaptionML=ENU=External Document No. }
+    { 34  ;   ;Shipping Agent Code ;Code10        ;TableRelation="Shipping Agent";
+                                                   OnValidate=BEGIN
+                                                                TestStatusOpen;
+                                                                IF "Shipping Agent Code" <> xRec."Shipping Agent Code" THEN
+                                                                  VALIDATE("Shipping Agent Service Code",'');
+                                                                UpdateTransLines(FIELDNO("Shipping Agent Code"));
+                                                              END;
+
+                                                   AccessByPermission=TableData 5790=R;
+                                                   CaptionML=ENU=Shipping Agent Code }
+    { 35  ;   ;Shipping Agent Service Code;Code10 ;TableRelation="Shipping Agent Services".Code WHERE (Shipping Agent Code=FIELD(Shipping Agent Code));
+                                                   OnValidate=BEGIN
+                                                                TestStatusOpen;
+                                                                TransferRoute.GetShippingTime(
+                                                                  "Transfer-from Code","Transfer-to Code",
+                                                                  "Shipping Agent Code","Shipping Agent Service Code",
+                                                                  "Shipping Time");
+                                                                TransferRoute.CalcReceiptDate(
+                                                                  "Shipment Date",
+                                                                  "Receipt Date",
+                                                                  "Shipping Time",
+                                                                  "Outbound Whse. Handling Time",
+                                                                  "Inbound Whse. Handling Time",
+                                                                  "Transfer-from Code",
+                                                                  "Transfer-to Code",
+                                                                  "Shipping Agent Code",
+                                                                  "Shipping Agent Service Code");
+
+                                                                UpdateTransLines(FIELDNO("Shipping Agent Service Code"));
+                                                              END;
+
+                                                   CaptionML=ENU=Shipping Agent Service Code }
+    { 36  ;   ;Shipping Time       ;DateFormula   ;OnValidate=BEGIN
+                                                                TestStatusOpen;
+                                                                TransferRoute.CalcReceiptDate(
+                                                                  "Shipment Date",
+                                                                  "Receipt Date",
+                                                                  "Shipping Time",
+                                                                  "Outbound Whse. Handling Time",
+                                                                  "Inbound Whse. Handling Time",
+                                                                  "Transfer-from Code",
+                                                                  "Transfer-to Code",
+                                                                  "Shipping Agent Code",
+                                                                  "Shipping Agent Service Code");
+
+                                                                UpdateTransLines(FIELDNO("Shipping Time"));
+                                                              END;
+
+                                                   AccessByPermission=TableData 5790=R;
+                                                   CaptionML=ENU=Shipping Time }
+    { 37  ;   ;Shipment Method Code;Code10        ;TableRelation="Shipment Method";
+                                                   CaptionML=ENU=Shipment Method Code }
+    { 47  ;   ;Transaction Type    ;Code10        ;TableRelation="Transaction Type";
+                                                   CaptionML=ENU=Transaction Type }
+    { 48  ;   ;Transport Method    ;Code10        ;TableRelation="Transport Method";
+                                                   CaptionML=ENU=Transport Method }
+    { 59  ;   ;Entry/Exit Point    ;Code10        ;TableRelation="Entry/Exit Point";
+                                                   CaptionML=ENU=Entry/Exit Point }
+    { 63  ;   ;Area                ;Code10        ;TableRelation=Area;
+                                                   CaptionML=ENU=Area }
+    { 64  ;   ;Transaction Specification;Code10   ;TableRelation="Transaction Specification";
+                                                   CaptionML=ENU=Transaction Specification }
+    { 480 ;   ;Dimension Set ID    ;Integer       ;TableRelation="Dimension Set Entry";
+                                                   OnLookup=BEGIN
+                                                              ShowDocDim;
+                                                            END;
+
+                                                   CaptionML=ENU=Dimension Set ID;
+                                                   Editable=No }
+    { 5750;   ;Shipping Advice     ;Option        ;OnValidate=BEGIN
+                                                                IF "Shipping Advice" <> xRec."Shipping Advice" THEN BEGIN
+                                                                  TestStatusOpen;
+                                                                  WhseSourceHeader.TransHeaderVerifyChange(Rec,xRec);
+                                                                END;
+                                                              END;
+
+                                                   CaptionML=ENU=Shipping Advice;
+                                                   OptionCaptionML=ENU=Partial,Complete;
+                                                   OptionString=Partial,Complete }
+    { 5751;   ;Posting from Whse. Ref.;Integer    ;CaptionML=ENU=Posting from Whse. Ref. }
+    { 5752;   ;Completely Shipped  ;Boolean       ;FieldClass=FlowField;
+                                                   CalcFormula=Min("Transfer Line"."Completely Shipped" WHERE (Document No.=FIELD(No.),
+                                                                                                               Shipment Date=FIELD(Date Filter),
+                                                                                                               Transfer-from Code=FIELD(Location Filter)));
+                                                   CaptionML=ENU=Completely Shipped;
+                                                   Editable=No }
+    { 5753;   ;Completely Received ;Boolean       ;FieldClass=FlowField;
+                                                   CalcFormula=Min("Transfer Line"."Completely Received" WHERE (Document No.=FIELD(No.),
+                                                                                                                Receipt Date=FIELD(Date Filter),
+                                                                                                                Transfer-to Code=FIELD(Location Filter)));
+                                                   CaptionML=ENU=Completely Received;
+                                                   Editable=No }
+    { 5754;   ;Location Filter     ;Code10        ;FieldClass=FlowFilter;
+                                                   TableRelation=Location;
+                                                   CaptionML=ENU=Location Filter }
+    { 5793;   ;Outbound Whse. Handling Time;DateFormula;
+                                                   OnValidate=BEGIN
+                                                                TestStatusOpen;
+                                                                TransferRoute.CalcReceiptDate(
+                                                                  "Shipment Date",
+                                                                  "Receipt Date",
+                                                                  "Shipping Time",
+                                                                  "Outbound Whse. Handling Time",
+                                                                  "Inbound Whse. Handling Time",
+                                                                  "Transfer-from Code",
+                                                                  "Transfer-to Code",
+                                                                  "Shipping Agent Code",
+                                                                  "Shipping Agent Service Code");
+
+                                                                UpdateTransLines(FIELDNO("Outbound Whse. Handling Time"));
+                                                              END;
+
+                                                   CaptionML=ENU=Outbound Whse. Handling Time }
+    { 5794;   ;Inbound Whse. Handling Time;DateFormula;
+                                                   OnValidate=BEGIN
+                                                                TestStatusOpen;
+                                                                TransferRoute.CalcReceiptDate(
+                                                                  "Shipment Date",
+                                                                  "Receipt Date",
+                                                                  "Shipping Time",
+                                                                  "Outbound Whse. Handling Time",
+                                                                  "Inbound Whse. Handling Time",
+                                                                  "Transfer-from Code",
+                                                                  "Transfer-to Code",
+                                                                  "Shipping Agent Code",
+                                                                  "Shipping Agent Service Code");
+
+                                                                UpdateTransLines(FIELDNO("Inbound Whse. Handling Time"));
+                                                              END;
+
+                                                   CaptionML=ENU=Inbound Whse. Handling Time }
+    { 5796;   ;Date Filter         ;Date          ;FieldClass=FlowFilter;
+                                                   CaptionML=ENU=Date Filter }
+    { 9000;   ;Assigned User ID    ;Code50        ;TableRelation="User Setup";
+                                                   CaptionML=ENU=Assigned User ID }
+    { 50001;  ;P2B Document No.    ;Code20        ;Description=T20;
+                                                   Editable=No }
+    { 50005;  ;Applies-to Doc. No. ;Code20        ;Description=T20 }
+    { 50007;  ;Ship-to Code        ;Code10        ;TableRelation="Ship-to Address".Code WHERE (Customer No.=FIELD(Loan-to Customer No.));
+                                                   OnValidate=BEGIN
+                                                                // start BN 311202
+                                                                TestStatusOpen;
+                                                                TESTFIELD("Loan-to Customer No.");
+                                                                Location.GET("Transfer-from Code");
+                                                                IF Location."Use as Loan" THEN BEGIN
+
+                                                                  IF ShipToAddress.GET("Loan-to Customer No.","Ship-to Code") THEN BEGIN
+                                                                    "Transfer-from Name" := ShipToAddress.Name;
+                                                                    "Transfer-from Name 2" := ShipToAddress."Name 2";
+                                                                    "Transfer-from Address" := ShipToAddress.Address;
+                                                                    "Transfer-from Address 2" := ShipToAddress."Address 2";
+                                                                    "Transfer-from City" := ShipToAddress.City;
+                                                                    "Transfer-from Post Code" := ShipToAddress."Post Code";
+                                                                    "Transfer-from County" := ShipToAddress.County;
+                                                                // start UG-MFA-00-171008
+                                                                // block, ganti: perubahan nama field 10 pd tabel ini dan nama field 35 pada tabel "Ship-To Address"
+                                                                {    "Transfer-from Country Code" := ShipToAddress."Country Code";
+                                                                }
+                                                                    "Trsf.-from Country/Region Code" := ShipToAddress."Country/Region Code";
+                                                                // end
+                                                                    "Transfer-from Contact" := ShipToAddress.Contact;
+                                                                END;
+
+                                                                END;
+                                                                Location.GET("Transfer-to Code");
+                                                                IF Location."Use as Loan" THEN BEGIN
+
+                                                                  IF ShipToAddress.GET("Loan-to Customer No.","Ship-to Code") THEN BEGIN
+                                                                    "Transfer-to Name" := ShipToAddress.Name;
+                                                                    "Transfer-to Name 2" := ShipToAddress."Name 2";
+                                                                    "Transfer-to Address" := ShipToAddress.Address;
+                                                                    "Transfer-to Address 2" := ShipToAddress."Address 2";
+                                                                    "Transfer-to City" := ShipToAddress.City;
+                                                                    "Transfer-to Post Code" := ShipToAddress."Post Code";
+                                                                    "Transfer-to County" := ShipToAddress.County;
+                                                                // start UG-MFA-00-171008
+                                                                // block, ganti: perubahan nama field 10 pd tabel ini dan nama field 35 pada tabel "Ship-To Address"
+                                                                {    "Transfer-to Country Code" := ShipToAddress."Country Code";
+                                                                }
+                                                                    "Trsf.-to Country/Region Code" := ShipToAddress."Country/Region Code";
+                                                                // end
+                                                                    "Transfer-to Contact" := ShipToAddress.Contact;
+
+                                                                END;
+
+                                                                END;
+
+                                                                // end BN 311202
+                                                              END;
+
+                                                   Description=T20 }
+    { 50010;  ;Loan-to Customer No.;Code20        ;TableRelation=IF (Loan Type=CONST(Customer)) Customer;
+                                                   OnValidate=BEGIN
+                                                                // start BN 281202
+                                                                TestStatusOpen;
+                                                                Cust.GET("Loan-to Customer No.");
+                                                                // start UG-MFA-00-171008
+                                                                // block, ganti: perubahan tipe data untuk field Blocked pada tabel Customer
+                                                                {Cust.TESTFIELD(Blocked,FALSE);
+                                                                }
+                                                                Cust.TESTFIELD(Blocked,0);
+                                                                // end
+                                                                Cust.TESTFIELD("Gen. Bus. Posting Group");
+
+                                                                Location.GET("Transfer-from Code");
+                                                                IF Location."Use as Loan" THEN BEGIN
+
+                                                                  "Transfer-from Name" := Cust.Name;
+                                                                  "Transfer-from Name 2" := Cust."Name 2";
+                                                                  "Transfer-from Address" := Cust.Address;
+                                                                  "Transfer-from Address 2" := Cust."Address 2";
+                                                                  "Transfer-from City" := Cust.City;
+                                                                  "Transfer-from Post Code" := Cust."Post Code";
+                                                                  "Transfer-from County" := Cust.County;
+                                                                // start UG-MFA-00-171008
+                                                                // block, ganti: perubahan nama field 10 pd tabel ini dan nama field 35 pada tabel Customer
+                                                                {    "Transfer-from Country Code" := Cust."Country Code";
+                                                                }
+                                                                    "Trsf.-from Country/Region Code" := Cust."Country/Region Code";
+                                                                // end
+                                                                  "Transfer-from Contact" := Cust.Contact;
+
+
+                                                                END;
+                                                                Location.GET("Transfer-to Code");
+                                                                IF Location."Use as Loan" THEN BEGIN
+
+                                                                  "Transfer-to Name" := Cust.Name;
+                                                                  "Transfer-to Name 2" := Cust."Name 2";
+                                                                  "Transfer-to Address" := Cust.Address;
+                                                                  "Transfer-to Address 2" := Cust."Address 2";
+                                                                  "Transfer-to City" := Cust.City;
+                                                                  "Transfer-to Post Code" := Cust."Post Code";
+                                                                  "Transfer-to County" := Cust.County;
+                                                                // start UG-MFA-00-171008
+                                                                // block, ganti: perubahan nama field 10 pd tabel ini dan nama field 35 pada tabel Customer
+                                                                {    "Transfer-to Country Code" := Cust."Country Code";
+                                                                }
+                                                                    "Trsf.-to Country/Region Code" := Cust."Country/Region Code";
+                                                                // end
+                                                                  "Transfer-to Contact" := Cust.Contact;
+                                                                  //Closed by SY
+                                                                  {
+                                                                  {Modifikasi Ari}
+                                                                  IF "Transfer-to Code" = 'PC' THEN
+                                                                  BEGIN
+                                                                     IF Cust."Luar Kota" THEN
+                                                                        Daerah := TRUE
+                                                                     ELSE
+                                                                        Daerah := FALSE;
+                                                                  END
+                                                                  ELSE
+                                                                   Daerah := FALSE;
+                                                                  }
+                                                                END;
+
+
+                                                                // start BN 281202
+                                                              END;
+
+                                                   Description=T20 }
+    { 50011;  ;Loan Due Date       ;Date          ;Description=T20 }
+    { 50012;  ;Loan Type           ;Option        ;OnValidate=BEGIN
+                                                                TestStatusOpen;
+                                                              END;
+
+                                                   OptionCaptionML=ENU=" ,Department,Customer";
+                                                   OptionString=[ ,Department,Customer];
+                                                   Description=T20 }
+    { 50013;  ;Salesperson Code    ;Code10        ;TableRelation=Salesperson/Purchaser;
+                                                   Description=T20 }
+    { 50014;  ;Transfer Type       ;Option        ;OptionString=Transfer,Loan,Return Loan;
+                                                   Description=T20;
+                                                   Editable=No }
+    { 50015;  ;Purchaser Code      ;Code50        ;TableRelation=Salesperson/Purchaser;
+                                                   ValidateTableRelation=No;
+                                                   Description=T20 }
+    { 50022;  ;Transfer to Item Journal;Boolean   ;Description=T20 }
+    { 50023;  ;Journal Template Name;Code10       ;TableRelation="Item Journal Template".Name;
+                                                   Description=T20 }
+    { 50024;  ;Journal Batch Name  ;Code10        ;TableRelation="Item Journal Batch".Name WHERE (Journal Template Name=FIELD(Journal Template Name));
+                                                   Description=T20 }
+    { 50025;  ;Gen. Bus. Posting Group;Code13     ;TableRelation="Gen. Business Posting Group";
+                                                   Description=T20 }
+    { 50026;  ;From Location Ownership;Code20     ;TableRelation="Dimension Value".Code WHERE (Dimension Code=CONST(OWNERSHIP));
+                                                   OnValidate=VAR
+                                                                cuCWM@1000000004 : Codeunit 50051;
+                                                              BEGIN
+                                                                IF ExistLine("No.") THEN
+                                                                   ERROR('Line must be deleted ... ');
+
+                                                                IF "From Location Ownership"<>'' THEN
+                                                                   cuCWM.ValidateOwnerField("Transfer-from Code");
+                                                                UpdateTransLines(FIELDNO("From Location Ownership"));
+                                                              END;
+
+                                                   Description=T20,T30.01 }
+    { 50027;  ;To Location Ownership;Code20       ;TableRelation="Dimension Value".Code WHERE (Dimension Code=CONST(OWNERSHIP));
+                                                   OnValidate=VAR
+                                                                cuCWM@1000000004 : Codeunit 50051;
+                                                              BEGIN
+                                                                IF "To Location Ownership"<>'' THEN
+                                                                   cuCWM.ValidateOwnerField("Transfer-to Code");
+                                                                UpdateTransLines(FIELDNO("To Location Ownership"));
+                                                              END;
+
+                                                   Description=T20,T30.01 }
+    { 50033;  ;Doc. Create DateTime;DateTime      ;Description=T20;
+                                                   Editable=No }
+    { 50037;  ;Tipe Franco         ;Option        ;OptionCaptionML=ENU=" ,Jabodetabek,Franco Jkt,Franco Tujuan,Franco Gudang";
+                                                   OptionString=[ ,Jabodetabek,Franco Jkt,Franco Tujuan,Franco Gudang];
+                                                   Description=D00 BNY 071918, Ongkir }
+    { 50051;  ;Luar Kota           ;Boolean       ;Description=T20;
+                                                   Editable=No }
+    { 50052;  ;Truck Status        ;Option        ;OptionCaptionML=ENU=Belum Jalan,Jalan;
+                                                   OptionString=Belum Jalan,Jalan;
+                                                   Description=T20;
+                                                   Editable=No }
+    { 50053;  ;Completely Loan     ;Boolean       ;Description=T20 }
+    { 50055;  ;User FRONT ID       ;Code50        ;Description=T20 }
+    { 50056;  ;Created by System   ;Boolean       ;Description=T24.01;
+                                                   Editable=No }
+    { 50057;  ;Transfer-to Address 3;Text50       ;Description=D00.01 }
+    { 50154;  ;Dept/Div Beban Ongkir;Code10       ;TableRelation="Dimension Value".Code WHERE (Dimension Code=CONST(DEPARTMENT),
+                                                                                               Blocked=CONST(No));
+                                                   Description=Ongkir }
+    { 50159;  ;Flag Interdivision  ;Boolean       ;Description=BNY 2021.02.10 }
+    { 50160;  ;No. PO Interdivision;Code20        ;Description=BNY 2021.02.10 }
+    { 50161;  ;Forced Return       ;Boolean       ;Description=BNY 2025.12.03 }
+    { 50162;  ;Ex Loan No.         ;Text50        ;Description=BNY 2025.12.03 }
+  }
+  KEYS
+  {
+    {    ;No.                                     ;Clustered=Yes }
+  }
+  FIELDGROUPS
+  {
+    { 1   ;DropDown            ;No.,Transfer-from Code,Transfer-to Code,Shipment Date,Status }
+  }
+  CODE
+  {
+    VAR
+      Text000@1000 : TextConst 'ENU=You cannot rename a %1.';
+      Text001@1001 : TextConst 'ENU=%1 and %2 cannot be the same in %3 %4.';
+      Text002@1002 : TextConst 'ENU=Do you want to change %1?';
+      Text003@1003 : TextConst 'ENU=The transfer order %1 has been deleted.';
+      TransferRoute@1004 : Record 5742;
+      TransHeader@1005 : Record 5740;
+      TransLine@1016 : Record 5741;
+      PostCode@1006 : Record 225;
+      InvtSetup@1007 : Record 313;
+      WhseRequest@1008 : Record 5765;
+      DimMgt@1009 : Codeunit 408;
+      NoSeriesMgt@1010 : Codeunit 396;
+      WhseSourceHeader@1011 : Codeunit 5781;
+      HideValidationDialog@1013 : Boolean;
+      HasInventorySetup@1012 : Boolean;
+      CalledFromWhse@1015 : Boolean;
+      Text004@1018 : TextConst 'ENU=The transfer order %1 has item tracking. Do you want to delete it anyway?';
+      Text005@1017 : TextConst 'ENU=Reservations exist for this order. These reservations will be canceled if a date conflict is caused by this change.\\';
+      Text006@1019 : TextConst 'ENU=Do you want to continue?';
+      Text007@1014 : TextConst 'ENU=You may have changed a dimension.\\Do you want to update the lines?';
+      Location@1020 : Record 14;
+      Cust@1021 : Record 18;
+      ShipToAddress@1022 : Record 222;
+      IsWMSFromLocation@1024 : Boolean;
+      IsWMSToLocation@1023 : Boolean;
+      TransShptHeader@1025 : Record 5744;
+      Text50051@1026 : TextConst 'ENU=Nomor transfer order sudah ada';
+
+    PROCEDURE InitRecord@10();
+    BEGIN
+      //T20.8 Change codes
+      {
+      IF "Posting Date" = 0D THEN
+        VALIDATE("Posting Date",WORKDATE);
+      }
+      IF ("Posting Date" = 0D) THEN BEGIN
+        VALIDATE("Posting Date",WORKDATE);
+        VALIDATE("Loan Due Date",WORKDATE);
+      END;
+
+      "Doc. Create DateTime" := CURRENTDATETIME;
+      //"Doc. Create Time" := TIME;
+      //End T20.8
+    END;
+
+    PROCEDURE AssistEdit@1(OldTransHeader@1000 : Record 5740) : Boolean;
+    BEGIN
+      WITH TransHeader DO BEGIN
+        TransHeader := Rec;
+        GetInventorySetup;
+        TestNoSeries;
+        IF NoSeriesMgt.SelectSeries(GetNoSeriesCode,OldTransHeader."No. Series","No. Series") THEN BEGIN
+          NoSeriesMgt.SetSeries("No.");
+          Rec := TransHeader;
+          EXIT(TRUE);
+        END;
+      END;
+    END;
+
+    LOCAL PROCEDURE TestNoSeries@6() : Boolean;
+    BEGIN
+      //T20.9 Change codes
+      //InvtSetup.TESTFIELD("Transfer Order Nos.");
+      CASE "Transfer Type" OF
+       "Transfer Type"::Transfer : InvtSetup.TESTFIELD("Transfer Order Nos.");
+       "Transfer Type"::Loan : InvtSetup.TESTFIELD("Loan Nos.");
+       "Transfer Type"::"Return Loan" : InvtSetup.TESTFIELD("Return Loan Nos.");
+      END;
+      //End T20.9
+    END;
+
+    LOCAL PROCEDURE GetNoSeriesCode@9() : Code[10];
+    BEGIN
+      //T20.10 Change codes
+      //EXIT(InvtSetup."Transfer Order Nos.");
+      CASE "Transfer Type" OF
+       "Transfer Type"::Transfer : EXIT(InvtSetup."Transfer Order Nos.");
+       "Transfer Type"::Loan : EXIT(InvtSetup."Loan Nos.");
+       "Transfer Type"::"Return Loan" : EXIT(InvtSetup."Return Loan Nos.");
+      END;
+      //End T20.10
+    END;
+
+    PROCEDURE SetHideValidationDialog@14(NewHideValidationDialog@1000 : Boolean);
+    BEGIN
+      HideValidationDialog := NewHideValidationDialog;
+    END;
+
+    PROCEDURE ValidateShortcutDimCode@19(FieldNumber@1000 : Integer;VAR ShortcutDimCode@1001 : Code[20]);
+    VAR
+      OldDimSetID@1002 : Integer;
+    BEGIN
+      OldDimSetID := "Dimension Set ID";
+      DimMgt.ValidateShortcutDimValues(FieldNumber,ShortcutDimCode,"Dimension Set ID");
+
+      IF OldDimSetID <> "Dimension Set ID" THEN BEGIN
+        MODIFY;
+        IF SalesLinesExist THEN
+          UpdateAllLineDim("Dimension Set ID",OldDimSetID);
+      END;
+    END;
+
+    LOCAL PROCEDURE GetInventorySetup@2();
+    BEGIN
+      IF NOT HasInventorySetup THEN BEGIN
+        InvtSetup.GET;
+        HasInventorySetup := TRUE;
+      END;
+    END;
+
+    LOCAL PROCEDURE UpdateTransLines@15(FieldRef@1000 : Integer);
+    VAR
+      TransLine@1001 : Record 5741;
+    BEGIN
+      IF GUIALLOWED THEN
+        CASE FieldRef OF
+          FIELDNO("Shipping Agent Code"),
+          FIELDNO("Shipping Agent Service Code"),
+          FIELDNO("Shipment Date"),
+          FIELDNO("Receipt Date"),
+          FIELDNO("Shipping Time"),
+          FIELDNO("Outbound Whse. Handling Time"),
+          FIELDNO("Inbound Whse. Handling Time"):
+            ConfirmResvDateConflict;
+        END;
+
+      TransLine.SETRANGE("Document No.","No.");
+      IF TransLine.FINDSET THEN BEGIN
+        TransLine.LOCKTABLE;
+        REPEAT
+          CASE FieldRef OF
+            FIELDNO("In-Transit Code"):
+              TransLine.VALIDATE("In-Transit Code","In-Transit Code");
+            FIELDNO("Transfer-from Code"):
+              BEGIN
+                TransLine.VALIDATE("Transfer-from Code","Transfer-from Code");
+                TransLine.VALIDATE("Shipping Agent Code","Shipping Agent Code");
+                TransLine.VALIDATE("Shipping Agent Service Code","Shipping Agent Service Code");
+                TransLine.VALIDATE("Shipment Date","Shipment Date");
+                TransLine.VALIDATE("Receipt Date","Receipt Date");
+                TransLine.VALIDATE("Shipping Time","Shipping Time");
+              END;
+            FIELDNO("Transfer-to Code"):
+              BEGIN
+                TransLine.VALIDATE("Transfer-to Code","Transfer-to Code");
+                TransLine.VALIDATE("Shipping Agent Code","Shipping Agent Code");
+                TransLine.VALIDATE("Shipping Agent Service Code","Shipping Agent Service Code");
+                TransLine.VALIDATE("Shipment Date","Shipment Date");
+                TransLine.VALIDATE("Receipt Date","Receipt Date");
+                TransLine.VALIDATE("Shipping Time","Shipping Time");
+              END;
+            FIELDNO("Shipping Agent Code"):
+              BEGIN
+                TransLine.VALIDATE("Shipping Agent Code","Shipping Agent Code");
+                TransLine.VALIDATE("Shipping Agent Service Code","Shipping Agent Service Code");
+                TransLine.VALIDATE("Shipment Date","Shipment Date");
+                TransLine.VALIDATE("Receipt Date","Receipt Date");
+                TransLine.VALIDATE("Shipping Time","Shipping Time");
+              END;
+            FIELDNO("Shipping Agent Service Code"):
+              BEGIN
+                TransLine.VALIDATE("Shipping Agent Service Code","Shipping Agent Service Code");
+                TransLine.VALIDATE("Shipment Date","Shipment Date");
+                TransLine.VALIDATE("Receipt Date","Receipt Date");
+                TransLine.VALIDATE("Shipping Time","Shipping Time");
+              END;
+            FIELDNO("Shipment Date"):
+              BEGIN
+                TransLine.VALIDATE("Shipment Date","Shipment Date");
+                TransLine.VALIDATE("Receipt Date","Receipt Date");
+                TransLine.VALIDATE("Shipping Time","Shipping Time");
+              END;
+            FIELDNO("Receipt Date"),FIELDNO("Shipping Time"):
+              BEGIN
+                TransLine.VALIDATE("Shipping Time","Shipping Time");
+                TransLine.VALIDATE("Receipt Date","Receipt Date");
+              END;
+            FIELDNO("Outbound Whse. Handling Time"):
+              TransLine.VALIDATE("Outbound Whse. Handling Time","Outbound Whse. Handling Time");
+            FIELDNO("Inbound Whse. Handling Time"):
+              TransLine.VALIDATE("Inbound Whse. Handling Time","Inbound Whse. Handling Time");
+            FIELDNO(Status):
+              TransLine.VALIDATE(Status,Status);
+            //T30.01
+            FIELDNO("From Location Ownership"): TransLine.VALIDATE("From Location Ownership","From Location Ownership");
+            FIELDNO("To Location Ownership"): TransLine.VALIDATE("To Location Ownership","To Location Ownership");
+            //T30.01
+          END;
+          TransLine.MODIFY(TRUE);
+        UNTIL TransLine.NEXT = 0;
+      END;
+    END;
+
+    PROCEDURE ConfirmResvDateConflict@41();
+    VAR
+      ResvEngMgt@1000 : Codeunit 99000831;
+    BEGIN
+      IF ResvEngMgt.ResvExistsForTransHeader(Rec) THEN
+        IF NOT CONFIRM(Text005 + Text006,FALSE) THEN
+          ERROR('');
+    END;
+
+    PROCEDURE HandleItemTrackingDeletion@36();
+    VAR
+      ReservEntry@1000 : Record 337;
+      ReservEntry2@1002 : Record 337;
+      Confirmed@1001 : Boolean;
+    BEGIN
+      WITH ReservEntry DO BEGIN
+        RESET;
+        SETCURRENTKEY(
+          "Source ID","Source Ref. No.","Source Type","Source Subtype",
+          "Source Batch Name","Source Prod. Order Line","Reservation Status");
+        SETRANGE("Source Type",DATABASE::"Transfer Line");
+        SETRANGE("Source ID","No.");
+        SETRANGE("Source Batch Name",'');
+        SETFILTER("Item Tracking",'> %1',"Item Tracking"::None);
+        IF ISEMPTY THEN
+          EXIT;
+
+        IF HideValidationDialog OR NOT GUIALLOWED THEN
+          Confirmed := TRUE
+        ELSE
+          Confirmed := CONFIRM(Text004,FALSE,"No.");
+
+        IF NOT Confirmed THEN
+          ERROR('');
+
+        IF FINDSET THEN
+          REPEAT
+            ReservEntry2 := ReservEntry;
+            ReservEntry2.ClearItemTrackingFields;
+            ReservEntry2.MODIFY;
+          UNTIL NEXT = 0;
+      END;
+    END;
+
+    PROCEDURE DeleteOneTransferOrder@4(VAR TransHeader2@1000 : Record 5740;VAR TransLine2@1001 : Record 5741) : Boolean;
+    VAR
+      ItemChargeAssgntPurch@1002 : Record 5805;
+      WhseRequest@1003 : Record 5765;
+      InvtCommentLine@1004 : Record 5748;
+      No@1007 : Code[20];
+      DoNotDelete@1008 : Boolean;
+    BEGIN
+      No := TransHeader2."No.";
+      IF TransLine2.FIND('-') THEN
+        REPEAT
+          IF (TransLine2.Quantity <> TransLine2."Quantity Shipped") OR
+             (TransLine2.Quantity <> TransLine2."Quantity Received") OR
+             (TransLine2."Quantity (Base)" <> TransLine2."Qty. Shipped (Base)") OR
+             (TransLine2."Quantity (Base)" <> TransLine2."Qty. Received (Base)") OR
+             (TransLine2."Quantity Shipped" <> TransLine2."Quantity Received") OR
+             (TransLine2."Qty. Shipped (Base)" <> TransLine2."Qty. Received (Base)")
+          THEN
+            DoNotDelete := TRUE;
+        UNTIL TransLine2.NEXT = 0;
+
+      IF NOT DoNotDelete THEN BEGIN
+        WhseRequest.SETRANGE("Source Type",DATABASE::"Transfer Line");
+        WhseRequest.SETRANGE("Source No.",No);
+        WhseRequest.DELETEALL(TRUE);
+
+        InvtCommentLine.SETRANGE("Document Type",InvtCommentLine."Document Type"::"Transfer Order");
+        InvtCommentLine.SETRANGE("No.",No);
+        InvtCommentLine.DELETEALL;
+
+        ItemChargeAssgntPurch.SETCURRENTKEY(
+          "Applies-to Doc. Type","Applies-to Doc. No.","Applies-to Doc. Line No.");
+        ItemChargeAssgntPurch.SETRANGE("Applies-to Doc. Type",ItemChargeAssgntPurch."Applies-to Doc. Type"::"Transfer Receipt");
+        ItemChargeAssgntPurch.SETRANGE("Applies-to Doc. No.",TransLine2."Document No.");
+        ItemChargeAssgntPurch.DELETEALL;
+
+        IF TransLine2.FIND('-') THEN
+          TransLine2.DELETEALL;
+
+        TransHeader2.DELETE;
+        IF NOT HideValidationDialog THEN
+          MESSAGE(Text003,No);
+        EXIT(TRUE);
+      END;
+      EXIT(FALSE);
+    END;
+
+    LOCAL PROCEDURE TestStatusOpen@37();
+    BEGIN
+      IF NOT CalledFromWhse THEN
+        TESTFIELD(Status,Status::Open);
+    END;
+
+    PROCEDURE CalledFromWarehouse@7300(CalledFromWhse2@1000 : Boolean);
+    BEGIN
+      CalledFromWhse := CalledFromWhse2;
+    END;
+
+    PROCEDURE CreateInvtPutAwayPick@29();
+    VAR
+      WhseRequest@1000 : Record 5765;
+    BEGIN
+      TESTFIELD(Status,Status::Released);
+
+      WhseRequest.RESET;
+      WhseRequest.SETCURRENTKEY("Source Document","Source No.");
+      WhseRequest.SETFILTER(
+        "Source Document",'%1|%2',
+        WhseRequest."Source Document"::"Inbound Transfer",
+        WhseRequest."Source Document"::"Outbound Transfer");
+      WhseRequest.SETRANGE("Source No.","No.");
+      REPORT.RUNMODAL(REPORT::"Create Invt Put-away/Pick/Mvmt",TRUE,FALSE,WhseRequest);
+    END;
+
+    PROCEDURE ShowDocDim@3();
+    VAR
+      OldDimSetID@1000 : Integer;
+    BEGIN
+      OldDimSetID := "Dimension Set ID";
+      "Dimension Set ID" :=
+        DimMgt.EditDimensionSet2(
+          "Dimension Set ID",STRSUBSTNO('%1 %2',TABLECAPTION,"No."),
+          "Shortcut Dimension 1 Code","Shortcut Dimension 2 Code");
+
+      IF OldDimSetID <> "Dimension Set ID" THEN BEGIN
+        MODIFY;
+        IF SalesLinesExist THEN
+          UpdateAllLineDim("Dimension Set ID",OldDimSetID);
+      END;
+    END;
+
+    PROCEDURE SalesLinesExist@5() : Boolean;
+    BEGIN
+      TransLine.RESET;
+      TransLine.SETRANGE("Document No.","No.");
+      EXIT(TransLine.FINDFIRST);
+    END;
+
+    LOCAL PROCEDURE UpdateAllLineDim@34(NewParentDimSetID@1000 : Integer;OldParentDimSetID@1001 : Integer);
+    VAR
+      NewDimSetID@1002 : Integer;
+    BEGIN
+      // Update all lines with changed dimensions.
+
+      IF NewParentDimSetID = OldParentDimSetID THEN
+        EXIT;
+      IF NOT CONFIRM(Text007) THEN
+        EXIT;
+
+      TransLine.RESET;
+      TransLine.SETRANGE("Document No.","No.");
+      TransLine.LOCKTABLE;
+      IF TransLine.FIND('-') THEN
+        REPEAT
+          NewDimSetID := DimMgt.GetDeltaDimSetID(TransLine."Dimension Set ID",NewParentDimSetID,OldParentDimSetID);
+          IF TransLine."Dimension Set ID" <> NewDimSetID THEN BEGIN
+            TransLine."Dimension Set ID" := NewDimSetID;
+            DimMgt.UpdateGlobalDimFromDimSetID(
+              TransLine."Dimension Set ID",TransLine."Shortcut Dimension 1 Code",TransLine."Shortcut Dimension 2 Code");
+            TransLine.MODIFY;
+          END;
+        UNTIL TransLine.NEXT = 0;
+    END;
+
+    PROCEDURE ExistLine@1000000001(DocNo@1000000000 : Code[20]) : Boolean;
+    VAR
+      TrnfLine@1000000001 : Record 5741;
+    BEGIN
+      TrnfLine.RESET;
+      TrnfLine.SETRANGE("Document No.",DocNo);
+      EXIT(TrnfLine.FIND('-'));
+    END;
+
+    BEGIN
+    {
+      T20.1-10    9 Sept 2015  SY  Add codes
+      T30.01   14 Sep 2015   SH    Change "From Location Ownership", "To Location Ownership"
+                                    from Code 10 to Code 20
+                                    Add some codes
+                                    Change ID "User FRONT ID" from 75000 to 50055
+      T24.01    03 Des 2015   SH    Add codes to check Transfer-to Code
+
+      D00.01    15 Sept 2017    BNY   Add field "Transfer-to Address 3"
+    }
+    END.
+  }
+}

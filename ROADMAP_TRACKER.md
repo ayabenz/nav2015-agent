@@ -321,3 +321,6 @@ These are separate historical runs with different collection scopes. They must n
 
 
 **Implementation update (2026-11-27 — broader NAV Record effects):** Expanded branch-effect classification to include Record bulk writes (`DELETEALL`, `MODIFYALL`), lookups (`GET`, `FIND`, `FINDFIRST`, `FINDLAST`, `FINDSET`, `ISEMPTY`, `COUNT`), and calculations (`CALCFIELDS`, `CALCSUMS`). EXIT with a return expression is also recognized. These remain source-level classifications, not proof of database persistence. Regression tests added; CI pending.
+
+
+**Validation (2026-11-27 — expanded branch effect analysis):** GitHub Actions [run #46015849420](https://github.com/ayabenz/nav2015-agent/actions/runs/46015849420) passed on commit `6429312dda59015f36724b365a2f52b5bc7483d4`: **128 passed, 1 skipped in 1.51s**. This includes source-level branch effect classification for record lookups, calculations, bulk writes and EXIT(value), plus selected/nested branch certainty. The skipped test is the opt-in full Datascrip ZIP test. No NAV runtime was executed.

@@ -46,23 +46,29 @@ def analyze_record_filters(
     events: list[dict[str, Any]] = []
     lookups: list[dict[str, Any]] = []
     i = 0
-    while i + 3 < len(tokens):
-        if tokens[i]["kind"] != "WORD" or tokens[i + 1]["value"] != "." or tokens[i + 2]["kind"] != "WORD" or tokens[i + 3]["value"] != "(":
+    while i + 2 < len(tokens):
+        if tokens[i]["kind"] != "WORD" or tokens[i + 1]["value"] != "." or tokens[i + 2]["kind"] != "WORD":
             i += 1
             continue
         receiver = tokens[i]["value"]
         method = tokens[i + 2]["upper"]
-        depth, close = 1, i + 4
-        while close < len(tokens) and depth:
-            if tokens[close]["value"] == "(":
-                depth += 1
-            elif tokens[close]["value"] == ")":
-                depth -= 1
-            close += 1
-        if depth:
+        if i + 3 < len(tokens) and tokens[i + 3]["value"] == "(":
+            depth, close = 1, i + 4
+            while close < len(tokens) and depth:
+                if tokens[close]["value"] == "(":
+                    depth += 1
+                elif tokens[close]["value"] == ")":
+                    depth -= 1
+                close += 1
+            if depth:
+                i += 1
+                continue
+            args = _split_args(source, tokens, i + 4, close - 1)
+        elif method in {"RESET", "FINDFIRST", "FINDLAST", "FINDSET"}:
+            args, close = [], i + 3
+        else:
             i += 1
             continue
-        args = _split_args(source, tokens, i + 4, close - 1)
         line = tokens[i]["line"] + line_offset
         key = receiver.casefold()
         active.setdefault(key, {})

@@ -36,8 +36,8 @@ def test_non_var_parameters_are_not_reported_as_mutable_parameters():
 
 
 def test_no_explicit_mutation_is_not_claimed_as_immutable():
-    source = CALLEE.replace("Status := 'Released';", "MESSAGE('updated');")
+    source = CALLEE.replace("Status := 'Released';", "MESSAGE('updated');").replace("Status := 'Open';", "MESSAGE('unchanged');")
     result = analyze_var_parameter_mutations(source, "UpdateHeader")
     status = next(item for item in result["var_parameters"] if item["parameter"] == "Status")
-    assert status["mutation_state"] == "explicit_mutations_found"
-    assert any(item["expression"] == "'Open'" for item in status["mutations"])
+    assert status["mutation_state"] == "no_explicit_mutation_found"
+    assert status["mutations"] == []

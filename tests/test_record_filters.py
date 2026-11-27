@@ -60,3 +60,45 @@ def test_not_findfirst_annotation_describes_possible_false_branch():
     annotate_record_lookup_conditions(nodes, [lookup])
     assert nodes[0]["record_lookup"]["branch_meaning"] == "no_matching_record"
     assert nodes[0]["record_lookup"]["runtime_evaluated"] is False
+
+
+def test_if_branches_keep_distinct_filter_states_at_following_lookup():
+    from nav_ai.control_flow import analyze_control_flow
+    from nav_ai.record_filters import analyze_record_filter_paths
+
+    source = """IF IsOutbound THEN
+  R.SETFILTER("Jenis Transaksi", 'OUT|ALL')
+ELSE
+  R.SETFILTER("Jenis Transaksi", 'IN|ALL');
+IF R.FINDFIRST THEN
+  DoSomething;"""
+    tree = analyze_control_flow(source)
+    result = analyze_record_filter_paths(tree["nodes"], {}, {})
+    lookup = [item for item in result["lookups"] if item["record_variable"] == "R"]
+    assert len(lookup) == 2
+    assert {item["active_filters"][0]["arguments"][0] for item in lookup} == {
+        "'OUT|ALL'", "'IN|ALL'"
+    }
+    assert all(item["filter_state"] == "path_specific" for item in lookup)
+    assert {item["path_conditions"][0]["outcome"] for item in lookup} == {True, False}
+    assert result["runtime_evaluated"] is False
+
+
+def test_case_arms_keep_independent_filter_states():
+    from nav_ai.control_flow import analyze_control_flow
+    from nav_ai.record_filters import analyze_record_filter_paths
+
+    source = """CASE Direction OF
+  1: R.SETFILTER("Jenis Transaksi", 'OUT|ALL');
+  2: R.SETFILTER("Jenis Transaksi", 'IN|ALL');
+  ELSE R.SETFILTER("Jenis Transaksi", 'ALL');
+END;
+R.FINDFIRST;"""
+    tree = analyze_control_flow(source)
+    result = analyze_record_filter_paths(tree["nodes"], {}, {})
+    lookup = [item for item in result["lookups"] if item["record_variable"] == "R"]
+    assert len(lookup) == 3
+    assert {item["active_filters"][0]["arguments"][0] for item in lookup} == {
+        "'OUT|ALL'", "'IN|ALL'", "'ALL'"
+    }
+    assert all(item["filter_state"] == "path_specific" for item in lookup)

@@ -62,6 +62,7 @@ def render_inventory_markdown(inventory: dict[str, Any]) -> str:
         lines.append(
             f"| {candidate['object']} — {candidate.get('name') or ''} "
             f"| {candidate.get('domain_classification', {}).get('primary_domain', 'unclassified')} "
+            f"({candidate.get('domain_classification', {}).get('confidence', 'unknown')}) "
             f"| {candidate['origin']} | {candidate['score']} "
             f"| {candidate.get('reachable_procedure_count', 0)} "
             f"| {len(candidate.get('table_ids', []))} "

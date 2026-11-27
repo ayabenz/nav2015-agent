@@ -372,3 +372,6 @@ nav-intel --company datascrip --json trace "Codeunit 50107" --source-root "data\
 ```
 
 Composition is conservative and only carries explicit VAR assignments whose simple Boolean path predicates are selected by literal call arguments. It does not propagate arbitrary expressions, infer SQL Record values, prove calls executed, or fully model triggers, implicit writes, WITH scopes, dynamic dispatch or indirect calls. `runtime_evaluated` remains false for all summaries.
+
+
+When `--analyze-conditions` is enabled, the composed per-edge effects are also injected into the assignment-flow analysis of each reached caller procedure. The source line offset is applied when converting call-site lines from an object export into absolute file lines. Consequently, a later caller IF node can expose a multi-hop symbolic Record-field assignment in its `assignment_context`, not merely in the top-level interprocedural report. The output includes `interprocedural_call_effect_count` per analyzed procedure. This remains a symbolic assignment context; it does not establish the Record's database value or runtime branch outcome.

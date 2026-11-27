@@ -319,6 +319,8 @@ def analyze_record_filter_paths(
                         "interprocedural": True,
                         "callee_line": effect.get("callee_line"),
                         "callee_source_file": effect.get("callee_source_file"),
+                        "callee_parameter": effect.get("callee_parameter"),
+                        "arguments": deepcopy(effect.get("arguments", [])),
                     })
             return states
         if kind == "if":

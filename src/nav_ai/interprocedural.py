@@ -137,8 +137,8 @@ def analyze_direct_call_bindings(
                 "argument": actual,
                 "argument_record_type": record_type,
                 "type_match": (
-                    record_type == f"Table {re.search(r'Record\s+(\d+)', formal['data_type'], re.I).group(1)}"
-                    if record_type and re.search(r"Record\s+(\d+)", formal["data_type"], re.I)
+                    record_type == f"Table {formal_record.group(1)}"
+                    if record_type and formal_record
                     else ("compatible_literal" if literal and formal["data_type"].casefold() == "boolean"
                           else "unresolved")
                 ),

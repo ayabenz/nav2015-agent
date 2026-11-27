@@ -516,3 +516,18 @@ Generated inventory artifacts:
 - `entrypoint_call_mapping.json`: per-entry direct targets and CALL-reachable procedures.
 - `entrypoint_traces.json`: earlier object-level entry-point trace; it must not be confused with the more precise per-entry mapping.
 \n
+
+## Extended entry-point mapping
+
+The business-process inventory now emits `extended_entrypoints.json` alongside the existing entry-point declarations, extracted bodies and CALL mapping.
+
+It contains five evidence families:
+
+- **Typed variable calls:** resolves a receiver declared as `Codeunit N`, `Page N`, `Report N`, `XMLport N` or `Query N` to the target object's procedure when the graph contains one unique procedure with that name. Record variables are deliberately excluded from object-procedure resolution because their members are NAV Record APIs.
+- **Dynamic RUN targets:** records `CODEUNIT.RUN`, `PAGE.RUN`, `REPORT.RUN` and `XMLPORT.RUN` argument expressions, any statically resolved object target, graph-index presence and unresolved reason. Variable expressions without a proven constant or typed declaration remain unresolved.
+- **Event subscribers:** extracts `EventSubscriber` attribute declarations, including event object type/ID or name and event name. A declaration is not proof that the publisher raises the event or that the subscriber executes.
+- **Job Queue evidence:** identifies Table 472 source and source objects referencing Job Queue Entry / Codeunit 448. It does not read configured Job Queue Entry rows, enabled state, schedule, parameter strings or runtime outcomes.
+- **Individual Table field triggers:** extracts Table field `OnValidate`, `OnLookup`, `OnDrillDown` and `OnAssistEdit` bodies with field ID/name and source line ranges. This is distinct from Table-level triggers and does not imply that a field validation occurred.
+
+All records retain static-evidence semantics. In particular, a resolved target is not a runtime call, an EventSubscriber declaration is not event dispatch evidence, and source references to Job Queue are not a live schedule inventory. The current analyzer is a conservative first pass; unusual variable scopes, aliases, computed RUN arguments, event publisher discovery and actual Job Queue configuration require further resolution/evidence.
+

@@ -26,7 +26,7 @@ parsed = analyze_control_flow(source_code, "Codeunit", 50107, "Stocktake Test", 
 analysis = analyze_record_filter_value_flow(parsed["nodes"], variables, tables, "Codeunit50107.txt")
 ```
 
-Inspect `assignment_flow_analysis`, `record_filter_analysis.events`, and `record_filter_analysis.lookups`.
+In CLI JSON output, inspect `assignment_flow_analysis`, `record_filter_analysis.events`, and `record_filter_analysis.lookups`. Filter arguments include `argument_value_resolution` with the symbolic assignment chain.
 
 ## Semantics and limitations
 

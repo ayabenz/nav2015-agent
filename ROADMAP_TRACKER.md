@@ -75,7 +75,8 @@ These are recorded analysis outputs, not a claim that every NAV object or indire
 
 - [x] Initial conservative parser for nested IF / THEN / ELSE and CASE / OF / ELSE; preserve branch structure and source spans. ELSEIF is represented as nested ELSE → IF where syntax permits.
 - [ ] Expand grammar coverage and validate against representative Datascrip C/AL procedures; handle edge cases in statement boundaries and CASE labels.
-- [ ] Normalize condition expressions: operands, comparison operators, boolean operators, parentheses, constants and enum/option members.
+- [x] Add initial expression-tree normalization for comparisons, IN lists, AND / OR / NOT and parentheses; raw operands are retained.
+- [ ] Complete literal typing, constant classification, and normalized Option / Enum operand semantics.
 - [x] Resolve qualified Record-variable field references to NAV Table / Field identities when matching Table TXT metadata is supplied.
 - [x] Resolve Option members against field OptionString values; mark missing metadata or unknown values explicitly instead of guessing.
 - [ ] Extend resolution to unqualified WITH-scope fields, RecordRef/FieldRef and dynamic expressions.
@@ -150,13 +151,13 @@ These are recorded analysis outputs, not a claim that every NAV object or indire
 
 The repository README currently records an earlier test snapshot of **44 passed, 4 failed**. The four failures were attributed there to missing, previously deleted `data/incoming/*.txt` fixtures in `test_real_exports.py`; they were described as pre-existing. A later conversation run recorded **27 collected tests, all passing** for the then-current test selection.
 
-These are separate historical runs with different collection scopes. They must not be added together or represented as the current full-suite status. The current canonical full-suite result is **48 passed** on `datascrip` commit `09e9690de4cf71c918e217f5511cbf213214711d` (GitHub Actions run [#42](https://github.com/ayabenz/nav2015-agent/actions/runs/45921954355)).
+These are separate historical runs with different collection scopes. They must not be added together or represented as the current full-suite status. The current canonical full-suite result is **51 passed** on `datascrip` commit `cb876dea87622b9c9a63b16f9d60c82346ec1494` (GitHub Actions run [#45](https://github.com/ayabenz/nav2015-agent/actions/runs/45922078253)).
 
 | Validation | Result | Classification | Notes |
 |---|---|---|---|
 | Earlier repository test snapshot | 44 passed, 4 failed | Historical automated test run | README attributes failures to absent `data/incoming/*.txt` fixtures |
 | Later focused test run | 27 passed | Historical automated test run | Output in project conversation showed all 27 collected tests passing |
-| Current full suite — 2026-11-27 | 48 passed in 0.38s | PASS — GitHub Actions | `python -m pytest -q`; commit `09e9690de4cf71c918e217f5511cbf213214711d`; [run #42](https://github.com/ayabenz/nav2015-agent/actions/runs/45921954355) |
+| Current full suite — 2026-11-27 | 51 passed in 0.61s | PASS — GitHub Actions | `python -m pytest -q`; commit `cb876dea87622b9c9a63b16f9d60c82346ec1494`; [run #45](https://github.com/ayabenz/nav2015-agent/actions/runs/45922078253) |
 | Parser / ingest / diff / audit / depgraph / search / ZIP support | Reported passing in README snapshot | Historical automated coverage | Confirm again in canonical full-suite run |
 | Stocktake source audit | Completed | Static analysis | Does not prove NAV runtime behavior |
 | Stocktake runtime ST-001…ST-008 | Not executed | Blocked | Requires non-production NAV environment |
@@ -198,4 +199,4 @@ These are separate historical runs with different collection scopes. They must n
 **Implementation update (2026-11-27):** `nav_ai.semantic_conditions` now parses Table TXT field definitions and OptionString metadata, resolves declared Record variables to Table IDs, and annotates IF/CASE expressions with field and Option resolution evidence. The `conditions` CLI accepts repeatable `--table-source` arguments. Current resolver coverage is intentionally limited to qualified `RecordVariable.Field` references; WITH-scope and data-flow remain open. See `docs/CODE_INTELLIGENCE.md` for an actual Stocktake command.
 
 
-**Implementation update (2026-11-27 — Record filter flow):** Added `nav_ai.record_filters` and integrated it into `nav-intel conditions`. The analyzer extracts SETRANGE / SETFILTER / RESET and FINDFIRST / FINDLAST / FINDSET operations, preserves raw filter arguments and resolves filter fields against supplied Table metadata. Procedure-local Record declarations are included in variable resolution. The path-sensitive pass now forks state at IF/ELSE and CASE arms, preserves each filter state through subsequent statements, and attaches all path alternatives to direct FINDFIRST predicates. It never evaluates predicate values or claims a lookup found a row. Tests cover filter accumulation, clearing, RESET, IF/CASE branch isolation, NOT FINDFIRST annotation, and the actual Stocktake Sales Header OUT / IN / unfiltered document-type alternatives. GitHub Actions run [#42](https://github.com/ayabenz/nav2015-agent/actions/runs/45921954355) passed on commit `09e9690de4cf71c918e217f5511cbf213214711d`: `48 passed in 0.38s`.
+**Implementation update (2026-11-27 — Record filter flow):** Added `nav_ai.record_filters` and integrated it into `nav-intel conditions`. The analyzer extracts SETRANGE / SETFILTER / RESET and FINDFIRST / FINDLAST / FINDSET operations, preserves raw filter arguments and resolves filter fields against supplied Table metadata. Procedure-local Record declarations are included in variable resolution. The path-sensitive pass now forks state at IF/ELSE and CASE arms, preserves each filter state through subsequent statements, and attaches all path alternatives to direct FINDFIRST predicates. It never evaluates predicate values or claims a lookup found a row. Tests cover filter accumulation, clearing, RESET, IF/CASE branch isolation, NOT FINDFIRST annotation, the actual Stocktake Sales Header OUT / IN / unfiltered document-type alternatives, and initial expression normalization. GitHub Actions run [#45](https://github.com/ayabenz/nav2015-agent/actions/runs/45922078253) passed on commit `cb876dea87622b9c9a63b16f9d60c82346ec1494`: `51 passed in 0.61s`.

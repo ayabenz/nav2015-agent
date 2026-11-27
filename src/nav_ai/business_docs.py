@@ -61,6 +61,7 @@ def render_business_process_markdown(trace: dict[str, Any]) -> str:
             "",
             f"- Depth: {flow.get('depth', 0)}",
             f"- Call path: {' → '.join(flow.get('call_path', [])) or 'not available'}",
+            f"- Object origin: {flow.get('origin', 'unknown')}",
             f"- Source resolution: {flow.get('source_status', 'unknown')}",
             f"- Condition analysis: {flow.get('condition_analysis_status', 'not requested')}",
             f"- Effects inventoried: {flow.get('effect_count', 0)}",
@@ -110,7 +111,21 @@ def render_business_process_markdown(trace: dict[str, Any]) -> str:
             lines.append(f"- `{item.get('src')}` → `{item.get('dst')}`: {item.get('reason')}")
     else:
         lines.append("No unresolved object-level CALL targets were reported.")
-    lines += ["", "## 6. Evidence limitations", ""]
+    lines += ["", "## 6. Custom/standard NAV boundaries", ""]
+    transitions = trace.get("origin_transitions", [])
+    if transitions:
+        lines += ["| Caller | Origin | Callee | Origin |",
+                  "|---|---|---|---|"]
+        for edge in transitions:
+            lines.append(
+                f"| {_cell(edge.get('src'))} | {_cell(edge.get('src_origin'))} "
+                f"| {_cell(edge.get('dst'))} | {_cell(edge.get('dst_origin'))} |"
+            )
+        lines.append("")
+        lines.append("These are dependency-graph CALL edges crossing object-origin classifications, not proof that the call executed.")
+    else:
+        lines.append("No cross-origin procedure CALL transitions were found in the traced subgraph.")
+    lines += ["", "## 7. Evidence limitations", ""]
     for limitation in trace.get("semantics", {}).get("limitations", []):
         lines.append(f"- {limitation}")
     lines += [
@@ -118,7 +133,7 @@ def render_business_process_markdown(trace: dict[str, Any]) -> str:
         "- A source-level MODIFY/INSERT/DELETE is not proof that the database change committed.",
         "- Record filter and snapshot conclusions require explicit supported input values; absent values remain unknown.",
         "",
-        "## 7. Reproducibility",
+        "## 8. Reproducibility",
         "",
         "The companion JSON file contains the full trace payload, including source-resolution status,",
         "condition trees, assignment/filter analysis, graph edges, and branch-effect evidence.",

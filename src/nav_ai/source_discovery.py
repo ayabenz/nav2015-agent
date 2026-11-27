@@ -307,7 +307,8 @@ def trace_call_graph(graph: sqlite3.Connection, start: str,
             local_map.setdefault(absolute_line, []).extend(effects)
 
     filter_interprocedural_analysis = analyze_trace_filter_edges(
-        trace_edges, catalog, symbols, tables
+        trace_edges, catalog, symbols, tables,
+        max_call_depth=max_interprocedural_depth,
     )
     filter_effects_by_procedure: dict[str, dict[int, list[dict[str, Any]]]] = {}
     for edge_result in filter_interprocedural_analysis.get("edges", []):

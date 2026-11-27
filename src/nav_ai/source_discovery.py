@@ -238,8 +238,6 @@ def trace_call_graph(graph: sqlite3.Connection, start: str,
         required_table_ids: set[int] = set()
         for candidates in catalog.values():
             for candidate in candidates:
-                if candidate["source_path"] and candidate["source_path"].lower().endswith(".txt"):
-                    pass
                 try:
                     parsed_source = parse_nav_text(candidate["raw_block"], candidate["source_path"])
                 except ValueError:

@@ -201,6 +201,80 @@ def analyze_direct_call_bindings(
     }
 
 
+
+def _simple_boolean_condition(condition: str, formal: str) -> tuple[bool, bool] | None:
+    """Return (condition_value_when_formal_true, is_inverted) for simple predicates."""
+    text = re.sub(r"\s+", "", condition).casefold()
+    name = re.escape(re.sub(r"\s+", "", formal).casefold())
+    patterns = [
+        (rf"^{name}$", False),
+        (rf"^not{name}$", True),
+        (rf"^{name}=true$", False),
+        (rf"^{name}<>false$", False),
+        (rf"^{name}=false$", True),
+        (rf"^{name}<>true$", True),
+        (rf"^true={name}$", False),
+        (rf"^false<>{name}$", False),
+        (rf"^false={name}$", True),
+        (rf"^true<>{name}$", True),
+    ]
+    for pattern, inverted in patterns:
+        if re.fullmatch(pattern, text):
+            return (not inverted, inverted)
+    return None
+
+
+def annotate_callsite_boolean_branches(nodes: list[dict[str, Any]],
+                                       binding: dict[str, Any]) -> None:
+    """Annotate callee IF nodes specialized by Boolean literals at known call sites.
+
+    This does not rewrite or remove branches. It records which outcome is
+    compatible with each syntactic call-site literal.
+    """
+    def walk(value: Any, site: dict[str, Any], bool_args: dict[str, bool]) -> None:
+        if isinstance(value, list):
+            for item in value:
+                walk(item, site, bool_args)
+        elif isinstance(value, dict):
+            if value.get("type") == "if":
+                condition = str(value.get("condition", ""))
+                for formal, actual in bool_args.items():
+                    parsed = _simple_boolean_condition(condition, formal)
+                    if parsed is None:
+                        continue
+                    condition_when_formal_true, inverted = parsed
+                    formal_value = actual
+                    selected = formal_value if not inverted else not formal_value
+                    if not condition_when_formal_true:
+                        selected = not selected
+                    annotations = value.setdefault("call_site_specializations", [])
+                    annotations.append({
+                        "caller_object": site.get("caller_object"),
+                        "caller_source_file": site.get("source_file"),
+                        "call_site_line": site.get("line"),
+                        "formal_parameter": formal,
+                        "actual_argument": "TRUE" if formal_value else "FALSE",
+                        "condition": condition,
+                        "compatible_if_outcome": bool(selected),
+                        "incompatible_if_outcome": not bool(selected),
+                        "evidence": "direct_call_boolean_literal",
+                        "runtime_evaluated": False,
+                    })
+            for child in value.values():
+                if isinstance(child, (dict, list)):
+                    walk(child, site, bool_args)
+
+    for site in binding.get("call_sites", []):
+        bool_args = {
+            arg["parameter"]: arg["argument"].upper() == "TRUE"
+            for arg in site.get("arguments", [])
+            if arg.get("type_match") == "compatible_literal"
+            and arg.get("formal_type", "").casefold() == "boolean"
+            and arg.get("argument", "").upper() in {"TRUE", "FALSE"}
+        }
+        if bool_args:
+            walk(nodes, site, bool_args)
+
 def build_caller_var_effect_map(binding: dict[str, Any]) -> dict[int, list[dict[str, Any]]]:
     """Map unconditional callee VAR assignments back to simple caller variables."""
     result: dict[int, list[dict[str, Any]]] = {}

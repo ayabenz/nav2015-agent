@@ -43,7 +43,6 @@ def _capture_body(lines: list[str], start: int, *, property_mode: bool = False) 
     for idx in range(start, len(lines)):
         line = lines[idx]
         body.append(line)
-        before = depth
         depth = _code_depth(line, depth)
         if re.search(r"\bBEGIN\b", re.sub(r"'(?:[^']|'')*'", "''", line), re.I):
             seen_begin = True

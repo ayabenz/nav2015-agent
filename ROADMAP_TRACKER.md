@@ -422,10 +422,11 @@ These are separate historical runs with different collection scopes. They must n
 - [x] Document evidence semantics and limitations.
 - [ ] Expand typed variable scope resolution across every procedure and object-level VAR block; handle aliases and assignments.
 - [ ] Resolve named and expression-based RUN targets, including variables assigned through branches and function returns.
-- [x] Map EventSubscriber declarations to matching IntegrationEvent / BusinessEvent / InternalEvent publisher declarations by object identity and event name. Publisher invocation/call-site tracing remains open.
+- [x] Map EventSubscriber declarations to matching IntegrationEvent / BusinessEvent / InternalEvent publisher declarations by object identity and event name. Static CALL-graph caller candidates are attached; proving runtime publisher invocation remains open.
 - [x] Add optional JSON Job Queue Entry configuration snapshot input; map Object Type / Object ID to indexed NAV targets, retain schedule metadata and redact Parameter String content. This remains configuration evidence, not execution evidence.
 - [ ] Validate Table field trigger extraction against representative Datascrip Table exports, including multiline properties, nested BEGIN/END and quoted field names.
-- [x] Integrate field-trigger CALL paths and source IF/ELSE/CASE structure plus branch-effect inventory into per-field evidence.\n- [ ] Resolve field-trigger operands against Table metadata, propagate data provenance and summarize downstream Table effects across reachable procedures.
+- [x] Integrate field-trigger CALL paths and source IF/ELSE/CASE structure plus branch-effect inventory into per-field evidence.
+- [ ] Resolve field-trigger operands against Table metadata, propagate data provenance and summarize downstream Table effects across reachable procedures.
 - [ ] Run full CI on the current branch head and publish the canonical result.
 
 **Evidence boundary:** source-level typed calls, RUN expressions, subscriber attributes, Job Queue references and field trigger bodies are static declarations. None proves runtime invocation. Actual configured Job Queue rows require an explicitly supplied NAV snapshot; runtime invocation requires execution telemetry or equivalent evidence.

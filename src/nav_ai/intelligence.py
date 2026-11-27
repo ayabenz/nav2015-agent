@@ -19,6 +19,7 @@ from .semantic_conditions import enrich_control_flow, load_table_sources, parse_
 from .record_filters import analyze_record_filter_paths, annotate_record_lookup_conditions
 from .snapshot_evaluator import evaluate_condition_snapshot
 from .assignment_flow import analyze_assignment_flow
+from .filter_value_resolution import enrich_record_filter_values
 from .interprocedural import (analyze_direct_call_bindings, build_caller_var_effect_map,
                               annotate_callsite_boolean_branches)
 from .var_mutation import analyze_var_parameter_mutations
@@ -488,6 +489,7 @@ def main(argv: list[str] | None = None) -> int:
                 filter_analysis = analyze_record_filter_paths(
                     result["nodes"], variables, tables, args.source_file
                 )
+                enrich_record_filter_values(filter_analysis, assignment_analysis)
                 annotate_record_lookup_conditions(result["nodes"], filter_analysis["lookups"])
                 result["record_filter_analysis"] = filter_analysis
                 result["semantic_resolution"] = {

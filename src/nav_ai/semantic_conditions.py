@@ -78,12 +78,16 @@ def parse_table_metadata(source: str, source_file: str = "<memory>") -> dict[str
 
 
 def parse_record_variables(source: str) -> dict[str, int]:
+    """Resolve local and procedure-parameter Record declarations to Table IDs."""
+    declaration = re.compile(
+        r'(?:"(?P<quoted>[^"]+)"|(?P<plain>[A-Za-z_][A-Za-z0-9_]*))'
+        r'(?:@\\d+)?\\s*:\\s*Record\\s+(?P<table_id>\\d+)',
+        re.I,
+    )
     result: dict[str, int] = {}
-    for line in source.splitlines():
-        match = _VAR_RE.match(line)
-        if match:
-            name = match.group("quoted") or match.group("plain")
-            result[name.casefold()] = int(match.group("table_id"))
+    for match in declaration.finditer(source):
+        name = match.group("quoted") or match.group("plain")
+        result[name.casefold()] = int(match.group("table_id"))
     return result
 
 

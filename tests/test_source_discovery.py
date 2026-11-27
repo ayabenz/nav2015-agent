@@ -145,3 +145,45 @@ def test_source_catalog_reads_txt_objects_from_zip_roots(tmp_path):
     candidate = catalog[("codeunit", 60002)][0]
     assert candidate["source_label"] == "objects/child.txt"
     assert candidate["source_path"].endswith("exports.zip!objects/child.txt")
+
+
+
+def test_trace_can_analyze_conditions_and_auto_load_table_metadata(tmp_path):
+    child = """OBJECT Codeunit 60002 Child
+{
+  CODE
+  {
+    PROCEDURE Update@1(VAR Header@1000 : Record 36);
+    BEGIN
+      IF Header.Status = Header.Status::Released THEN
+        MESSAGE('released');
+    END;
+  }
+}"""
+    table = """OBJECT Table 36 Sales Header
+{
+  FIELDS
+  {
+    { 1 ; ; Status ; Option }
+    {
+      OptionString=Open,Released;
+    }
+  }
+}"""
+    (tmp_path / "parent.txt").write_text(OBJ_A, encoding="utf-8")
+    (tmp_path / "child.txt").write_text(child, encoding="utf-8")
+    (tmp_path / "table36.txt").write_text(table, encoding="utf-8")
+    result = trace_call_graph(
+        graph_db(), "Codeunit 60001", [str(tmp_path)], symbol_db(),
+        max_depth=2, analyze_conditions=True,
+    )
+    child_result = next(
+        item for item in result["procedures"] if item["node"] == "Codeunit 60002.Update"
+    )
+    analysis = child_result["condition_analysis"]
+    assert analysis["semantic_resolution"]["enabled"] is True
+    assert analysis["semantic_resolution"]["table_ids_loaded"] == [36]
+    assert analysis["runtime_evaluated"] is False
+    if_nodes = [node for node in analysis["nodes"] if node.get("type") == "if"]
+    assert len(if_nodes) == 1
+    assert "normalized_condition" in if_nodes[0]

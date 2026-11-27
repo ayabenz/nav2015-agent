@@ -422,7 +422,7 @@ These are separate historical runs with different collection scopes. They must n
 - [x] Document evidence semantics and limitations.
 - [ ] Expand typed variable scope resolution across every procedure and object-level VAR block; handle aliases and assignments.
 - [ ] Resolve named and expression-based RUN targets, including variables assigned through branches and function returns.
-- [ ] Map EventSubscriber declarations to matching publisher event declarations and publisher call sites.
+- [x] Map EventSubscriber declarations to matching IntegrationEvent / BusinessEvent / InternalEvent publisher declarations by object identity and event name. Publisher invocation/call-site tracing remains open.
 - [x] Add optional JSON Job Queue Entry configuration snapshot input; map Object Type / Object ID to indexed NAV targets, retain schedule metadata and redact Parameter String content. This remains configuration evidence, not execution evidence.
 - [ ] Validate Table field trigger extraction against representative Datascrip Table exports, including multiline properties, nested BEGIN/END and quoted field names.
 - [ ] Integrate field-trigger CALL paths, conditions, data provenance and downstream Table effects into per-field reports.

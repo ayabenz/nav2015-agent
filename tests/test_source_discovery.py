@@ -415,7 +415,7 @@ def test_trace_propagates_callee_var_record_filter_into_caller_lookup(tmp_path):
         item for item in result["procedures"] if item["node"] == "Codeunit 60001.Run"
     )
     analysis = parent_result["condition_analysis"]
-    assert analysis["interprocedural_filter_effect_count"] == 1
+    assert analysis["interprocedural_filter_effect_count"] == 1, result["interprocedural_filter_analysis"]
     lookup = next(item for item in analysis["record_filter_analysis"]["lookups"]
                   if item["record_variable"] == "Header")
     assert len(lookup["active_filters"]) == 1

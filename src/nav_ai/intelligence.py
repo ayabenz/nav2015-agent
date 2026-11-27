@@ -34,6 +34,11 @@ def _attach_snapshot_evaluations(nodes: Any, snapshot: dict[str, Any],
         for node in nodes:
             _attach_snapshot_evaluations(node, snapshot, variables, tables)
     elif isinstance(nodes, dict):
+        # Evaluate descendants first so nested IF outcomes are available when
+        # the enclosing branch's effects are summarized.
+        for value in list(nodes.values()):
+            if isinstance(value, (dict, list)):
+                _attach_snapshot_evaluations(value, snapshot, variables, tables)
         if nodes.get("type") == "if" and isinstance(nodes.get("normalized_condition"), dict):
             evaluation = evaluate_condition_snapshot(
                 nodes["normalized_condition"], snapshot, variables, tables
@@ -44,19 +49,18 @@ def _attach_snapshot_evaluations(nodes: Any, snapshot: dict[str, Any],
             )
             nodes["snapshot_evaluation"] = evaluation
             if evaluation["result"] is True:
-                selected = nodes.get("true_branch")
-                evaluation["branch_effects"] = summarize_branch_effects(selected)
+                evaluation["branch_effects"] = summarize_branch_effects(
+                    nodes.get("true_branch")
+                )
             elif evaluation["result"] is False:
-                selected = nodes.get("false_branch")
-                evaluation["branch_effects"] = summarize_branch_effects(selected)
+                evaluation["branch_effects"] = summarize_branch_effects(
+                    nodes.get("false_branch")
+                )
             else:
                 evaluation["branch_effects"] = (
                     summarize_branch_effects(nodes.get("true_branch"), "possible_true_branch") +
                     summarize_branch_effects(nodes.get("false_branch"), "possible_false_branch")
                 )
-        for value in nodes.values():
-            if isinstance(value, (dict, list)):
-                _attach_snapshot_evaluations(value, snapshot, variables, tables)
 
 
 

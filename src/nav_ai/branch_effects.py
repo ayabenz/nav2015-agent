@@ -71,3 +71,48 @@ def summarize_branch_effects(branch: Any, certainty: str = "selected_by_snapshot
 
     walk(branch, certainty)
     return effects
+
+
+def summarize_all_branch_effects(nodes: Any) -> list[dict[str, Any]]:
+    """Inventory recognizable effects across every source branch without choosing one."""
+    effects: list[dict[str, Any]] = []
+
+    def walk(node: Any, path: list[str], certainty: str) -> None:
+        if node is None:
+            return
+        if isinstance(node, list):
+            for child in node:
+                walk(child, path, certainty)
+            return
+        if not isinstance(node, dict):
+            return
+        kind = node.get("type")
+        if kind == "statement":
+            source = str(node.get("source", ""))
+            for action in _classify(source):
+                effects.append({
+                    "action": action,
+                    "source": source,
+                    "line_start": node.get("line_start"),
+                    "line_end": node.get("line_end"),
+                    "branch_path": list(path),
+                    "certainty": certainty,
+                    "runtime_executed": False,
+                })
+        elif kind == "block":
+            walk(node.get("children", []), path, certainty)
+        elif kind == "if":
+            condition = str(node.get("condition", "")).strip()
+            walk(node.get("true_branch"), path + [f"IF ({condition}) THEN"], "condition_not_evaluated")
+            if node.get("false_branch") is not None:
+                walk(node.get("false_branch"), path + [f"IF ({condition}) ELSE"], "condition_not_evaluated")
+        elif kind == "case":
+            expression = str(node.get("expression", "")).strip()
+            for arm in node.get("arms", []):
+                labels = str(arm.get("labels", "")).strip()
+                walk(arm.get("body"), path + [f"CASE ({expression}) = {labels}"], "case_not_evaluated")
+            if node.get("default") is not None:
+                walk(node.get("default"), path + [f"CASE ({expression}) ELSE"], "case_not_evaluated")
+
+    walk(nodes, [], "procedure_reachable_not_runtime_proven")
+    return effects

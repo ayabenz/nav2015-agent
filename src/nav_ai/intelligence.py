@@ -27,6 +27,7 @@ from .var_mutation import analyze_var_parameter_mutations
 from .source_discovery import trace_call_graph
 from .business_docs import default_report_name, write_business_process_report
 from .process_discovery import discover_process_entrypoints
+from .process_mapping import map_candidate_processes
 
 
 def _attach_snapshot_evaluations(nodes: Any, snapshot: dict[str, Any],
@@ -376,6 +377,11 @@ def main(argv: list[str] | None = None) -> int:
     discover.add_argument("--limit", type=int, default=200, help="maximum candidates to return")
     discover.add_argument("--include-standard", action="store_true", help="include STANDARD_UNCHANGED objects")
 
+    mapping = sub.add_parser("map-processes", help="group entry candidates by overlapping direct Table usage")
+    mapping.add_argument("--limit", type=int, default=200, help="maximum entry candidates to map")
+    mapping.add_argument("--include-standard", action="store_true", help="include STANDARD_UNCHANGED objects")
+    mapping.add_argument("--min-similarity", type=float, default=0.25, help="minimum Jaccard overlap of direct Table sets (0, 1]")
+
     trace = sub.add_parser("trace", help="trace reachable CALL procedures and discover their source exports")
     trace.add_argument("start", help='object or procedure node, e.g. "Codeunit 50107"')
     trace.add_argument("--source-root", action="append", required=True, help="TXT file, ZIP file, or directory containing NAV TXT exports; repeatable")
@@ -556,6 +562,11 @@ def main(argv: list[str] | None = None) -> int:
                 if args.command == "discover":
                     result = discover_process_entrypoints(
                         graph, limit=args.limit, include_standard=args.include_standard
+                    )
+                elif args.command == "map-processes":
+                    result = map_candidate_processes(
+                        graph, limit=args.limit, include_standard=args.include_standard,
+                        min_similarity=args.min_similarity,
                     )
                 elif args.command == "trace":
                     if not args.source_root:

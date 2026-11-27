@@ -366,3 +366,13 @@ These are separate historical runs with different collection scopes. They must n
 - [ ] Add explicit UI action, job queue, XMLport and integration entry-point evidence beyond CALL-only traversal.
 
 **Evidence boundary:** inventory generation is implemented as a static analysis pipeline. It is not a runtime execution monitor and does not certify business-process completeness.
+
+
+### Phase 2.8 — Evidence-backed process domain hints
+
+- [x] Add lexical domain hints using candidate object identity, reachable procedure names and CALL-reachable Table names.
+- [x] Rank multiple domain hints and retain source-category/term evidence for audit.
+- [x] Return unclassified when no domain vocabulary is found and ambiguous when top domains tie.
+- [x] Mark classification as heuristic, not validated business-process identity or runtime evidence.
+- [ ] Validate domain vocabulary against Datascrip-specific naming conventions and manually reviewed process examples.
+- [ ] Add structural/behavioral features (entry action, posting calls, write profile, integration boundary) before increasing confidence.

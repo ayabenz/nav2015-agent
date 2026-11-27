@@ -71,7 +71,7 @@ def test_lookup_filter_resolution_uses_assignment_at_filter_line():
 def test_resolves_option_member_against_filter_field_metadata():
     filters = {
         "events": [{
-            "operation": "SETRANGE", "line": 14, "path:": [],
+            "operation": "SETRANGE", "line": 14, "path": [],
             "arguments": ['StocktakeRule."Jenis Transaksi"::IN'],
             "field_resolution": {
                 "resolution": "resolved", "field": "Jenis Transaksi",

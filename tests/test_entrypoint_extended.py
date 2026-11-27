@@ -10,8 +10,14 @@ def _graph():
     graph.executemany("INSERT INTO objects VALUES(?,?,?,?)", [
         ("Codeunit 50001", "Codeunit", 50001, "Worker"),
         ("Codeunit 50002", "Codeunit", 50002, "Subscriber"),
+        ("Codeunit 50003", "Codeunit", 50003, "Caller"),
     ])
-    graph.execute("INSERT INTO procedures VALUES(?,?,?)", ("Codeunit 50001.DoWork", "Codeunit 50001", "DoWork"))
+    graph.executemany("INSERT INTO procedures VALUES(?,?,?)", [
+        ("Codeunit 50001.DoWork", "Codeunit 50001", "DoWork"),
+        ("Codeunit 50001.OnAfterPost", "Codeunit 50001", "OnAfterPost"),
+        ("Codeunit 50003.RaiseEvent", "Codeunit 50003", "RaiseEvent"),
+    ])
+    graph.execute("INSERT INTO edges VALUES(?,?,?)", ("Codeunit 50003.RaiseEvent", "Codeunit 50001.OnAfterPost", "CALL"))
     return graph
 
 
@@ -126,3 +132,4 @@ def test_links_event_subscriber_to_publisher_declaration(tmp_path):
     assert event["publisher_declaration_found"] is True
     assert event["publisher_matches"][0]["publisher_object"] == "Codeunit 50001"
     assert event["publisher_invocation_proven"] is False
+    assert event["publisher_matches"][0]["static_callers"] == ["Codeunit 50003.RaiseEvent"]

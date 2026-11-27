@@ -382,3 +382,10 @@ When `--analyze-conditions` is enabled, the composed per-edge effects are also i
 For procedures with Table metadata available, `trace --analyze-conditions` now enriches explicit and interprocedural assignment events. A target such as `Header.Status` is resolved against the declared Record variable's Table ID and field metadata. An Option RHS such as `Header.Status::Released` is checked against that field's `OptionString`; results distinguish `resolved`, `unverified`, and `unresolved`. The same metadata is attached to assignment alternatives shown in later IF nodes' `assignment_context`.
 
 This explains *which Table field is being assigned and whether the named Option member exists in the exported Table definition*. It does not prove the assignment executed or that the field currently contains that value in SQL/NAV. Non-Option expressions remain symbolic.
+
+
+#### Interprocedural Record filter propagation
+
+Trace now reports `interprocedural_filter_analysis` for direct CALL edges. When a callee receives a typed Record parameter by reference, explicit `SETRANGE`, `SETFILTER`, field-clearing `SETRANGE(Field)`, and `RESET` operations can be mapped to a simple caller Record argument. Conditional operations are propagated only when supported Boolean literals at the call site select the corresponding IF path.
+
+With `--analyze-conditions`, mapped filter effects are applied to the caller's path-sensitive Record-filter state at the call statement. A later `FINDFIRST`/FIND lookup can therefore show filters established inside the called Codeunit. Filter arguments remain source expressions; no filter is executed and no matching row is inferred. This first version handles direct callee filter operations; nested interprocedural filter composition remains unsupported.

@@ -373,7 +373,7 @@ def test_trace_propagates_callee_var_record_filter_into_caller_lookup(tmp_path):
 
     PROCEDURE Run@3();
     BEGIN
-      Child.Apply(Header,TRUE);
+      Child.Update(Header,TRUE);
       IF Header.FINDFIRST THEN
         MESSAGE('found');
     END;
@@ -383,7 +383,7 @@ def test_trace_propagates_callee_var_record_filter_into_caller_lookup(tmp_path):
 {
   CODE
   {
-    PROCEDURE Apply@1(VAR Header@2 : Record 36;DoFilter@3 : Boolean);
+    PROCEDURE Update@1(VAR Header@2 : Record 36;DoFilter@3 : Boolean);
     BEGIN
       IF DoFilter THEN
         Header.SETRANGE(Status,Header.Status::Released);

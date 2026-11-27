@@ -80,15 +80,15 @@ These are recorded analysis outputs, not a claim that every NAV object or indire
 - [x] Resolve Option members against field OptionString values; mark missing metadata or unknown values explicitly instead of guessing.
 - [ ] Extend resolution to unqualified WITH-scope fields, RecordRef/FieldRef and dynamic expressions.
 - [ ] Build branch paths with parent/child relationships and explicit TRUE / FALSE / CASE-match / CASE-default outcomes.
-- [x] Extract sequential SETRANGE / SETFILTER / RESET operations and attach source-level filter snapshots to FIND operations; mark branch-dependent snapshots ambiguous.
-- [ ] Implement path-sensitive filter-state tracking across IF / ELSE / CASE branches and merge compatible filter states.
+- [x] Extract SETRANGE / SETFILTER / RESET and FIND operations, preserving arguments, source locations and resolved field metadata where available.
+- [x] Implement path-sensitive filter-state tracking across IF / ELSE / CASE branches; preserve distinct states at joins rather than merging incompatible filters. Compatible-state compaction remains an optimization.
 - [ ] Track local variable assignments and record-field values sufficiently to explain predicates whose operands are assigned earlier in the procedure.
 - [ ] Trace relevant values across direct procedure calls where parameter and Record-variable flow can be resolved safely.
 - [x] Add initial nav-intel conditions command with explicit source-file and optional object/procedure selection; return branch tree, raw predicates and source spans.
 - [ ] Resolve source files automatically from the symbol index and integrate conditions into object/procedure queries.
 - [x] Add unit fixtures for nested IF/ELSE, CASE arms/default, comment/string masking and source line spans.
 - [x] Add fixtures for Option values, qualified field comparisons and unresolved metadata.
-- [x] Add initial fixtures for SETRANGE clearing, SETFILTER placeholders, RESET invalidation and FINDFIRST lookup annotation.
+- [x] Add fixtures for SETRANGE clearing, SETFILTER placeholders, RESET invalidation, FINDFIRST lookup annotation and path isolation across IF / ELSE / CASE.
 - [ ] Add fixtures for ELSEIF, variable assignments and unresolved/dynamic expressions.
 - [x] Document static-analysis limits and avoid presenting inferred branch reachability as runtime fact.
 - [ ] Add optional runtime evaluation only as a separate later capability, requiring an explicitly supplied read-only record snapshot / runtime evidence.

@@ -37,6 +37,13 @@ The output contains reachable procedure nodes, call edges, source paths, procedu
 
 With `--analyze-conditions`, the command also runs the existing IF/ELSE/CASE, assignment and Record-filter analyzers for every resolved procedure, automatically loading Table metadata found in the same source roots. Missing or ambiguous Table exports remain explicit in `semantic_resolution`; each procedure also reports required-but-unavailable Table IDs, and source/procedure resolution failures are represented as per-procedure statuses. It follows only dependency-graph `CALL` edges, so dynamic calls, indirect dispatch, implicit side effects, and edges missing from the graph are not discovered. It is static analysis and never proves runtime execution.
 
+The default Datascrip integration test checks the committed Stocktake source export quickly. The full 4,696-object ZIP integration can be run explicitly from PowerShell with:
+
+```powershell
+$env:NAV_RUN_FULL_DATASCRIP_TRACE='1'; python -m pytest tests/test_datascrip_trace_integration.py -q; Remove-Item Env:NAV_RUN_FULL_DATASCRIP_TRACE
+```
+
+
 
 The installed console command is also available:
 

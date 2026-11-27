@@ -248,7 +248,7 @@ These are separate historical runs with different collection scopes. They must n
 - [x] Report source procedure absolute line ranges and origin classification, and preserve missing/ambiguous source states.
 - [x] Report object-level/non-procedure CALL targets (such as possible `Var.RUN` edges) instead of expanding them into guessed procedures.
 - [x] Feed discovered source files directly into IF/ELSE/CASE, assignment and Record-filter analysis; automatically load Table metadata from the same source roots with explicit missing/ambiguous statuses.
-- [ ] Validate tracing against the full Datascrip export and review uncovered dynamic/trigger call paths.
+- [x] Validate tracing against the full Datascrip export with automatic conditions and Table metadata discovery; review uncovered dynamic/trigger call paths remains open.
 
 **Design boundary:** trace follows only existing dependency-graph `CALL` edges. It is a source-discovery and call-graph traversal layer, not proof that a call or branch ran in NAV.
 
@@ -257,3 +257,6 @@ These are separate historical runs with different collection scopes. They must n
 
 
 **Validation update (2026-11-27 — explicit source/metadata statuses):** [GitHub Actions run #214](https://github.com/ayabenz/nav2015-agent/actions/runs/45930876706) passed: **98 tests in 0.74s**. Automatic condition analysis now reports `source_unavailable`, `procedure_not_found`, or `analyzed` per procedure and lists required Table IDs missing from the supplied source roots. No runtime NAV execution is implied.
+
+
+**Full-export validation (2026-11-27):** [GitHub Actions run #216](https://github.com/ayabenz/nav2015-agent/actions/runs/45931034390) completed the full `data/input/datascrip/datascrip.zip` Stocktake trace with `analyze_conditions=True`: **99 passed in 272.76s**. The integration test was subsequently split into a fast default Stocktake-source check and an opt-in full ZIP check (`NAV_RUN_FULL_DATASCRIP_TRACE=1`) to avoid imposing a multi-minute full-export scan on every ordinary CI run. Static source analysis only; no NAV runtime was executed.

@@ -14,6 +14,7 @@ from .parser import OBJECT_RE, split_objects
 SECTION_RE = re.compile(r"^\s{2,}([A-Z][A-Z0-9 -]*)\s*$")
 VAR_RE = re.compile(r'^\s*(?:"([^"]+)"|([A-Za-z_][\w ]*?))(?:@\d+)?\s*:\s*(Codeunit|Page|Report|XMLport|Query|Record)\s+(\d+)\s*;', re.I)
 PROC_RE = re.compile(r"^\s*(?:LOCAL\s+)?PROCEDURE\s+([^ (]+)", re.I)
+PUBLISHER_RE = re.compile(r"\[(IntegrationEvent|BusinessEvent|InternalEvent)\s*\(", re.I)
 EVENT_RE = re.compile(r"""EventSubscriber\s*\(\s*ObjectType\s*::\s*(Codeunit|Page|Table|Report|XMLport)\s*,\s*(?:\1\s*::\s*)?(\d+|"([^"]+)")\s*,\s*'([^']+)'""", re.I)
 RUN_RE = re.compile(r"\b(CODEUNIT|PAGE|REPORT|XMLPORT)\s*\.\s*RUN(?:MODAL)?\s*\(\s*([^,;)]+)", re.I)
 ASSIGN_RE = re.compile(r'\b([A-Za-z_][\w ]*)\s*:=\s*(\d+)\s*;', re.I)
@@ -26,7 +27,7 @@ def _mask(text: str) -> str:
     return re.sub(r"\{[^{}]*\}", " ", text)
 
 def discover_extended_entrypoints(source_roots: list[str], graph=None) -> dict[str, Any]:
-    typed_calls, dynamic_runs, subscribers, job_queue, field_triggers = [], [], [], [], []
+    typed_calls, dynamic_runs, subscribers, publishers, job_queue, field_triggers = [], [], [], [], [], []
     object_sources: list[dict[str, Any]] = []
     for root in source_roots:
         for display, label, source in _source_files(root):
@@ -41,15 +42,28 @@ def discover_extended_entrypoints(source_roots: list[str], graph=None) -> dict[s
                 section = ""
                 vars_by_name: dict[str, dict[str, Any]] = {}
                 current_proc = "<object>"
+                pending_publisher = None
                 proc_vars_by_scope: dict[str, dict[str, Any]] = {}
                 for i, line in enumerate(lines):
                     sm = SECTION_RE.match(line)
                     if sm:
                         section = sm.group(1).strip()
+                    publisher_match = PUBLISHER_RE.search(line)
+                    if publisher_match:
+                        pending_publisher = publisher_match.group(1)
                     pm = PROC_RE.match(line)
                     if pm:
                         current_proc = pm.group(1).strip('"')
                         proc_vars_by_scope.setdefault(current_proc, {})
+                        if pending_publisher:
+                            publishers.append({
+                                "publisher_object": node, "publisher_object_type": typ,
+                                "publisher_object_id": oid, "event_name": current_proc,
+                                "event_kind": pending_publisher, "source": display,
+                                "line": i + 1 + offset, "evidence": "event_publisher_attribute",
+                                "runtime_raised": False,
+                            })
+                            pending_publisher = None
                     vm = VAR_RE.match(line)
                     if vm:
                         vname = (vm.group(1) or vm.group(2)).strip()
@@ -180,6 +194,27 @@ def discover_extended_entrypoints(source_roots: list[str], graph=None) -> dict[s
                     job_queue.append({"kind": "job_queue_source_consumer_candidate", "object": node,
                                       "source": display, "evidence": "Job Queue Entry / Codeunit 448 source reference",
                                       "runtime_configured": False})
+    # Link subscriber attributes to matching publisher declarations where identity is unique.
+    for subscriber in subscribers:
+        target_id = subscriber.get("event_object_id")
+        target_name = subscriber.get("event_object_name")
+        target_type = subscriber.get("event_object_type")
+        if target_id is None and target_name and graph is not None:
+            rows = graph.execute(
+                "SELECT id FROM objects WHERE type=? COLLATE NOCASE AND name=? COLLATE NOCASE",
+                (target_type, target_name),
+            ).fetchall()
+            if len(rows) == 1:
+                target_id = int(rows[0][0])
+        matches = [
+            publisher for publisher in publishers
+            if publisher["publisher_object_type"].casefold() == str(target_type).casefold()
+            and publisher["publisher_object_id"] == target_id
+            and publisher["event_name"].casefold() == str(subscriber["event_name"]).casefold()
+        ]
+        subscriber["publisher_matches"] = matches
+        subscriber["publisher_declaration_found"] = bool(matches)
+        subscriber["publisher_invocation_proven"] = False
     # Attach graph existence to statically resolved RUN object targets.
     for item in dynamic_runs:
         if item["resolved_target"] and graph is not None:
@@ -191,10 +226,11 @@ def discover_extended_entrypoints(source_roots: list[str], graph=None) -> dict[s
         "typed_variable_calls": typed_calls,
         "dynamic_run_targets": dynamic_runs,
         "event_subscribers": subscribers,
+        "event_publishers": publishers,
         "job_queue_evidence": job_queue,
         "table_field_triggers": field_triggers,
         "counts": {"typed_variable_calls": len(typed_calls), "dynamic_run_targets": len(dynamic_runs),
-                   "event_subscribers": len(subscribers), "job_queue_evidence": len(job_queue),
+                   "event_subscribers": len(subscribers), "event_publishers": len(publishers), "job_queue_evidence": len(job_queue),
                    "table_field_triggers": len(field_triggers)},
         "semantics": {"runtime_executed": False, "job_queue_runtime_configured": False,
                       "limitations": [

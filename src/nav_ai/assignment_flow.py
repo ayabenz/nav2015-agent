@@ -17,6 +17,23 @@ _ASSIGNMENT = re.compile(
 _CALL = re.compile(r'\b[A-Za-z_][A-Za-z0-9_@]*\s*\(', re.I)
 _IDENTIFIER = re.compile(r'(?<![.])\b[A-Za-z_][A-Za-z0-9_@]*(?:\s*\.\s*(?:"(?:[^"]|"")*"|[A-Za-z_][A-Za-z0-9_ ]*))?', re.I)
 
+
+_NON_MUTATING_RECORD_METHODS = {
+    "SETRANGE", "SETFILTER", "RESET", "SETCURRENTKEY",
+    "FINDFIRST", "FINDLAST", "FINDSET", "FIND", "GET", "ISEMPTY",
+    "COUNT", "CALCFIELDS", "CALCSUMS", "TESTFIELD", "FIELDERROR",
+}
+
+
+def _is_known_record_method_call(source: str) -> bool:
+    """Record API calls do not mutate unrelated scalar locals tracked here."""
+    methods = "|".join(sorted(_NON_MUTATING_RECORD_METHODS))
+    return bool(re.search(
+        r"\\b[A-Za-z_][A-Za-z0-9_@]*\\s*\\.\\s*(?:" + methods + r")\\s*(?:\\(|\\b)",
+        source,
+        re.I,
+    ))
+
 _KEYWORDS = {
     "AND", "OR", "NOT", "TRUE", "FALSE", "THEN", "ELSE", "IF", "CASE",
     "OF", "BEGIN", "END", "IN", "MOD", "DIV", "XOR", "EXIT", "ERROR",
@@ -172,6 +189,11 @@ def analyze_assignment_flow(nodes: list[dict[str, Any]], source_file: str = "<me
                     state["values"][assignment["target_key"]] = assignment
                     events.append({**assignment, "path": list(state["path"])})
                 elif _CALL.search(str(node.get("source", ""))):
+                    statement_source = str(node.get("source", ""))
+                    # Built-in Record methods do not mutate unrelated scalar locals.
+                    # Unknown/custom procedure calls remain conservative invalidators.
+                    if _is_known_record_method_call(statement_source):
+                        continue
                     # C/AL procedures can mutate VAR parameters; without signatures,
                     # invalidate all known values rather than preserve stale facts.
                     invalidated = list(state["values"])

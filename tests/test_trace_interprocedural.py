@@ -11,7 +11,7 @@ CALLER = """OBJECT Codeunit 50000 Caller
 
     PROCEDURE Run@3();
     BEGIN
-      Mutator.UpdateHeader(SalesHeader,FALSE);
+      Mutator.UpdateHeader(SalesHeader,TRUE);
     END;
   }
 }"""

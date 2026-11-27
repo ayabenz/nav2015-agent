@@ -143,10 +143,16 @@ def generate_business_process_inventory(
                 analyze_conditions=analyze_conditions,
                 max_interprocedural_depth=max_interprocedural_depth,
             )
-            traces[node] = {"status": "generated", "report": f"objects/{_slug(node)}.md"}
             write_business_process_report(
                 trace, objects_dir / f"{_slug(node)}.md"
             )
+            resolved_sources = trace.get("process_summary", {}).get("source_status_counts", {}).get("resolved", 0)
+            if resolved_sources:
+                traces[node] = {"status": "generated", "report": f"objects/{_slug(node)}.md"}
+            else:
+                error = "No reachable procedure source exports resolved"
+                failures[node] = {"error": error}
+                traces[node] = {"status": "unavailable", "error": error, "report": f"objects/{_slug(node)}.md"}
         except (ValueError, FileNotFoundError) as exc:
             failures[node] = {"error": str(exc)}
             traces[node] = {"status": "unavailable", "error": str(exc)}

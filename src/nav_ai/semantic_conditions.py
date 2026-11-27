@@ -141,6 +141,81 @@ def resolve_condition(
     return {"expression": expression, "field_references": refs, "option_members": options}
 
 
+def _describe_operand(expression: str, variables: dict[str, int],
+                       tables: dict[int, dict[str, Any]]) -> dict[str, Any]:
+    resolved = resolve_condition(expression, variables, tables)
+    if resolved["option_members"]:
+        option = resolved["option_members"][0]
+        return {
+            "kind": "option_member",
+            "source": expression,
+            "field": option["field"],
+            "option": option["option"],
+            "resolution": option["resolution"],
+            "allowed_values": option.get("allowed_values", []),
+        }
+    if resolved["field_references"]:
+        field = resolved["field_references"][0]
+        return {
+            "kind": "field_reference",
+            "source": expression,
+            "variable": field["variable"],
+            "table_id": field.get("table_id"),
+            "table_name": field.get("table_name"),
+            "field_id": field.get("field_id"),
+            "field": field["field"],
+            "data_type": field.get("field_type"),
+            "resolution": field["resolution"],
+            "reason": field.get("reason"),
+        }
+    stripped = expression.strip()
+    if len(stripped) >= 2 and stripped[0] == "'" and stripped[-1] == "'":
+        kind = "string_literal"
+    elif re.fullmatch(r"-?\\d+(?:\\.\\d+)?", stripped):
+        kind = "numeric_literal"
+    elif stripped.upper() in {"TRUE", "FALSE"}:
+        kind = "boolean_literal"
+    else:
+        kind = "raw_expression"
+    return {"kind": kind, "source": expression}
+
+
+def describe_normalized_condition(tree: dict[str, Any], variables: dict[str, int],
+                                  tables: dict[int, dict[str, Any]]) -> dict[str, Any]:
+    """Annotate normalized expression nodes with evidence-backed operand descriptions."""
+    kind = tree.get("type")
+    if kind == "operand":
+        return _describe_operand(str(tree.get("value", "")), variables, tables)
+    if kind == "comparison":
+        left = _describe_operand(str(tree.get("left", "")), variables, tables)
+        if "values" in tree:
+            right = [_describe_operand(str(value), variables, tables) for value in tree["values"]]
+        else:
+            right = _describe_operand(str(tree.get("right", "")), variables, tables)
+        return {
+            "type": "comparison",
+            "operator": tree.get("operator"),
+            "left": left,
+            "right": right,
+            "evaluated": False,
+        }
+    if kind == "boolean":
+        return {
+            "type": "boolean",
+            "operator": tree.get("operator"),
+            "operands": [describe_normalized_condition(child, variables, tables)
+                         for child in tree.get("operands", [])],
+            "evaluated": False,
+        }
+    if kind == "not":
+        return {
+            "type": "not",
+            "operand": describe_normalized_condition(tree.get("operand", {}), variables, tables),
+            "evaluated": False,
+        }
+    return {"type": "unresolved", "source": tree, "evaluated": False}
+
+
 def enrich_control_flow(node: Any, variables: dict[str, int],
                         tables: dict[int, dict[str, Any]]) -> None:
     """Attach field and Option metadata to IF predicates and CASE selectors."""
@@ -151,9 +226,11 @@ def enrich_control_flow(node: Any, variables: dict[str, int],
         if node.get("type") == "if" and isinstance(node.get("condition"), str):
             node["normalized_condition"] = normalize_condition_expression(node["condition"])
             node["condition_resolution"] = resolve_condition(node["condition"], variables, tables)
+            node["condition_explanation"] = describe_normalized_condition(node["normalized_condition"], variables, tables)
         if node.get("type") == "case" and isinstance(node.get("expression"), str):
             node["normalized_expression"] = normalize_condition_expression(node["expression"])
             node["expression_resolution"] = resolve_condition(node["expression"], variables, tables)
+            node["expression_explanation"] = describe_normalized_condition(node["normalized_expression"], variables, tables)
         for value in node.values():
             if isinstance(value, (dict, list)):
                 enrich_control_flow(value, variables, tables)

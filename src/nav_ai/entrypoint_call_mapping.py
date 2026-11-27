@@ -11,7 +11,9 @@ LOCAL_CALL_RE = re.compile(r"(?<![\w.\"])({names})(?![\w\"@])", re.I)
 
 
 def _mask_strings(text: str) -> str:
-    return STRING_RE.sub(" ", text)
+    text = STRING_RE.sub(" ", text)
+    text = re.sub(r"//[^\\n]*", " ", text)
+    return re.sub(r"\\{[^{}]*\\}", " ", text)
 
 
 def map_entrypoint_calls(

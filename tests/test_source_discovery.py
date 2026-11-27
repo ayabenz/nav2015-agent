@@ -1,4 +1,5 @@
 import sqlite3
+import zipfile
 
 from nav_ai.source_discovery import build_source_catalog, trace_call_graph
 
@@ -133,3 +134,14 @@ def test_object_trace_includes_object_and_trigger_scope_call_edges(tmp_path):
     assert {edge["src"] for edge in result["call_edges"]} == {
         "Codeunit 60001", "Codeunit 60001 TRIGGERS", "Codeunit 60001.Run"
     }
+
+
+
+def test_source_catalog_reads_txt_objects_from_zip_roots(tmp_path):
+    archive_path = tmp_path / "exports.zip"
+    with zipfile.ZipFile(archive_path, "w") as archive:
+        archive.writestr("objects/child.txt", OBJ_B)
+    catalog = build_source_catalog([str(archive_path)])
+    candidate = catalog[("codeunit", 60002)][0]
+    assert candidate["source_label"] == "objects/child.txt"
+    assert candidate["source_path"].endswith("exports.zip!objects/child.txt")

@@ -86,3 +86,20 @@ def test_resolves_explicit_codeunit_run_by_numeric_object_id():
         "confidence": "explicit_object_reference",
     }]
     assert entry["reachable_procedures"] == []
+
+def test_ignores_procedure_names_inside_comments_and_string_literals():
+    result = map_entrypoint_calls(
+        _graph(),
+        {
+            "entries": [{
+                "entry_id": "Page 50000.Action[30].OnAction",
+                "object": "Page 50000",
+                "entry_kind": "page_action_body",
+                "body": "// DoPost;\nMESSAGE('DoPreview;');",
+                "line_start": 1,
+                "line_end": 2,
+            }]
+        },
+    )
+    assert result["entries"][0]["direct_targets"] == []
+

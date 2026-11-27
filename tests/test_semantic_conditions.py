@@ -70,6 +70,7 @@ def test_condition_explanation_keeps_unknown_operands_explicit():
         parse_record_variables("R : Record 50063;"),
         {},
     )
-    assert result["left"]["kind"] == "raw_expression"
+    assert result["left"]["kind"] == "field_reference"
+    assert result["left"]["resolution"] == "unresolved"
     assert result["right"]["kind"] == "numeric_literal"
     assert result["evaluated"] is False

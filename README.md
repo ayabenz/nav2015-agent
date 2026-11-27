@@ -170,3 +170,8 @@ nav-intel --company datascrip inventory --source-root "data\\input\\datascrip\\d
 ```
 
 Outputs are written under `reports/datascrip/business_process/`: `process_inventory.md/.json`, one `objects/<Type_ID>.md/.json` pair per successfully traced candidate, and cluster summaries under `clusters/`. Missing or ambiguous source is recorded per candidate; it does not abort the inventory. Use `--skip-conditions` for a faster first pass.
+
+
+### Evidence-backed domain hints
+
+The inventory attaches a heuristic domain hint (for example sales, purchase, inventory, warehouse, transfer, finance, production, service, integration or ownership) from the candidate object name, reachable procedure names and transitive Table names. The JSON preserves matched terms and their evidence category. Ties are reported as `ambiguous`; candidates without lexical evidence remain `unclassified`. A `moderate_heuristic` label is only a vocabulary-based hint, not confirmation of an actual business process. Validate vocabulary and classifications against Datascrip-specific objects before using them as authoritative process labels.

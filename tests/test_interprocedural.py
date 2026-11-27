@@ -1,4 +1,5 @@
-from nav_ai.interprocedural import (analyze_direct_call_bindings, build_caller_var_effect_map,\n                                    annotate_callsite_boolean_branches)
+from nav_ai.interprocedural import (analyze_direct_call_bindings, build_caller_var_effect_map,
+                                    annotate_callsite_boolean_branches)
 
 CALLEE = """OBJECT Codeunit 50107 Block Stocktake
 {

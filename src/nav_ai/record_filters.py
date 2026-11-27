@@ -139,7 +139,7 @@ def annotate_record_lookup_conditions(nodes: Any, lookups: list[dict[str, Any]])
         elif isinstance(node, dict):
             if node.get("type") == "if":
                 condition = str(node.get("condition", ""))
-                match = re.search(r"(?i)(NOT\\s+)?([A-Za-z_][A-Za-z0-9_@]*)\\s*\\.\\s*FINDFIRST", condition)
+                match = re.search(r"(?i)(NOT\s+)?([A-Za-z_][A-Za-z0-9_@]*)\s*\.\s*FINDFIRST", condition)
                 if match:
                     variable = match.group(2).casefold()
                     line = node.get("condition_span", {}).get("line_start")

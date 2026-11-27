@@ -77,3 +77,19 @@ def test_assignment_provenance_does_not_treat_string_contents_as_variables():
     description = next(x for x in context["known_assignments"]
                        if x["target"] == "Description")
     assert description["dependency_chain"] == []
+
+
+def test_builtin_record_filter_call_preserves_scalar_assignment():
+    nodes, result = run(
+        "TransactionType := 'IN';\\n"
+        'StocktakeRule.SETRANGE("Jenis Transaksi", TransactionType);\\n'
+        "IF TransactionType = 'IN' THEN Post;"
+    )
+    context = nodes[-1]["assignment_context"]["alternatives"][0]
+    assignment = next(x for x in context["known_assignments"]
+                      if x["target"] == "TransactionType")
+    assert assignment["expression"] == "'IN'"
+    assert not any(
+        event["kind"] == "unknown_call_invalidation"
+        for event in result["events"]
+    )

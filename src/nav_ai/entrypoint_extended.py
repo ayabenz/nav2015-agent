@@ -41,7 +41,7 @@ def discover_extended_entrypoints(source_roots: list[str], graph=None) -> dict[s
                 section = ""
                 vars_by_name: dict[str, dict[str, Any]] = {}
                 current_proc = "<object>"
-                proc_vars: dict[str, dict[str, Any]] = {}
+                proc_vars_by_scope: dict[str, dict[str, Any]] = {}
                 for i, line in enumerate(lines):
                     sm = SECTION_RE.match(line)
                     if sm:
@@ -49,13 +49,13 @@ def discover_extended_entrypoints(source_roots: list[str], graph=None) -> dict[s
                     pm = PROC_RE.match(line)
                     if pm:
                         current_proc = pm.group(1).strip('"')
-                        proc_vars = {}
+                        proc_vars_by_scope.setdefault(current_proc, {})
                     vm = VAR_RE.match(line)
                     if vm:
                         vname = (vm.group(1) or vm.group(2)).strip()
                         kind = vm.group(3).title().replace("Xmlport", "XMLport")
                         var = {"name": vname, "type": kind, "object_id": int(vm.group(4)), "line": i + 1 + offset, "scope": current_proc}
-                        (proc_vars if current_proc != "<object>" else vars_by_name)[vname.casefold()] = var
+                        (proc_vars_by_scope.setdefault(current_proc, {}) if current_proc != "<object>" else vars_by_name)[vname.casefold()] = var
                     # EventSubscriber attributes are commonly in procedure declaration attributes.
                     em = EVENT_RE.search(line)
                     if em:
@@ -106,7 +106,13 @@ def discover_extended_entrypoints(source_roots: list[str], graph=None) -> dict[s
                                        "object_vars": vars_by_name})
                 # Second pass uses object + procedure-local declarations and literal assignments.
                 all_vars = dict(vars_by_name)
-                all_vars.update(proc_vars)
+                for scoped_vars in proc_vars_by_scope.values():
+                    for variable_key, variable in scoped_vars.items():
+                        previous = all_vars.get(variable_key)
+                        if previous is None:
+                            all_vars[variable_key] = variable
+                        elif (previous["type"], previous["object_id"]) != (variable["type"], variable["object_id"]):
+                            all_vars.pop(variable_key, None)
                 clean = _mask(block)
                 literal_values = {m.group(1).strip().casefold(): int(m.group(2)) for m in ASSIGN_RE.finditer(clean)}
                 for m in RUN_RE.finditer(clean):

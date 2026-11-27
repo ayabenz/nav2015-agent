@@ -85,13 +85,14 @@ These are recorded analysis outputs, not a claim that every NAV object or indire
 - [x] Extract SETRANGE / SETFILTER / RESET and FIND operations, preserving arguments, source locations and resolved field metadata where available.
 - [x] Implement path-sensitive filter-state tracking across IF / ELSE / CASE branches; preserve distinct states at joins rather than merging incompatible filters. Compatible-state compaction remains an optimization.
 - [x] Add conservative local assignment tracking for explicit `:=` statements; attach incoming assignments to IF predicates and preserve divergent IF/CASE path alternatives. Expressions remain symbolic, not evaluated.
-- [ ] Trace relevant values across direct procedure calls where parameter and Record-variable flow can be resolved safely.
+- [ ] Trace relevant values across direct procedure calls where parameter and Record-variable flow can be resolved safely. This is the next data-flow milestone after validating local provenance.
 - [x] Add initial nav-intel conditions command with explicit source-file and optional object/procedure selection; return branch tree, raw predicates and source spans.
 - [ ] Resolve source files automatically from the symbol index and integrate conditions into object/procedure queries.
 - [x] Add unit fixtures for nested IF/ELSE, CASE arms/default, comment/string masking and source line spans.
 - [x] Add fixtures for Option values, qualified field comparisons and unresolved metadata.
 - [x] Add fixtures for SETRANGE clearing, SETFILTER placeholders, RESET invalidation, FINDFIRST lookup annotation and path isolation across IF / ELSE / CASE.
 - [x] Add initial fixtures for literal and Record-field assignments, reassignment, IF/ELSE divergence and unknown-call invalidation. ELSEIF and broader unresolved/dynamic expression coverage remain open.
+- [x] Trace simple intra-procedural assignment provenance transitively (local variable → Record field → IF predicate), preserving source locations and unresolved/cycle markers. Regression tests added; CI validation pending.
 - [x] Document static-analysis limits and avoid presenting inferred branch reachability as runtime fact.
 - [x] Add a separate pure evaluator for explicitly supplied Record snapshots; preserve provenance and return indeterminate for missing/unsupported values.
 - [ ] Add NAV runtime evidence integration only as a separate later capability; a supplied snapshot evaluation is not proof of historical execution.

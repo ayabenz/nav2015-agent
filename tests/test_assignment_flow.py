@@ -10,7 +10,7 @@ def run(source):
 
 def test_literal_assignment_is_attached_to_later_condition():
     nodes, result = run("Status := 'Released';\nIF Status = 'Released' THEN Post;")
-    context = nodes[0]["assignment_context"]["alternatives"][0]
+    context = nodes[-1]["assignment_context"]["alternatives"][0]
     assert context["known_assignments"][0]["target"] == "Status"
     assert context["known_assignments"][0]["expression"] == "'Released'"
     assert context["known_assignments"][0]["evaluated"] is False

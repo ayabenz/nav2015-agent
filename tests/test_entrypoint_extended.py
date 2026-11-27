@@ -130,6 +130,7 @@ def test_links_event_subscriber_to_publisher_declaration(tmp_path):
 """, encoding="utf-8")
     result = discover_extended_entrypoints([str(publisher), str(subscriber)], _graph())
     event = result["event_subscribers"][0]
+    assert event["subscriber_procedure"] == "HandleEvent"
     assert event["publisher_declaration_found"] is True
     assert event["publisher_matches"][0]["publisher_object"] == "Codeunit 50001"
     assert event["publisher_invocation_proven"] is False

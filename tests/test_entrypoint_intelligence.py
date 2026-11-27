@@ -58,3 +58,18 @@ def test_entrypoint_scan_supports_zip_and_reports_source_location(tmp_path):
     assert entry["trigger"] == "OnPreReport"
     assert entry["line"] == 3
     assert entry["runtime_invoked"] is False
+
+def test_reports_absolute_line_numbers_for_multiple_objects_in_one_file(tmp_path):
+    source = tmp_path / "combined.txt"
+    source.write_text(
+        "OBJECT Page 50010 First\n  CODE\n    OnOpenPage()\n"
+        "    BEGIN\n    END;\n\n"
+        "OBJECT Codeunit 50011 Second\n  CODE\n    OnRun()\n"
+        "    BEGIN\n    END;\n",
+        encoding="utf-8",
+    )
+
+    result = discover_source_entrypoints([str(source)])
+    by_object = {item["object"]: item["line"] for item in result["entries"]}
+    assert by_object["Page 50010"] == 3
+    assert by_object["Codeunit 50011"] == 8

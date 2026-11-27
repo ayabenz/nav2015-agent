@@ -483,3 +483,19 @@ represent each Page Action body as its own graph node. Therefore a Page Action
 declaration is not yet a precise root for its individual action body, and
 reachable procedures may include other procedures belonging to the same object.
 The report must not be interpreted as an execution sequence or runtime call log.
+
+## Individual entry-point body extraction
+
+The business-process inventory now emits `entrypoint_bodies.json` alongside the source-declaration inventory. It extracts separate source bodies for Page Action `OnAction` handlers and supported C/AL object triggers, with stable entry identifiers, action IDs where available, and absolute source line ranges.
+
+This is a source extraction stage only. It does not yet resolve each body's calls into independent CALL-graph roots. In particular, an Action body may contain a textual `CODEUNIT.RUN`, a local procedure call, or a typed Record method; each requires syntax-aware target resolution before it can be connected safely to the dependency graph. Until that stage is implemented, do not interpret the object-level trace as the exact call tree of an individual Action.
+
+The extractor is intentionally conservative:
+- Raw body text and source line ranges are preserved for audit.
+- Action IDs are associated with the nearest parsed Action control declaration.
+- Trigger bodies are isolated from the object CODE section before procedures.
+- `runtime_invoked=false` remains attached to every extracted entry.
+- Unusual formatting, unsupported trigger forms, dynamic dispatch and runtime UI state may remain unresolved.
+
+The generated file is created automatically when running `nav-intel inventory`; no separate command is required.
+

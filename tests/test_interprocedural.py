@@ -143,3 +143,17 @@ def test_boolean_specialization_does_not_guess_complex_condition():
     }]}
     annotate_callsite_boolean_branches(nodes, binding)
     assert "call_site_specializations" not in nodes[0]
+
+
+
+def test_datascrip_style_false_argument_selects_else_path():
+    callee = CALLEE.replace(
+        "IF SalesHeader.",
+        "IF CreateWhseShipment THEN CreateShipment;\\n      IF SalesHeader.",
+    )
+    binding = analyze_direct_call_bindings(CALLER, callee, "BlockStocktakeSalesHeader")
+    nodes = [{"type": "if", "condition": "CreateWhseShipment"}]
+    annotate_callsite_boolean_branches(nodes, binding)
+    annotation = nodes[0]["call_site_specializations"][0]
+    assert annotation["actual_argument"] == "FALSE"
+    assert annotation["compatible_if_outcome"] is False

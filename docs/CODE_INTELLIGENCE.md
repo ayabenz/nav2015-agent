@@ -206,3 +206,18 @@ The analyzer now attaches `normalized_condition` to IF nodes and `normalized_exp
 For example, the Stocktake predicate comparing `tblStocktake."Block Type"` to the `"Item Category"` Option member becomes a comparison node with left and right operands. The resolver separately confirms whether the field and Option member exist in the supplied Table 50063 metadata.
 
 Normalization is structural, not evaluative. It does not determine the current value of a Record field, evaluate Boolean expressions, classify every literal type, or prove a branch reachable. Unrecognized fragments remain raw operand nodes so the original source expression is not discarded.
+
+
+## Evidence-backed condition explanations
+
+When Table metadata is supplied, IF nodes now include `condition_explanation` alongside the raw predicate, normalized expression and resolution details. Comparison operands are classified as resolved field references, Option members, string/numeric/boolean literals, or raw expressions. Boolean AND / OR / NOT nodes retain their nested structure.
+
+For a predicate such as:
+
+```pascal
+tblStocktake."Block Type" = tblStocktake."Block Type"::"Block Type"::"Item Category"
+```
+
+the explanation identifies the left operand as Table 50063 Field 11 (`Block Type`) and the right operand as the `Item Category` Option member, then reports whether that member exists in the supplied OptionString.
+
+This describes what the source compares; it does not read a live or historical record value. The explanation marks comparisons as `evaluated=false`. An actual TRUE/FALSE answer for a document still requires a matching runtime snapshot and execution context.

@@ -151,11 +151,11 @@ Klasifikasi **tidak bergantung** pada `Modified=Yes` atau ID >= 50000. Hanya ber
 
 ### Automatic business-process candidate mapping
 
-Rank candidate entry objects and group candidates whose direct Table-usage footprints overlap:
+Rank candidate entry objects and group candidates whose CALL-reachable procedures use overlapping Tables:
 
 ```powershell
 nav-intel --company datascrip --json discover --limit 300
-nav-intel --company datascrip --json map-processes --limit 300 --min-similarity 0.25
+nav-intel --company datascrip --json map-processes --limit 300 --min-similarity 0.25 --max-depth 5 --max-nodes 5000
 ```
 
-The mapping is heuristic: it uses direct `table_usage` rows for each candidate object, not the transitive tables of all reachable callees. A cluster is a related-candidate group for investigation, not a confirmed end-to-end business process.
+The mapping follows indexed `CALL` edges to bounded reachable procedures and aggregates their `table_usage` records. Results include call paths, unresolved targets, traversal truncation and contributing procedures. A cluster is a related-candidate group for investigation, not a confirmed end-to-end business process.

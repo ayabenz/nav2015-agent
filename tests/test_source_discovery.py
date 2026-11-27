@@ -45,6 +45,8 @@ def graph_db():
             ('Codeunit 60002.Update','Codeunit 60002','Update',5,0,'CUSTOM');
         INSERT INTO edges VALUES
             ('Codeunit 60001.Run','Codeunit 60002.Update','CALL',1,1,'Codeunit 60001','Codeunit 60002');
+        INSERT INTO table_usage VALUES
+            ('Codeunit 60002.Update','CUSTOM','Table 36','Sales Header','WRITE',1,1,'Codeunit 60002');
     """)
     return db
 
@@ -73,6 +75,9 @@ def test_trace_resolves_call_graph_nodes_to_source_exports(tmp_path):
     assert child["call_path"] == ["Codeunit 60001.Run", "Codeunit 60002.Update"]
     assert result["process_summary"]["procedure_count"] == 2
     assert result["process_summary"]["call_edge_count"] == 1
+    assert result["process_summary"]["table_count"] == 1
+    assert child["table_usage"][0]["usage"] == "WRITE"
+    assert result["table_usage_summary"][0]["table_node"] == "Table 36"
     assert result["edge_count"] == 1
     assert result["semantics"]["runtime_evaluated"] is False
 

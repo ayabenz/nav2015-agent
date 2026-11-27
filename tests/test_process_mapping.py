@@ -79,7 +79,7 @@ def test_mapping_reports_depth_truncation_and_unresolved_call_targets():
         "Codeunit 60001.Write", "Codeunit 99999", "CALL", 1, 1,
         "Codeunit 60001", "Codeunit 99999",
     ))
-    result = map_candidate_processes(db, max_depth=1)
+    result = map_candidate_processes(db, max_depth=2)
     page = next(item for item in result["candidates"] if item["object"] == "Page 42")
     assert page["unresolved_call_targets"] == [{
         "src": "Codeunit 60001.Write",

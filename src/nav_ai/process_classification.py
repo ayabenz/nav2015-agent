@@ -31,6 +31,53 @@ def _contains_term(text: str, term: str) -> bool:
     return bool(needle) and f" {needle} " in f" {normalized} "
 
 
+def _operational_profile(candidate: dict[str, Any]) -> dict[str, Any]:
+    procedure_text = " ".join(
+        str(item.get("node") or "") for item in candidate.get("reachable_procedures", [])
+    ).casefold()
+    table_usages = {
+        str(usage).upper()
+        for table in candidate.get("tables", [])
+        for usage in table.get("usages", [])
+    }
+    posting_verbs = (
+        "post", "posting", "register", "release", "ship", "receive",
+        "invoice", "apply", "adjust", "transfer",
+    )
+    matched_verbs = [verb for verb in posting_verbs if _contains_term(procedure_text, verb)]
+    write_present = bool(table_usages & {"WRITE", "INSERT", "MODIFY", "DELETE"})
+    read_present = bool(table_usages & {"READ", "VAR", "REF"})
+    setup_present = any(
+        _contains_term(str(candidate.get("name") or ""), term)
+        for term in ("setup", "configuration", "parameter", "mapping")
+    )
+    integration_present = any(
+        _contains_term(procedure_text, term)
+        for term in ("import", "export", "send", "receive", "edi", "xmlport")
+    ) or str(candidate.get("type") or "").casefold() == "xmlport"
+    if integration_present:
+        role = "data_exchange_candidate"
+    elif write_present and matched_verbs:
+        role = "posting_or_transaction_candidate"
+    elif setup_present:
+        role = "setup_or_configuration_candidate"
+    elif read_present and not write_present:
+        role = "read_or_inquiry_candidate"
+    elif write_present:
+        role = "data_maintenance_candidate"
+    else:
+        role = "undetermined"
+    return {
+        "role_hint": role,
+        "matched_procedure_verbs": matched_verbs,
+        "table_usage_kinds": sorted(table_usages),
+        "write_evidence_present": write_present,
+        "read_evidence_present": read_present,
+        "confidence": "heuristic",
+        "semantics": "static procedure-name and indexed Table-usage profile; not runtime behavior",
+    }
+
+
 def classify_process_candidate(candidate: dict[str, Any]) -> dict[str, Any]:
     """Return ranked domain hints with explicit lexical evidence and uncertainty."""
     object_text = " ".join(str(candidate.get(key) or "") for key in ("object", "name", "type"))
@@ -68,6 +115,7 @@ def classify_process_candidate(candidate: dict[str, Any]) -> dict[str, Any]:
             "ranked_domains": [],
             "evidence": {},
             "classification_semantics": "heuristic_source_vocabulary_only",
+            "operational_profile": _operational_profile(candidate),
         }
     top_score = ranked[0][1]
     tied = [name for name, score in ranked if score == top_score]
@@ -87,6 +135,7 @@ def classify_process_candidate(candidate: dict[str, Any]) -> dict[str, Any]:
         "classification_semantics": "heuristic_source_vocabulary_only",
         "runtime_executed": False,
         "business_process_validated": False,
+        "operational_profile": _operational_profile(candidate),
     }
 
 

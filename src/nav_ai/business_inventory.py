@@ -14,6 +14,7 @@ from .entrypoint_intelligence import discover_source_entrypoints
 from .entrypoint_tracing import trace_entrypoint_graph
 from .entrypoint_bodies import discover_entrypoint_bodies
 from .entrypoint_call_mapping import map_entrypoint_calls
+from .entrypoint_extended import discover_extended_entrypoints
 
 
 def _slug(value: str) -> str:

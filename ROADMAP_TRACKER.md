@@ -274,11 +274,14 @@ These are separate historical runs with different collection scopes. They must n
 - [x] Summarize explicit callee VAR parameter and Record-field mutations and map supported effects back to simple caller arguments.
 - [x] Apply existing Boolean-literal path specialization so incompatible mutations are discarded and unresolved paths are not treated as definite.
 - [x] Preserve unavailable, ambiguous, nonmatching and unsupported edge states explicitly; retain `runtime_evaluated: false`.
-- [ ] Compose mutation summaries recursively across multiple graph hops with bounded depth and cycle detection.
-- [ ] Feed edge effects into caller assignment-flow analysis so downstream caller IF/ELSE conditions expose interprocedural symbolic context.
+- [x] Compose mutation summaries across multiple graph hops with bounded propagation rounds; cycles cannot expand beyond the configured depth.
+- [ ] Feed the composed graph effects into every reached procedure's condition/assignment-flow output so downstream IF/ELSE nodes expose multi-hop symbolic context.
 - [ ] Join propagated Record field effects with Table/Field/Option metadata and Record filter state for business-process explanations.
 
 **Current boundary:** this phase provides direct per-edge bindings and symbolic VAR effects. It does not yet perform recursive graph-wide effect composition or assert that any branch/call executed in NAV.
 
 
 **Validation (2026-11-27 — automatic interprocedural edge summaries):** [GitHub Actions run #239](https://github.com/ayabenz/nav2015-agent/actions/runs/45933401095) passed: **101 passed, 1 opt-in full-export test skipped in 1.66s**. Coverage includes direct traced-edge call binding, Boolean-specialized explicit VAR Record-field effects, and explicit missing-source status. The run validates static fixtures and the fast suite; recursive graph-wide effect composition remains open.
+
+
+**Implementation update (2026-11-27 — bounded multi-hop VAR composition):** `trace` now accepts `--max-interprocedural-depth` (default 2). Explicit VAR mutation summaries are iteratively composed from callee to caller across the discovered CALL edges, with a fixed propagation-round bound to prevent unbounded cycle traversal. Procedure-level summaries and composed per-edge caller effect maps are included in the JSON. Regression tests cover a three-Codeunit A → B → C chain and depth-zero behavior. The next remaining integration is to inject these composed effects into all reached procedures' condition-analysis assignment contexts, rather than only exposing them in interprocedural summaries.

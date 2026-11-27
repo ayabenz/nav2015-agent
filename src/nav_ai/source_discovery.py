@@ -133,16 +133,21 @@ def trace_call_graph(graph: sqlite3.Connection, start: str,
         (start,),
     ).fetchone()
     if start_row:
-        starts = [row[0] for row in graph.execute(
+        procedure_starts = [row[0] for row in graph.execute(
             "SELECT node FROM procedures WHERE object_node=? ORDER BY node",
             (start_row[0],),
         ).fetchall()]
+        start_label = start_row[0]
+        object_scope_starts = [start_row[0], f"{start_row[0]} TRIGGERS"]
+        has_object_scope_calls = graph.execute(
+            "SELECT 1 FROM edges WHERE kind='CALL' AND src IN (?,?) LIMIT 1",
+            tuple(object_scope_starts),
+        ).fetchone() is not None
+        if not procedure_starts and not has_object_scope_calls:
+            raise ValueError(f"Object has no indexed procedures or object-scope calls: {start_label}")
         # Object-level code and trigger scope are separate graph sources in
         # depgraph.py; include them as roots so their direct CALL edges are not lost.
-        starts.extend([start_row[0], f"{start_row[0]} TRIGGERS"])
-        start_label = start_row[0]
-        if not starts:
-            raise ValueError(f"Object has no indexed procedures: {start_label}")
+        starts = procedure_starts + object_scope_starts
     else:
         proc = graph.execute(
             "SELECT node,object_node FROM procedures WHERE node=? COLLATE NOCASE",

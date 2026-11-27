@@ -19,6 +19,7 @@ from .semantic_conditions import (parse_record_variables, parse_table_metadata,
                                    enrich_control_flow, enrich_assignment_flow)
 from .record_filters import analyze_record_filter_paths, annotate_record_lookup_conditions
 from .trace_interprocedural import analyze_trace_call_edges
+from .trace_filters import analyze_trace_filter_edges
 
 
 def _iter_source_texts(root: str, source_labels: set[str] | None = None):
@@ -305,6 +306,22 @@ def trace_call_graph(graph: sqlite3.Connection, start: str,
             absolute_line = int(line) + offset
             local_map.setdefault(absolute_line, []).extend(effects)
 
+    filter_interprocedural_analysis = analyze_trace_filter_edges(
+        trace_edges, catalog, symbols, tables
+    )
+    filter_effects_by_procedure: dict[str, dict[int, list[dict[str, Any]]]] = {}
+    for edge_result in filter_interprocedural_analysis.get("edges", []):
+        if edge_result.get("status") != "analyzed":
+            continue
+        target_map = edge_result.get("caller_filter_effect_map", {})
+        if not target_map:
+            continue
+        offset = int(edge_result.get("caller_object_line_offset", 0))
+        local_map = filter_effects_by_procedure.setdefault(edge_result["src"], {})
+        for line, effects in target_map.items():
+            absolute_line = int(line) + offset
+            local_map.setdefault(absolute_line, []).extend(effects)
+
     procedures = []
     condition_analysis_count = 0
     object_cache: dict[str, dict[str, Any]] = {}
@@ -410,7 +427,8 @@ def trace_call_graph(graph: sqlite3.Connection, start: str,
                     enrich_control_flow(tree["nodes"], variables, tables)
                 missing_table_ids = sorted(set(variables.values()) - set(tables))
                 filters = analyze_record_filter_paths(
-                    tree["nodes"], variables, tables, source["source_path"]
+                    tree["nodes"], variables, tables, source["source_path"],
+                    call_effects=filter_effects_by_procedure.get(node, {}),
                 )
                 annotate_record_lookup_conditions(tree["nodes"], filters["lookups"])
                 assignment_flow = analyze_assignment_flow(
@@ -425,6 +443,9 @@ def trace_call_graph(graph: sqlite3.Connection, start: str,
                     "assignment_flow_analysis": assignment_flow,
                     "interprocedural_call_effect_count": sum(
                         len(items) for items in call_effects_by_procedure.get(node, {}).values()
+                    ),
+                    "interprocedural_filter_effect_count": sum(
+                        len(items) for items in filter_effects_by_procedure.get(node, {}).values()
                     ),
                     "record_filter_analysis": filters,
                     "semantic_resolution": {
@@ -493,6 +514,7 @@ def trace_call_graph(graph: sqlite3.Connection, start: str,
         "procedures": procedures,
         "call_edges": trace_edges,
         "interprocedural_analysis": interprocedural_analysis,
+        "interprocedural_filter_analysis": filter_interprocedural_analysis,
         "table_usage_summary": aggregate_table_usage,
         "process_summary": {
             "procedure_count": len(procedures),

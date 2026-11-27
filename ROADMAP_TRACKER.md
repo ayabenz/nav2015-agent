@@ -318,3 +318,6 @@ These are separate historical runs with different collection scopes. They must n
 
 
 **Validation (2026-11-27 — branch effect summaries):** GitHub Actions [run #46015531881](https://github.com/ayabenz/nav2015-agent/actions/runs/46015531881) passed on commit `00efecc15fb74cd2960d39789b4eb39298518b7f`: **127 passed, 1 skipped in 1.26s**. Coverage includes classification of ERROR/MESSAGE/CONFIRM/EXIT/COMMIT, Record writes/validation/filter calls, object RUN calls, selected and indeterminate branches, and nested branch certainty. The opt-in full Datascrip ZIP test remains skipped in the default suite. The tests validate source parsing and classification, not NAV runtime execution.
+
+
+**Implementation update (2026-11-27 — broader NAV Record effects):** Expanded branch-effect classification to include Record bulk writes (`DELETEALL`, `MODIFYALL`), lookups (`GET`, `FIND`, `FINDFIRST`, `FINDLAST`, `FINDSET`, `ISEMPTY`, `COUNT`), and calculations (`CALCFIELDS`, `CALCSUMS`). EXIT with a return expression is also recognized. These remain source-level classifications, not proof of database persistence. Regression tests added; CI pending.

@@ -10,8 +10,9 @@ CALLER = """OBJECT Codeunit 50081 Caller
       CUBlockStocktake : Codeunit 50107;
     BEGIN
       CUBlockStocktake.BlockStocktakeSalesHeader(Rec, FALSE);
-      IF Rec.Status = Rec.Status::Released THEN
+      IF Rec.Status = Rec.Status::Released THEN BEGIN
         MESSAGE('released');
+      END;
     END;
   }
 }"""

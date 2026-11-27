@@ -141,3 +141,22 @@ nav-intel --company datascrip --json conditions --source-file "reports/datascrip
 Repeat `--table-source` for each additional Table export needed by the analyzed procedure. The resolver currently handles qualified `RecordVariable.Field` references. Unqualified field names inside C/AL `WITH` scopes, RecordRef/FieldRef, dynamic expressions and cross-procedure data flow remain unresolved by design. The output remains static and always sets `runtime_evaluated=false`.
 
 The resolver is deliberately conservative: missing variable declarations, Table exports or fields produce explicit unresolved reasons. Option members absent from OptionString are marked unverified; no runtime branch is inferred.
+
+
+## Static Record filter and lookup analysis
+
+When Table TXT metadata is supplied, the `conditions` command also scans the selected source region for Record operations:
+
+- `SETRANGE(Field, From[, To])` and `SETFILTER(Field, Filter[, Value...])` are retained with their raw arguments, source line, Record variable, Table ID and resolved Field metadata when available.
+- `SETRANGE(Field)` removes the tracked filter for that field.
+- `RESET` clears all tracked filters for that Record variable.
+- `FINDFIRST`, `FINDLAST` and `FINDSET` produce lookup snapshots containing the filters seen earlier in source order.
+- A direct `IF Record.FINDFIRST THEN` or `IF NOT Record.FINDFIRST THEN` is annotated with the possible matching-record / no-matching-record meaning.
+
+Example against Codeunit 50107:
+
+```powershell
+nav-intel --company datascrip --json conditions --source-file "reports/datascrip/ownership/Codeunit_50107.txt" --object "Codeunit 50107" --procedure "BlockStocktakeSalesHeader" --table-source "reports/datascrip/stocktake/Table_50063.txt"
+```
+
+**Important limitations:** filter expressions and `%1` substitution arguments are preserved as source text, not evaluated. The current pass scans calls in source order. If the analyzed region contains IF/CASE/ELSE, lookup filter state is explicitly marked `branch_ambiguous`; it is not a path-sensitive merge and must not be interpreted as the exact filter set on every branch. It also does not model interprocedural flow, dynamic RecordRef/FieldRef or WITH-scope field references. A lookup result is always `unknown_static`: only NAV runtime evidence can establish whether a row was found.

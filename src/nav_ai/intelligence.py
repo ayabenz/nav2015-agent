@@ -275,9 +275,9 @@ def main(argv: list[str] | None = None) -> int:
                                               parsed["object"]["name"], None, args.source_file,
                                               line_offset=line_offset)
             if args.table_source:
-                variable_source = "\\n".join(v["raw"] for v in parsed_block["variables"])
+                variable_source = "\n".join(v["raw"] for v in parsed_block["variables"])
                 if args.procedure:
-                    variable_source += "\\n" + matches[0]["raw"]
+                    variable_source += "\n" + matches[0]["raw"]
                 variables = parse_record_variables(variable_source)
                 tables = load_table_sources(args.table_source)
                 enrich_control_flow(result["nodes"], variables, tables)

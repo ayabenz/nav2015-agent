@@ -17,6 +17,7 @@ from .control_flow import analyze_control_flow
 from .assignment_flow import analyze_assignment_flow
 from .semantic_conditions import parse_record_variables, parse_table_metadata, enrich_control_flow
 from .record_filters import analyze_record_filter_paths, annotate_record_lookup_conditions
+from .trace_interprocedural import analyze_trace_call_edges
 
 
 def _iter_source_texts(root: str, source_labels: set[str] | None = None):
@@ -420,6 +421,7 @@ def trace_call_graph(graph: sqlite3.Connection, start: str,
         for src, targets in adjacency.items() if src in depth_by_node
         for dst in targets if dst in depth_by_node
     ]
+    interprocedural_analysis = analyze_trace_call_edges(trace_edges, catalog, symbols)
     reached_objects = sorted({item["object_node"] for item in procedures})
     aggregate_table_usage: list[dict[str, Any]] = []
     if reached_objects:
@@ -466,6 +468,7 @@ def trace_call_graph(graph: sqlite3.Connection, start: str,
         "table_metadata_count": len(tables),
         "procedures": procedures,
         "call_edges": trace_edges,
+        "interprocedural_analysis": interprocedural_analysis,
         "table_usage_summary": aggregate_table_usage,
         "process_summary": {
             "procedure_count": len(procedures),
@@ -491,6 +494,7 @@ def trace_call_graph(graph: sqlite3.Connection, start: str,
                 "static IF/ELSE/CASE, assignment and filter analysis for resolved procedures"
                 if analyze_conditions else "not requested"
             ),
+            "interprocedural_analysis": "direct call-site bindings and explicit callee VAR mutations for discovered CALL edges",
             "runtime_evaluated": False,
             "limitations": [
                 "Only CALL edges already present in the dependency graph are traversed.",

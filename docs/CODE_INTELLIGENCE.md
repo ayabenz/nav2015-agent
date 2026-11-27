@@ -221,3 +221,12 @@ tblStocktake."Block Type" = tblStocktake."Block Type"::"Block Type"::"Item Categ
 the explanation identifies the left operand as Table 50063 Field 11 (`Block Type`) and the right operand as the `Item Category` Option member, then reports whether that member exists in the supplied OptionString.
 
 This describes what the source compares; it does not read a live or historical record value. The explanation marks comparisons as `evaluated=false`. An actual TRUE/FALSE answer for a document still requires a matching runtime snapshot and execution context.
+
+
+## Optional evaluation against an explicit record snapshot
+
+A separate helper, `nav_ai.snapshot_evaluator.evaluate_condition_snapshot`, evaluates the supported normalized expression tree against a caller-supplied dictionary of Record values. It performs no SQL access and does not invoke NAV. Missing fields, unsupported expressions and incompatible values produce `indeterminate`, never an assumed FALSE.
+
+For NAV Option fields, a SQL-style integer ordinal is translated through the supplied Table TXT `OptionString` (zero-based option position) before comparison with an Option member. For example, Table 50063 `Jenis Transaksi` ordinal `2` resolves to `ALL` when its OptionString is `IN,OUT,ALL`.
+
+The result provenance is `caller_supplied_snapshot` and `runtime_evaluated=false`. This is a deterministic evaluation of the supplied values, not proof that those values existed at posting time or that NAV executed the procedure. A future CLI integration must require an explicit snapshot file and preserve its provenance.

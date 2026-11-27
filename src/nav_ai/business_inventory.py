@@ -129,7 +129,7 @@ def generate_business_process_inventory(
         graph, entrypoint_bodies, max_depth=max_depth, max_nodes=max_nodes
     )
     (output / "entrypoint_call_mapping.json").write_text(
-        json.dumps(entrypoint_call_mapping, ensure_ascii=False, indent=2) + "\\n", encoding="utf-8"
+        json.dumps(entrypoint_call_mapping, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
     )
     (output / "entrypoint_bodies.json").write_text(json.dumps(entrypoint_bodies, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     (output / "entrypoints.json").write_text(json.dumps(entrypoints, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")

@@ -135,7 +135,7 @@ def analyze_direct_call_bindings(
         name = (variable.group("quoted") or variable.group("name") or "").strip()
         data_type = variable.group("type")
         if name:
-            record_match = re.search(r"\\bRecord\\s+(\\d+)\\b", data_type, re.I)
+            record_match = re.search(r"\bRecord\s+(\d+)\b", data_type, re.I)
             receiver_types[name.casefold()] = (
                 f"Table {record_match.group(1)}" if record_match else data_type.title()
             )

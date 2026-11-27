@@ -256,3 +256,34 @@ nav-intel --company datascrip --json conditions --source-file "reports/datascrip
 ```
 
 The snapshot keys are Record variable names; nested keys are NAV field names. Record variable declarations in both local VAR sections and procedure parameters are resolved. The example is illustrative only: values must come from an explicitly selected and properly scoped record snapshot. If a predicate references a field whose Table metadata or snapshot value is missing, its result remains indeterminate.
+
+
+## Static assignment and data-flow analysis
+
+The `conditions` command also runs `nav_ai.assignment_flow` and attaches `assignment_context` to each IF node. It tracks explicit assignments such as `Status := 'Released'` and `SalesHeader.Status := SalesHeader.Status::Released`, then links the latest visible assignment to a later condition. IF/ELSE and CASE branches retain separate incoming assignment alternatives; values from divergent paths are not collapsed into one assertion.
+
+Assignment expressions remain symbolic source text. The analyzer does not calculate expressions, query SQL, infer values from database state, or prove a path was executed. When an unrecognized procedure call is encountered, all currently tracked values on that path are invalidated because C/AL VAR parameters may be modified. The first implementation intentionally does not trace values across procedure boundaries, triggers, WITH scopes, or implicit database mutations.
+
+Example output shape (abbreviated):
+
+```json
+{
+  "assignment_context": {
+    "alternatives": [
+      {
+        "known_assignments": [
+          {
+            "target": "Status",
+            "expression": "'Released'",
+            "line": 12,
+            "evaluated": false
+          }
+        ]
+      }
+    ],
+    "runtime_evaluated": false
+  }
+}
+```
+
+The `assignment_flow_analysis` top-level section records assignment events, unknown-call invalidations, and the static-path limitation. This is provenance for source-level reasoning, not a substitute for a caller-supplied snapshot or NAV runtime trace.

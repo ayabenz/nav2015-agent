@@ -53,8 +53,8 @@ def render_inventory_markdown(inventory: dict[str, Any]) -> str:
     lines += [
         "## Candidate inventory",
         "",
-        "| Candidate | Domain hint | Origin | Score | Procedures | Tables | Trace status |",
-        "|---|---|---|---:|---:|---:|---|",
+        "| Candidate | Domain hint | Role hint | Origin | Score | Procedures | Tables | Trace status |",
+        "|---|---|---|---|---:|---:|---:|---|",
     ]
     traces = inventory["traces"]
     for candidate in mapping["candidates"]:
@@ -63,6 +63,7 @@ def render_inventory_markdown(inventory: dict[str, Any]) -> str:
             f"| {candidate['object']} — {candidate.get('name') or ''} "
             f"| {candidate.get('domain_classification', {}).get('primary_domain', 'unclassified')} "
             f"({candidate.get('domain_classification', {}).get('confidence', 'unknown')}) "
+            f"| {candidate.get('domain_classification', {}).get('operational_profile', {}).get('role_hint', 'undetermined')} "
             f"| {candidate['origin']} | {candidate['score']} "
             f"| {candidate.get('reachable_procedure_count', 0)} "
             f"| {len(candidate.get('table_ids', []))} "

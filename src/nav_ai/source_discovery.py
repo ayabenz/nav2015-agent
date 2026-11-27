@@ -217,6 +217,7 @@ def trace_call_graph(graph: sqlite3.Connection, start: str,
                     "table_id": object_id, "status": "parse_error", "error": str(exc)
                 })
     procedures = []
+    condition_analysis_count = 0
     object_cache: dict[str, dict[str, Any]] = {}
     for node, depth in sorted(depth_by_node.items(), key=lambda item: (item[1], item[0].casefold())):
         row = graph.execute(
@@ -255,7 +256,19 @@ def trace_call_graph(graph: sqlite3.Connection, start: str,
                 item["source_line_end"] = proc_info["line_end"]
             else:
                 item["source_procedure_status"] = "not_found_in_resolved_object"
-            if analyze_conditions and proc_info:
+            if analyze_conditions and source["status"] != "resolved":
+                item["condition_analysis"] = {
+                    "status": "source_unavailable",
+                    "reason": source["status"],
+                    "runtime_evaluated": False,
+                }
+            elif analyze_conditions and not proc_info:
+                item["condition_analysis"] = {
+                    "status": "procedure_not_found",
+                    "reason": "Procedure name from dependency graph was not found in resolved source object",
+                    "runtime_evaluated": False,
+                }
+            elif analyze_conditions and proc_info:
                 try:
                     parsed_object = parse_nav_text(source["raw_block"], source["source_path"])
                     proc_matches = [
@@ -289,11 +302,13 @@ def trace_call_graph(graph: sqlite3.Connection, start: str,
                     variables = parse_record_variables(variable_source)
                     if tables:
                         enrich_control_flow(tree["nodes"], variables, tables)
+                    missing_table_ids = sorted(set(variables.values()) - set(tables))
                     filters = analyze_record_filter_paths(
                         tree["nodes"], variables, tables, source["source_path"]
                     )
                     annotate_record_lookup_conditions(tree["nodes"], filters["lookups"])
                     item["condition_analysis"] = {
+                        "status": "analyzed",
                         "nodes": tree["nodes"],
                         "assignment_flow_analysis": analyze_assignment_flow(
                             tree["nodes"], source["source_path"]
@@ -303,11 +318,13 @@ def trace_call_graph(graph: sqlite3.Connection, start: str,
                             "enabled": bool(tables),
                             "record_variables": variables,
                             "table_ids_loaded": sorted(tables),
+                            "missing_table_ids_for_procedure": missing_table_ids,
                             "table_source_status": table_source_status,
                             "runtime_evaluated": False,
                         },
                         "runtime_evaluated": False,
                     }
+                    condition_analysis_count += 1
                 except (ValueError, KeyError) as exc:
                     item["condition_analysis"] = {
                         "status": "unavailable",
@@ -329,6 +346,7 @@ def trace_call_graph(graph: sqlite3.Connection, start: str,
         "edge_count": len(trace_edges),
         "truncated": truncated,
         "conditions_analyzed": bool(analyze_conditions),
+        "condition_analysis_count": condition_analysis_count,
         "table_metadata_count": len(tables),
         "procedures": procedures,
         "call_edges": trace_edges,

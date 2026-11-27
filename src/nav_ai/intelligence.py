@@ -34,9 +34,14 @@ def _attach_snapshot_evaluations(nodes: Any, snapshot: dict[str, Any],
             _attach_snapshot_evaluations(node, snapshot, variables, tables)
     elif isinstance(nodes, dict):
         if nodes.get("type") == "if" and isinstance(nodes.get("normalized_condition"), dict):
-            nodes["snapshot_evaluation"] = evaluate_condition_snapshot(
+            evaluation = evaluate_condition_snapshot(
                 nodes["normalized_condition"], snapshot, variables, tables
             )
+            evaluation["selected_branch"] = (
+                "THEN" if evaluation["result"] is True else
+                "ELSE" if evaluation["result"] is False else "UNKNOWN"
+            )
+            nodes["snapshot_evaluation"] = evaluation
         for value in nodes.values():
             if isinstance(value, (dict, list)):
                 _attach_snapshot_evaluations(value, snapshot, variables, tables)

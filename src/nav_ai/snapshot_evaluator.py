@@ -44,9 +44,12 @@ def _snapshot_value(expression: str, snapshot: dict[str, Any],
                       if str(key).casefold() == field_name.casefold()), None)
         if value is None and not any(str(key).casefold() == field_name.casefold() for key in record):
             return None, f"snapshot_field_missing:{variable}.{field_name}"
-        table_id = variables.get(variable.casefold())
         resolved = resolve_condition(raw, variables, tables)["field_references"]
         field = resolved[0] if resolved else {}
+        if field.get("resolution") != "resolved":
+            return None, f"field_metadata_unresolved:{variable}.{field_name}"
+        if value is None:
+            return None, f"snapshot_value_null:{variable}.{field_name}"
         if field.get("field_type", "").casefold() == "option" and isinstance(value, int):
             choices = field.get("option_values", [])
             if 0 <= value < len(choices):

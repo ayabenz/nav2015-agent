@@ -422,3 +422,15 @@ nav-intel --company datascrip discover --limit 300
 The command reads the existing dependency graph only; it does not need source exports or rebuild the graph. It prioritizes Page, Report, XMLport, and Codeunit objects using object origin, incoming/outgoing graph-edge counts, and indexed procedure counts. Use `--include-standard` to include unchanged standard NAV objects.
 
 The output is a review queue, not a list of confirmed business processes. A Page may be a lookup/subpage, a Report may be an auxiliary report, and low incoming-edge count does not prove external initiation. Static graph edges may omit UI actions, job queues, integrations, events, and dynamic calls. After reviewing candidates, pass a selected object to `document` with the Datascrip source ZIP to build its evidence-backed Markdown and JSON process trace. Automatic grouping of related candidates into end-to-end processes is a subsequent capability.
+
+
+## Automatic candidate mapping by Table footprint
+
+Use `discover` to rank likely entry objects, then `map-processes` to group candidates whose direct Table usage overlaps:
+
+```powershell
+nav-intel --company datascrip --json discover --limit 300
+nav-intel --company datascrip --json map-processes --limit 300 --min-similarity 0.25
+```
+
+The mapper calculates Jaccard similarity over each candidate object's direct `table_usage` set. It reports the shared Tables, pairwise similarity and heuristic clusters. It deliberately does not claim that these are confirmed business processes: reachable callee footprints are not yet included, shared master Tables may connect unrelated workflows, and transitive grouping can join candidates that do not all share Tables pairwise. Use the results to prioritize source-backed `trace` and `document` investigations.

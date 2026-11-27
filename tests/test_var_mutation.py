@@ -65,7 +65,7 @@ def test_summarizes_mapped_nested_call_mutation_to_var_parameter():
         ),
         "UpdateHeader",
         "parent.txt",
-        call_effects={8: [nested_effect]},
+        call_effects={9: [nested_effect]},
     )
     header = next(item for item in result["var_parameters"] if item["parameter"] == "SalesHeader")
     assert any(item["target"] == "SalesHeader.Status"

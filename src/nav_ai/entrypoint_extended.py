@@ -128,7 +128,13 @@ def discover_extended_entrypoints(source_roots: list[str], graph=None) -> dict[s
                         elif (previous["type"], previous["object_id"]) != (variable["type"], variable["object_id"]):
                             all_vars.pop(variable_key, None)
                 clean = _mask(block)
-                literal_values = {m.group(1).strip().casefold(): int(m.group(2)) for m in ASSIGN_RE.finditer(clean)}
+                literal_assignments: dict[str, set[int]] = {}
+                for assignment in ASSIGN_RE.finditer(clean):
+                    literal_assignments.setdefault(assignment.group(1).strip().casefold(), set()).add(int(assignment.group(2)))
+                literal_values = {
+                    key: next(iter(values)) for key, values in literal_assignments.items()
+                    if len(values) == 1
+                }
                 for m in RUN_RE.finditer(clean):
                     kind = m.group(1).title().replace("Xmlport", "XMLport")
                     expr = m.group(2).strip()

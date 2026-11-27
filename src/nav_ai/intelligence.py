@@ -378,7 +378,7 @@ def main(argv: list[str] | None = None) -> int:
     discover.add_argument("--limit", type=int, default=200, help="maximum candidates to return")
     discover.add_argument("--include-standard", action="store_true", help="include STANDARD_UNCHANGED objects")
 
-    mapping = sub.add_parser("map-processes", help="group entry candidates by overlapping direct Table usage")
+    mapping = sub.add_parser("map-processes", help="group entry candidates by Table usage across reachable CALL procedures")
     mapping.add_argument("--limit", type=int, default=200, help="maximum entry candidates to map")
     mapping.add_argument("--include-standard", action="store_true", help="include STANDARD_UNCHANGED objects")
     mapping.add_argument("--min-similarity", type=float, default=0.25, help="minimum Jaccard overlap of transitive Table sets (0, 1]")

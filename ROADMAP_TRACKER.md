@@ -279,3 +279,6 @@ These are separate historical runs with different collection scopes. They must n
 - [ ] Join propagated Record field effects with Table/Field/Option metadata and Record filter state for business-process explanations.
 
 **Current boundary:** this phase provides direct per-edge bindings and symbolic VAR effects. It does not yet perform recursive graph-wide effect composition or assert that any branch/call executed in NAV.
+
+
+**Validation (2026-11-27 — automatic interprocedural edge summaries):** [GitHub Actions run #239](https://github.com/ayabenz/nav2015-agent/actions/runs/45933401095) passed: **101 passed, 1 opt-in full-export test skipped in 1.66s**. Coverage includes direct traced-edge call binding, Boolean-specialized explicit VAR Record-field effects, and explicit missing-source status. The run validates static fixtures and the fast suite; recursive graph-wide effect composition remains open.

@@ -233,3 +233,6 @@ These are separate historical runs with different collection scopes. They must n
 
 
 **Implementation update (2026-11-27 — bounded nested-call propagation):** `nav-intel conditions` now accepts repeatable `--nested-source` exports. It analyzes direct callees invoked by the selected procedure, specializes supported Boolean branches from literal arguments, and includes resulting mapped VAR effects in the selected procedure's mutation summary. Those effects can then be propagated to the selected procedure's own callers via `--call-source`, covering a bounded A → B → C chain. This is not yet recursive arbitrary-depth graph traversal. A regression fixture covers B passing `FALSE` to C and receiving only C's ELSE-side `VAR Record` field mutation. CI pending.
+
+
+**Validation (2026-11-27):** Bounded nested-call VAR propagation passed the complete GitHub Actions suite: [run #172](https://github.com/ayabenz/nav2015-agent/actions/runs/45928951416), **88 passed in 0.77s**. This validates the new nested mutation-summary path and the existing direct caller propagation tests; arbitrary-depth call graph traversal remains future work.

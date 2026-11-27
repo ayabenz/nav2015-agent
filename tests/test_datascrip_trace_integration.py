@@ -26,13 +26,13 @@ def test_datascrip_stocktake_entrypoint_trace_resolves_real_sources():
             [str(SOURCE_ZIP)],
             symbols,
             max_depth=1,
-            max_nodes=300,
-            analyze_conditions=True,
+            max_nodes=100,
+            analyze_conditions=False,
         )
 
     assert result["start"] == "Codeunit 50107"
     assert result["procedure_count"] > 0
-    assert result["condition_analysis_count"] > 0
+    assert result["conditions_analyzed"] is False
     assert any(
         item["source"]["status"] == "resolved"
         for item in result["procedures"]

@@ -353,6 +353,7 @@ def main(argv: list[str] | None = None) -> int:
     trace.add_argument("--source-root", action="append", required=True, help="TXT file, ZIP file, or directory containing NAV TXT exports; repeatable")
     trace.add_argument("--max-depth", type=int, default=5, help="maximum procedure-call edges from the start (default: 5)")
     trace.add_argument("--max-nodes", type=int, default=5000, help="maximum procedure nodes to include (default: 5000)")
+    trace.add_argument("--analyze-conditions", action="store_true", help="analyze IF/ELSE/CASE, assignments and filters for discovered procedures; load Table metadata from source roots")
 
     tab = sub.add_parser("table", help="show all indexed READ/WRITE usage for a table")
     tab.add_argument("node", help='canonical table node, e.g. "Table 36"')
@@ -520,6 +521,7 @@ def main(argv: list[str] | None = None) -> int:
                         result = trace_call_graph(
                             graph, args.start, args.source_root, symbols,
                             max_depth=args.max_depth, max_nodes=args.max_nodes,
+                            analyze_conditions=args.analyze_conditions,
                         )
                 elif args.command == "object":
                     result = object_detail(graph, args.node)

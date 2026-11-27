@@ -41,6 +41,53 @@ def _attach_snapshot_evaluations(nodes: Any, snapshot: dict[str, Any],
 
 
 
+def _build_nested_call_effects(caller_block: str, caller_path: str,
+                               nested_sources: list[str]) -> dict[int, list[dict[str, Any]]]:
+    """Summarize one level of direct nested callees for the selected caller object.
+
+    The returned effects are keyed by source line in caller_block and can be
+    passed to analyze_var_parameter_mutations for the caller procedure. This is
+    the building block for bounded multi-hop propagation; it does not recurse
+    through arbitrary call graphs.
+    """
+    combined: dict[int, list[dict[str, Any]]] = {}
+    for nested_path in nested_sources:
+        nested_text = Path(nested_path).read_text(encoding="utf-8-sig", errors="replace")
+        for _, nested_block in split_objects(nested_text):
+            nested_parsed = parse_nav_text(nested_block, nested_path)
+            for nested_procedure in nested_parsed.get("procedures", []):
+                mutation_summary = analyze_var_parameter_mutations(
+                    nested_block, nested_procedure["name"], nested_path
+                )
+                effects_by_parameter = {
+                    item["parameter"].casefold(): item
+                    for item in mutation_summary["var_parameters"]
+                }
+                binding = analyze_direct_call_bindings(
+                    caller_block, nested_block, nested_procedure["name"],
+                    caller_path, nested_path,
+                )
+                for site in binding["call_sites"]:
+                    site["var_parameter_effects"] = []
+                    for argument in site["arguments"]:
+                        if not argument.get("by_reference"):
+                            continue
+                        effect = effects_by_parameter.get(argument["parameter"].casefold())
+                        if effect:
+                            site["var_parameter_effects"].append({
+                                "parameter": argument["parameter"],
+                                "caller_argument": argument.get("argument"),
+                                "caller_argument_record_type": argument.get("argument_record_type"),
+                                "mutation_state": effect["mutation_state"],
+                                "mutations": effect["mutations"],
+                                "propagation": "symbolic_only",
+                            })
+                effect_map = build_caller_var_effect_map(binding)
+                for line, effects in effect_map.items():
+                    combined.setdefault(line, []).extend(effects)
+    return combined
+
+
 def _analyze_caller_effect_flows(caller_text: str, caller_path: str,
                                   effect_map: dict[int, list[dict[str, Any]]]) -> list[dict[str, Any]]:
     """Run path-sensitive assignment analysis on caller procedures containing mapped calls."""
@@ -295,6 +342,7 @@ def main(argv: list[str] | None = None) -> int:
     cond.add_argument("--table-source", action="append", default=[], help="Table TXT metadata export; repeat for multiple tables")
     cond.add_argument("--snapshot-json", help="explicit Record-variable snapshot JSON; requires --table-source")
     cond.add_argument("--call-source", action="append", default=[], help="caller NAV TXT export to inspect for direct calls into the selected procedure; repeatable")
+    cond.add_argument("--nested-source", action="append", default=[], help="NAV TXT export(s) called by the selected procedure; use to include one additional VAR-effect hop; repeatable")
 
     args = parser.parse_args(argv)
     base = Path("data")
@@ -343,8 +391,18 @@ def main(argv: list[str] | None = None) -> int:
                 result = analyze_control_flow(code, parsed["object"]["type"], parsed["object"]["id"],
                                               parsed["object"]["name"], None, args.source_file,
                                               line_offset=line_offset)
-            if args.call_source and not args.procedure:
-                raise ValueError("--call-source requires --procedure")
+            if (args.call_source or args.nested_source) and not args.procedure:
+                raise ValueError("--call-source and --nested-source require --procedure")
+            nested_effect_map = (
+                _build_nested_call_effects(block, args.source_file, args.nested_source)
+                if args.nested_source else {}
+            )
+            mutation_summary = analyze_var_parameter_mutations(
+                block, args.procedure, args.source_file, call_effects=nested_effect_map
+            ) if args.procedure else None
+            if mutation_summary is not None:
+                result["callee_var_mutation_summary"] = mutation_summary
+                result["nested_call_effect_map"] = nested_effect_map
             assignment_analysis = analyze_assignment_flow(result["nodes"], args.source_file)
             result["assignment_flow_analysis"] = assignment_analysis
             if args.call_source:
@@ -354,9 +412,6 @@ def main(argv: list[str] | None = None) -> int:
                     binding = analyze_direct_call_bindings(
                         caller_text, block, args.procedure or "",
                         caller_path, args.source_file,
-                    )
-                    mutation_summary = analyze_var_parameter_mutations(
-                        block, args.procedure or "", args.source_file
                     )
                     effects_by_parameter = {
                         item["parameter"].casefold(): item

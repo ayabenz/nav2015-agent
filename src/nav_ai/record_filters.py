@@ -42,6 +42,7 @@ def analyze_record_filters(
 ) -> dict[str, Any]:
     """Track active filters per Record variable until RESET or later replacement."""
     tokens = tokenize(source)
+    has_control_flow = any(t["upper"] in {"IF", "CASE", "ELSE"} for t in tokens)
     active: dict[str, dict[str, dict[str, Any]]] = {}
     events: list[dict[str, Any]] = []
     lookups: list[dict[str, Any]] = []
@@ -106,6 +107,7 @@ def analyze_record_filters(
                 "operation": method, "record_variable": receiver, "line": line,
                 "active_filters": snapshot, "source_file": source_file,
                 "result": "unknown_static",
+                "filter_state": "branch_ambiguous" if has_control_flow else "linear_source_order",
                 "meaning": "lookup attempted with these source-level filters; row existence is runtime-dependent",
             }
             lookups.append(lookup)
@@ -120,7 +122,8 @@ def analyze_record_filters(
         "lookups": lookups,
         "limitations": [
             "Filter argument expressions are preserved as source text; placeholders are not evaluated.",
-            "Only sequential calls in this source region are tracked; branch-sensitive merge and interprocedural flow are not modeled.",
+            "Calls are scanned in source order; when IF/CASE/ELSE occurs, active filter state is marked branch_ambiguous rather than merged by path.",
+            "Interprocedural flow is not modeled.",
             "SETCURRENTKEY does not change filter membership and is not included in the filter snapshot.",
             "Dynamic RecordRef/FieldRef and WITH-scope references are not resolved.",
         ],

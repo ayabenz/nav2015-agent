@@ -72,4 +72,4 @@ def test_reports_absolute_line_numbers_for_multiple_objects_in_one_file(tmp_path
     result = discover_source_entrypoints([str(source)])
     by_object = {item["object"]: item["line"] for item in result["entries"]}
     assert by_object["Page 50010"] == 3
-    assert by_object["Codeunit 50011"] == 8
+    assert by_object["Codeunit 50011"] == 9

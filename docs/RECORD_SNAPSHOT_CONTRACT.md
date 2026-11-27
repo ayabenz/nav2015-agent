@@ -51,3 +51,10 @@ Use `nav-intel conditions --source-file <object.txt> --procedure <ProcedureName>
 ## Validation
 
 Focused tests: `tests/test_snapshot_evaluator.py` and `tests/test_condition_expression.py`. Run the complete project test suite on the target branch before treating the evaluator as validated.
+
+
+## Cross-procedure business-flow inventory
+
+When `nav-intel trace --analyze-conditions` traverses the existing CALL dependency graph, its result also includes `business_flow`. Each reachable procedure entry combines its graph call path, direct table usage, source-resolution status, and recognizable source effects. The effect inventory traverses all IF/ELSE and CASE branches and preserves the branch predicate/arm as `branch_path`; it does not select a branch because no runtime snapshot was supplied to this trace mode.
+
+Each effect includes source text, source lines, a certainty label, and `runtime_executed=false`. The summary's `branch_effect_counts` counts syntactic occurrences across the analyzed reachable procedures; it is not a count of runtime executions or committed database changes. Missing source objects remain visible with their source status and no fabricated effects. The graph still only traverses existing CALL edges, so unresolved dynamic object RUN targets and absent edges remain limitations.

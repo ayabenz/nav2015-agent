@@ -16,7 +16,7 @@ from typing import Any
 from .control_flow import analyze_control_flow
 from .parser import parse_nav_text, split_objects
 from .semantic_conditions import enrich_control_flow, load_table_sources, parse_record_variables
-from .record_filters import analyze_record_filters, annotate_record_lookup_conditions
+from .record_filters import analyze_record_filter_paths, annotate_record_lookup_conditions
 
 
 def _connect(path: str | Path) -> sqlite3.Connection:
@@ -281,8 +281,8 @@ def main(argv: list[str] | None = None) -> int:
                 variables = parse_record_variables(variable_source)
                 tables = load_table_sources(args.table_source)
                 enrich_control_flow(result["nodes"], variables, tables)
-                filter_analysis = analyze_record_filters(
-                    code, variables, tables, args.source_file, line_offset=line_offset
+                filter_analysis = analyze_record_filter_paths(
+                    result["nodes"], variables, tables, args.source_file
                 )
                 annotate_record_lookup_conditions(result["nodes"], filter_analysis["lookups"])
                 result["record_filter_analysis"] = filter_analysis

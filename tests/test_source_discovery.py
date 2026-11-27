@@ -114,3 +114,22 @@ def test_source_catalog_reports_absolute_lines_after_file_prefix(tmp_path):
     procedure = catalog[("codeunit", 60002)][0]["procedures"]["update"]
     expected_offset = prefix.count("\n")
     assert procedure["line_start"] == expected_offset + 5
+
+
+
+def test_object_trace_includes_object_and_trigger_scope_call_edges(tmp_path):
+    db = graph_db()
+    db.executemany(
+        "INSERT INTO edges VALUES(?,?,?,?,?,?,?)",
+        [
+            ("Codeunit 60001", "Codeunit 60002.Update", "CALL", 1, 1,
+             "Codeunit 60001", "Codeunit 60002"),
+            ("Codeunit 60001 TRIGGERS", "Codeunit 60002.Update", "CALL", 1, 1,
+             "Codeunit 60001", "Codeunit 60002"),
+        ],
+    )
+    result = trace_call_graph(db, "Codeunit 60001", [], None, max_depth=1)
+    assert result["procedure_count"] == 2
+    assert {edge["src"] for edge in result["call_edges"]} == {
+        "Codeunit 60001", "Codeunit 60001 TRIGGERS"
+    }

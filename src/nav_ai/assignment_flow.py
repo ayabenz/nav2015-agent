@@ -9,7 +9,6 @@ import re
 from copy import deepcopy
 from typing import Any
 
-from .control_flow import tokenize
 
 _ASSIGNMENT = re.compile(
     r'^\s*(?P<target>[A-Za-z_][A-Za-z0-9_@]*(?:\s*\.\s*(?:"(?:[^"]|"")*"|[A-Za-z_][A-Za-z0-9_ ]*))?)\s*:=\s*(?P<value>.*?)\s*;?\s*$',
@@ -45,10 +44,8 @@ def _assignment(source: str, line: int, source_file: str) -> dict[str, Any] | No
 def analyze_assignment_flow(nodes: list[dict[str, Any]], source_file: str = "<memory>") -> dict[str, Any]:
     """Attach incoming assignment alternatives to IF nodes without evaluating them."""
     events: list[dict[str, Any]] = []
-    next_path = 1
 
     def walk(node: Any, states: list[dict[str, Any]]) -> list[dict[str, Any]]:
-        nonlocal next_path
         if node is None:
             return states
         if isinstance(node, list):
@@ -66,6 +63,18 @@ def analyze_assignment_flow(nodes: list[dict[str, Any]], source_file: str = "<me
                 assignment = _assignment(str(node.get("source", "")),
                                           int(node.get("line_start", 1)), source_file)
                 if assignment:
+                    if _CALL.search(assignment["expression"]):
+                        invalidated = list(state["values"])
+                        state["values"].clear()
+                        if invalidated:
+                            events.append({
+                                "kind": "unknown_call_invalidation",
+                                "line": node.get("line_start", 1),
+                                "source": node.get("source", ""),
+                                "invalidated": invalidated,
+                                "path": list(state["path"]),
+                                "source_file": source_file,
+                            })
                     state["values"][assignment["target_key"]] = assignment
                     events.append({**assignment, "path": list(state["path"])})
                 elif _CALL.search(str(node.get("source", ""))):

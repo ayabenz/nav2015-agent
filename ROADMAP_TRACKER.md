@@ -1,7 +1,7 @@
 # NAV 2015 Agent — Roadmap & Validation Tracker
 
 **Branch:** `datascrip`  
-**Last updated:** 2026-11-26  
+**Last updated:** 2026-11-27  
 **Project:** NAV Enterprise AI — Phase 1 source-analysis foundation and Datascrip stocktake audit  
 **Tracker rule:** Only mark a test PASS/FAIL when its execution output or NAV evidence is recorded. Static source findings are not runtime test results.
 
@@ -80,12 +80,15 @@ These are recorded analysis outputs, not a claim that every NAV object or indire
 - [x] Resolve Option members against field OptionString values; mark missing metadata or unknown values explicitly instead of guessing.
 - [ ] Extend resolution to unqualified WITH-scope fields, RecordRef/FieldRef and dynamic expressions.
 - [ ] Build branch paths with parent/child relationships and explicit TRUE / FALSE / CASE-match / CASE-default outcomes.
+- [x] Extract sequential SETRANGE / SETFILTER / RESET operations and attach source-level filter snapshots to FIND operations; mark branch-dependent snapshots ambiguous.
+- [ ] Implement path-sensitive filter-state tracking across IF / ELSE / CASE branches and merge compatible filter states.
 - [ ] Track local variable assignments and record-field values sufficiently to explain predicates whose operands are assigned earlier in the procedure.
 - [ ] Trace relevant values across direct procedure calls where parameter and Record-variable flow can be resolved safely.
 - [x] Add initial nav-intel conditions command with explicit source-file and optional object/procedure selection; return branch tree, raw predicates and source spans.
 - [ ] Resolve source files automatically from the symbol index and integrate conditions into object/procedure queries.
 - [x] Add unit fixtures for nested IF/ELSE, CASE arms/default, comment/string masking and source line spans.
 - [x] Add fixtures for Option values, qualified field comparisons and unresolved metadata.
+- [x] Add initial fixtures for SETRANGE clearing, SETFILTER placeholders, RESET invalidation and FINDFIRST lookup annotation.
 - [ ] Add fixtures for ELSEIF, variable assignments and unresolved/dynamic expressions.
 - [x] Document static-analysis limits and avoid presenting inferred branch reachability as runtime fact.
 - [ ] Add optional runtime evaluation only as a separate later capability, requiring an explicitly supplied read-only record snapshot / runtime evidence.
@@ -193,3 +196,6 @@ These are separate historical runs with different collection scopes. They must n
 
 
 **Implementation update (2026-11-27):** `nav_ai.semantic_conditions` now parses Table TXT field definitions and OptionString metadata, resolves declared Record variables to Table IDs, and annotates IF/CASE expressions with field and Option resolution evidence. The `conditions` CLI accepts repeatable `--table-source` arguments. Current resolver coverage is intentionally limited to qualified `RecordVariable.Field` references; WITH-scope and data-flow remain open. See `docs/CODE_INTELLIGENCE.md` for an actual Stocktake command.
+
+
+**Implementation update (2026-11-27 — Record filter flow):** Added `nav_ai.record_filters` and integrated it into `nav-intel conditions`. The first pass extracts SETRANGE / SETFILTER / RESET and FINDFIRST / FINDLAST / FINDSET operations, preserves raw filter arguments and resolves filter fields against supplied Table metadata. Procedure-local Record declarations are included in variable resolution. Because the current scanner is source-order based, lookup snapshots in regions containing IF/CASE/ELSE are marked `branch_ambiguous`; they are not presented as path-exact. Initial tests cover filter accumulation, field clearing, RESET and NOT FINDFIRST interpretation. CI validation is pending.

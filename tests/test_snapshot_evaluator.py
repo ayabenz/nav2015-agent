@@ -54,3 +54,17 @@ def test_missing_snapshot_field_returns_indeterminate_not_false():
     assert result["result"] is None
     assert result["status"] == "indeterminate"
     assert "snapshot_field_missing:tblStocktake.Item Category Code" in result["missing_or_unsupported"]
+
+
+def test_missing_table_metadata_does_not_turn_option_mismatch_into_false():
+    variables = parse_record_variables("tblStocktake : Record 50063;")
+    condition = normalize_condition_expression(
+        'tblStocktake."Jenis Transaksi" = tblStocktake."Jenis Transaksi"::ALL'
+    )
+    result = evaluate_condition_snapshot(
+        condition, {"tblStocktake": {"Jenis Transaksi": 2}}, variables, {}
+    )
+    assert result["result"] is None
+    assert result["status"] == "indeterminate"
+    assert any(reason.startswith("field_metadata_unresolved:")
+               for reason in result["missing_or_unsupported"])

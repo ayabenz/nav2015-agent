@@ -18,6 +18,7 @@ from .parser import parse_nav_text, split_objects
 from .semantic_conditions import enrich_control_flow, load_table_sources, parse_record_variables
 from .record_filters import analyze_record_filter_paths, annotate_record_lookup_conditions
 from .snapshot_evaluator import evaluate_condition_snapshot
+from .branch_effects import summarize_branch_effects
 from .assignment_flow import analyze_assignment_flow
 from .filter_value_resolution import enrich_record_filter_values
 from .interprocedural import (analyze_direct_call_bindings, build_caller_var_effect_map,
@@ -42,6 +43,17 @@ def _attach_snapshot_evaluations(nodes: Any, snapshot: dict[str, Any],
                 "ELSE" if evaluation["result"] is False else "UNKNOWN"
             )
             nodes["snapshot_evaluation"] = evaluation
+            if evaluation["result"] is True:
+                selected = nodes.get("true_branch")
+                evaluation["branch_effects"] = summarize_branch_effects(selected)
+            elif evaluation["result"] is False:
+                selected = nodes.get("false_branch")
+                evaluation["branch_effects"] = summarize_branch_effects(selected)
+            else:
+                evaluation["branch_effects"] = (
+                    summarize_branch_effects(nodes.get("true_branch"), "possible_true_branch") +
+                    summarize_branch_effects(nodes.get("false_branch"), "possible_false_branch")
+                )
         for value in nodes.values():
             if isinstance(value, (dict, list)):
                 _attach_snapshot_evaluations(value, snapshot, variables, tables)

@@ -35,7 +35,7 @@ def _contains_term(text: str, term: str) -> bool:
 def _operational_profile(candidate: dict[str, Any]) -> dict[str, Any]:
     procedure_text = " ".join(
         str(item.get("node") or "") for item in candidate.get("reachable_procedures", [])
-    ).casefold()
+    )
     table_usages = {
         str(usage).upper()
         for table in candidate.get("tables", [])

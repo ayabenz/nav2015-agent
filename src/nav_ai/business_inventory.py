@@ -106,6 +106,7 @@ def generate_business_process_inventory(
     max_nodes: int = 5000,
     analyze_conditions: bool = True,
     max_interprocedural_depth: int = 2,
+    job_queue_snapshot: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Map candidates, trace each one, and write a complete evidence inventory."""
     if not source_roots:
@@ -128,6 +129,12 @@ def generate_business_process_inventory(
     entrypoint_bodies = discover_entrypoint_bodies(source_roots)
     entrypoint_call_mapping = map_entrypoint_calls(
         graph, entrypoint_bodies, max_depth=max_depth, max_nodes=max_nodes
+    )
+    extended_entrypoints = discover_extended_entrypoints(source_roots, graph)
+    if job_queue_snapshot is not None:
+        extended_entrypoints["job_queue_configuration_snapshot"] = map_job_queue_snapshot(job_queue_snapshot, graph)
+    (output / "extended_entrypoints.json").write_text(
+        json.dumps(extended_entrypoints, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
     )
     (output / "entrypoint_call_mapping.json").write_text(
         json.dumps(entrypoint_call_mapping, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
@@ -196,6 +203,7 @@ def generate_business_process_inventory(
         "entrypoints": entrypoints,
         "entrypoint_bodies": entrypoint_bodies,
         "entrypoint_call_mapping": entrypoint_call_mapping,
+        "extended_entrypoints": extended_entrypoints,
         "entrypoint_traces": entrypoint_traces,
         "traces": traces,
         "trace_failures": failures,

@@ -19,7 +19,7 @@
 | Remediation implementation | NOT STARTED / gated | Do not change posting logic until policy is confirmed and runtime cases are reproducible |
 | Deterministic Code Intelligence query layer | IMPLEMENTED — first vertical slice | `nav-intel` queries existing symbol/graph SQLite databases; object/procedure/callers/callees/impact/table usage; tests and CI validation passing (99 passed, 1 opt-in test skipped by default on 2026-11-27) |
 | Conditional Logic Intelligence | IMPLEMENTED — static analysis foundation | IF/ELSE/CASE parsing, metadata-backed predicates, filter paths, explicit snapshots, local assignment provenance, Boolean-specialized multi-hop VAR propagation, semantic assignment resolution, and bounded nested Record-filter composition; broader grammar validation remains open |
-| Automatic entry-point discovery and direct Table-footprint mapping | IMPLEMENTED — heuristic first pass | `nav-intel discover` ranks candidates; `nav-intel map-processes` groups overlapping direct Table usage. Reachable-callee aggregation and validated process boundaries remain open. |\n| AI-assisted NAV reasoning / agent workflows | PLANNED | Build on deterministic query layer, conditional logic, parser, symbol index, semantic diff and dependency graph; keep source evidence traceable |
+| Automatic entry-point discovery and direct Table-footprint mapping | IMPLEMENTED — heuristic first pass | `nav-intel discover` ranks candidates; `nav-intel map-processes` groups overlapping direct Table usage. Validated process boundaries and non-CALL entry-point semantics remain open. |\n| AI-assisted NAV reasoning / agent workflows | PLANNED | Build on deterministic query layer, conditional logic, parser, symbol index, semantic diff and dependency graph; keep source evidence traceable |
 
 ## 2. Roadmap
 
@@ -345,8 +345,8 @@ These are separate historical runs with different collection scopes. They must n
 ### Phase 2.6 — Automatic business-process discovery and mapping
 
 - [x] Rank candidate entry objects from Page, Report, XMLport and Codeunit metadata plus graph connectivity.
-- [x] Group candidate entry objects using pairwise Jaccard similarity of direct Table-usage sets; retain shared Table evidence and explicit heuristic semantics.
-- [ ] Extend each candidate's Table footprint through bounded, CALL-only reachable procedure/object traversal, retaining call paths and edge provenance.
+- [x] Group candidate entry objects using pairwise Jaccard similarity of Table-usage sets aggregated across bounded CALL-reachable procedures; retain call paths, contributing procedure evidence, unresolved targets and explicit heuristic semantics.
+- [ ] [x] Extend each candidate's Table footprint through bounded, CALL-only reachable procedure/object traversal, retaining call paths and unresolved edge targets.
 - [ ] Distinguish UI entry points, scheduled/integration entry points and internal helpers using trigger/action/job-queue evidence.
 - [ ] Generate process maps with candidate roots, reachable procedures, Tables, source references, branch effects and unresolved edges.
 - [ ] Evaluate clustering against manually audited Datascrip process examples; tune thresholds only from evidence.

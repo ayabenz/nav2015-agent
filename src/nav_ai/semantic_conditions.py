@@ -240,6 +240,122 @@ def enrich_control_flow(node: Any, variables: dict[str, int],
                 enrich_control_flow(value, variables, tables)
 
 
+
+_ASSIGNMENT_OPTION_RE = re.compile(
+    r'(?:(?P<var>[A-Za-z_][A-Za-z0-9_@]*)\\s*\\.\\s*)?'
+    r'(?P<field>"(?:[^"]|"")*"|[A-Za-z_][A-Za-z0-9_ ]*)\\s*::\\s*'
+    r'(?:(?P<qualifier>"(?:[^"]|"")*"|[A-Za-z_][A-Za-z0-9_ ]*)\\s*::\\s*)?'
+    r'(?P<option>"(?:[^"]|"")*"|[A-Za-z_][A-Za-z0-9_ ]*)',
+    re.I,
+)
+
+
+def resolve_assignment(target: str, expression: str,
+                       variables: dict[str, int],
+                       tables: dict[int, dict[str, Any]]) -> dict[str, Any]:
+    """Resolve a Record.Field assignment target and Option RHS against Table metadata."""
+    target_refs = resolve_condition(target, variables, tables)["field_references"]
+    field_ref = target_refs[0] if target_refs else None
+    target_resolution = {
+        "resolution": "unresolved",
+        "reason": "assignment_target_not_a_resolved_record_field",
+    }
+    if field_ref:
+        target_resolution = dict(field_ref)
+
+    value_resolution: dict[str, Any] = {
+        "kind": "symbolic_expression",
+        "source": expression,
+        "resolution": "unresolved",
+        "reason": "assignment_value_not_a_resolved_option_member",
+    }
+    option_match = _ASSIGNMENT_OPTION_RE.search(expression)
+    if option_match:
+        option_field = _unquote(option_match.group("field")).strip()
+        qualifier = _unquote(option_match.group("qualifier") or "").strip()
+        option = _unquote(option_match.group("option")).strip()
+        same_field = bool(field_ref and (
+            option_field.casefold() == field_ref["field"].casefold()
+            or qualifier.casefold() == field_ref["field"].casefold()
+        ))
+        if field_ref and field_ref.get("resolution") == "resolved" and same_field:
+            allowed = field_ref.get("option_values", [])
+            resolution = (
+                "resolved" if option.casefold() in {value.casefold() for value in allowed}
+                else "unverified"
+            )
+            value_resolution = {
+                "kind": "option_member",
+                "field": field_ref["field"],
+                "option": option,
+                "resolution": resolution,
+                "allowed_values": allowed,
+                "source": expression,
+                "evaluated": False,
+            }
+        else:
+            value_resolution = {
+                "kind": "option_member",
+                "field": option_field,
+                "option": option,
+                "resolution": "unresolved",
+                "reason": "option_member_does_not_match_resolved_assignment_target",
+                "source": expression,
+                "evaluated": False,
+            }
+    elif field_ref and field_ref.get("resolution") == "resolved":
+        value_resolution = {
+            "kind": "expression",
+            "source": expression,
+            "resolution": "not_option_or_unresolved_expression",
+            "field_type": field_ref.get("field_type"),
+            "evaluated": False,
+        }
+
+    return {
+        "target": target,
+        "expression": expression,
+        "target_resolution": target_resolution,
+        "value_resolution": value_resolution,
+        "evaluated": False,
+    }
+
+
+def enrich_assignment_flow(flow: dict[str, Any], nodes: Any,
+                           variables: dict[str, int],
+                           tables: dict[int, dict[str, Any]]) -> None:
+    """Attach Table/Field/Option metadata to assignment events and IF contexts."""
+    for event in flow.get("events", []):
+        if event.get("kind") in {
+            "explicit_assignment", "interprocedural_var_mutation"
+        }:
+            event["semantic_assignment"] = resolve_assignment(
+                str(event.get("target", "")),
+                str(event.get("expression", "")),
+                variables, tables,
+            )
+
+    def walk(value: Any) -> None:
+        if isinstance(value, list):
+            for item in value:
+                walk(item)
+        elif isinstance(value, dict):
+            context = value.get("assignment_context")
+            if isinstance(context, dict):
+                for alternative in context.get("alternatives", []):
+                    for assignment in alternative.get("known_assignments", []):
+                        assignment["semantic_assignment"] = resolve_assignment(
+                            str(assignment.get("target", "")),
+                            str(assignment.get("expression", "")),
+                            variables, tables,
+                        )
+            for child in value.values():
+                if isinstance(child, (dict, list)):
+                    walk(child)
+
+    walk(nodes)
+
+
 def load_table_sources(paths: list[str | Path]) -> dict[int, dict[str, Any]]:
     tables = {}
     for path_value in paths:

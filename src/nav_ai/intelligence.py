@@ -41,6 +41,50 @@ def _attach_snapshot_evaluations(nodes: Any, snapshot: dict[str, Any],
 
 
 
+def _analyze_caller_effect_flows(caller_text: str, caller_path: str,
+                                  effect_map: dict[int, list[dict[str, Any]]]) -> list[dict[str, Any]]:
+    """Run path-sensitive assignment analysis on caller procedures containing mapped calls."""
+    if not effect_map:
+        return []
+    results = []
+    for _, object_text in split_objects(caller_text):
+        object_line_offset = caller_text[:caller_text.find(object_text)].count("\n")
+        parsed = parse_nav_text(object_text, caller_path)
+        for procedure in parsed.get("procedures", []):
+            proc_start = object_line_offset + int(procedure["line_start"])
+            proc_end = object_line_offset + int(procedure["line_end"])
+            local_effects = {
+                line: effects for line, effects in effect_map.items()
+                if proc_start <= line <= proc_end
+            }
+            if not local_effects:
+                continue
+            lines = procedure["raw"].splitlines()
+            begin = next((i for i, line in enumerate(lines)
+                          if line.strip().upper() == "BEGIN"), None)
+            if begin is None:
+                continue
+            body = "\n".join(lines[begin:])
+            body_line_offset = proc_start + begin - 1
+            tree = analyze_control_flow(
+                body, parsed["object"]["type"], parsed["object"]["id"],
+                parsed["object"]["name"], procedure["name"], caller_path,
+                line_offset=body_line_offset,
+            )
+            flow = analyze_assignment_flow(
+                tree["nodes"], caller_path, call_effects=local_effects
+            )
+            results.append({
+                "caller": f'{parsed["object"]["type"]} {parsed["object"]["id"]}.{procedure["name"]}',
+                "source_file": caller_path,
+                "line_start": proc_start,
+                "line_end": proc_end,
+                "assignment_flow_analysis": flow,
+                "runtime_evaluated": False,
+            })
+    return results
+
+
 def _connect(path: str | Path) -> sqlite3.Connection:
     p = Path(path)
     if not p.is_file():
@@ -336,9 +380,11 @@ def main(argv: list[str] | None = None) -> int:
                     annotate_callsite_boolean_branches(result["nodes"], binding)
                     binding["caller_state_effect_map"] = build_caller_var_effect_map(binding)
                     binding["caller_state_effect_map_semantics"] = (
-                        "unconditional_explicit_mutations_only; apply to caller nodes with "
-                        "analyze_assignment_flow(call_effects=...); conditional callee effects "
-                        "remain possible effects and are not asserted as definite caller values"
+                        "explicit callee VAR mutations whose path is unconditional or fully "
+                        "specialized by Boolean literal call arguments; symbolic values only"
+                    )
+                    binding["caller_assignment_flow"] = _analyze_caller_effect_flows(
+                        caller_text, caller_path, binding["caller_state_effect_map"]
                     )
                     call_bindings.append(binding)
                 result["interprocedural_call_bindings"] = call_bindings

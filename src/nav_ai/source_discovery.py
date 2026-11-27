@@ -64,21 +64,19 @@ def build_source_catalog(
 ) -> dict[tuple[str, int], list[dict[str, Any]]]:
     """Index exported objects by exact NAV type/id without guessing duplicates.
 
-    When every requested object has a symbol-index source label, scan only those
-    TXT members/files. If labels are incomplete, fall back to a complete scan.
+    When symbol-index source labels are available, scan only those TXT members/files.
+    Objects without a source label remain unresolved rather than forcing a full scan.
     """
     catalog: dict[tuple[str, int], list[dict[str, Any]]] = {}
     source_labels: set[str] | None = None
     if wanted_keys:
         labels: set[str] = set()
-        complete = True
         for object_type, object_id in wanted_keys:
-            found = _symbol_source_labels(symbols, object_type, object_id)
-            if not found:
-                complete = False
-                break
-            labels.update(found)
-        if complete and labels:
+            labels.update(_symbol_source_labels(symbols, object_type, object_id))
+        # Use every available label even when some graph objects have no symbol
+        # entry. Those objects remain explicitly missing instead of forcing a
+        # potentially expensive full export scan.
+        if labels:
             source_labels = labels
     seen: set[tuple[str, str]] = set()
     for root in source_roots:

@@ -376,3 +376,7 @@ These are separate historical runs with different collection scopes. They must n
 - [x] Mark classification as heuristic, not validated business-process identity or runtime evidence.
 - [ ] Validate domain vocabulary against Datascrip-specific naming conventions and manually reviewed process examples.
 - [ ] Add structural/behavioral features (entry action, posting calls, write profile, integration boundary) before increasing confidence.
+
+- [x] Add a separate operational-role hint from CamelCase-aware posting verbs and indexed Table READ/WRITE usage (posting/transaction, data exchange, setup/configuration, inquiry, data maintenance, undetermined).
+- [x] Keep domain classification and operational-role evidence separately inspectable in inventory JSON; expose both hints in Markdown.
+- [ ] Validate role vocabulary against representative Datascrip posting, inquiry, integration and setup objects.

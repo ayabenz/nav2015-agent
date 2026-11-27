@@ -410,9 +410,15 @@ def trace_call_graph(graph: sqlite3.Connection, start: str,
         procedures.append(item)
 
     trace_edges = [
-        {"src": src, "dst": dst, "depth": depth_by_node[dst]}
+        {
+            "src": src,
+            "dst": dst,
+            "src_depth": depth_by_node[src],
+            "dst_depth": depth_by_node[dst],
+            "tree_edge": parent_by_node.get(dst) == src,
+        }
         for src, targets in adjacency.items() if src in depth_by_node
-        for dst in targets if dst in depth_by_node and depth_by_node[dst] == depth_by_node[src] + 1
+        for dst in targets if dst in depth_by_node
     ]
     reached_objects = sorted({item["object_node"] for item in procedures})
     aggregate_table_usage: list[dict[str, Any]] = []

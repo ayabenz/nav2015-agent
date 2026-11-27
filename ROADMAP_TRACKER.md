@@ -18,7 +18,7 @@
 | NAV runtime validation | BLOCKED | Requires isolated non-production NAV 2015 test company and matching Datascrip build |
 | Remediation implementation | NOT STARTED / gated | Do not change posting logic until policy is confirmed and runtime cases are reproducible |
 | Deterministic Code Intelligence query layer | IMPLEMENTED — first vertical slice | `nav-intel` queries existing symbol/graph SQLite databases; object/procedure/callers/callees/impact/table usage; tests and CI validation passing (99 passed, 1 opt-in test skipped by default on 2026-11-27) |
-| Conditional Logic Intelligence | IMPLEMENTED — static analysis foundation | IF/ELSE/CASE parsing, metadata-backed predicates, filter paths, explicit snapshots, local assignment provenance, Boolean-specialized direct-call VAR propagation and automatic caller assignment-flow analysis; broader grammar validation remains open |
+| Conditional Logic Intelligence | IMPLEMENTED — static analysis foundation | IF/ELSE/CASE parsing, metadata-backed predicates, filter paths, explicit snapshots, local assignment provenance, Boolean-specialized multi-hop VAR propagation, semantic assignment resolution, and bounded nested Record-filter composition; broader grammar validation remains open |
 | AI-assisted NAV reasoning / agent workflows | PLANNED | Build on deterministic query layer, conditional logic, parser, symbol index, semantic diff and dependency graph; keep source evidence traceable |
 
 ## 2. Roadmap
@@ -276,7 +276,7 @@ These are separate historical runs with different collection scopes. They must n
 - [x] Preserve unavailable, ambiguous, nonmatching and unsupported edge states explicitly; retain `runtime_evaluated: false`.
 - [x] Compose mutation summaries across multiple graph hops with bounded propagation rounds; cycles cannot expand beyond the configured depth.
 - [ ] Feed the composed graph effects into every reached procedure's condition/assignment-flow output so downstream IF/ELSE nodes expose multi-hop symbolic context.
-- [x] Resolve propagated Record-field assignment targets against Table/Field metadata and validate Option RHS members against OptionString; Direct callee Record-filter effects are now propagated into caller path states; nested interprocedural filter composition remains open.
+- [x] Resolve propagated Record-field assignment targets against Table/Field metadata and validate Option RHS members against OptionString; Direct and bounded multi-hop interprocedural Record-filter effects are propagated into caller path states.
 
 **Current boundary:** this phase provides direct per-edge bindings and symbolic VAR effects. It does not yet perform recursive graph-wide effect composition or assert that any branch/call executed in NAV.
 
@@ -300,3 +300,6 @@ These are separate historical runs with different collection scopes. They must n
 
 
 **Validation (2026-11-27 — direct interprocedural Record filters):** [GitHub Actions run #277](https://github.com/ayabenz/nav2015-agent/actions/runs/45936281636) passed: **109 passed, 1 opt-in full-export test skipped in 1.28s**. The fixture confirms a Boolean-specialized `SETRANGE` on a callee's `VAR Record 36` parameter is mapped to the caller's Record variable and appears in the caller's subsequent `FINDFIRST` active-filter snapshot. During validation, direct call binding was corrected to normalize `VAR Record N` declarations as `Table N`, and filter argument text is now retained in the effect summary. No NAV runtime was executed.
+
+
+**Implementation update (2026-11-27 — bounded nested Record-filter composition):** The traced-edge filter analyzer now builds procedure-level filter summaries and iteratively maps explicit `RESET`, `SETRANGE`, `SETFILTER`, and field-clear effects through typed `VAR Record` arguments across discovered CALL edges. It uses the same `--max-interprocedural-depth` bound as VAR-assignment propagation, specializes supported Boolean literal paths at each boundary, and injects composed effects into caller path-sensitive lookup analysis. Added an A → B → C regression fixture in which C filters a Record passed through B and A's subsequent FINDFIRST receives the filter. The first CI attempt exposed an over-escaped Record-type matcher; this was corrected in commit `40c4d569ba3527f79f9ca6f056b32dba09e369ab`. Validation of the corrected code and new regression is pending; do not mark this feature validated until a passing workflow is confirmed. No NAV runtime or SQL query was executed.

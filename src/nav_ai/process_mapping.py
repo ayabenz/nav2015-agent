@@ -114,6 +114,7 @@ def map_candidate_processes(
                 "usages": [],
                 "reference_count": 0,
                 "contributing_procedures": [],
+                "contributing_call_paths": [],
                 "new_vs_original_count": 0,
             })
             usage = str(row["usage"])
@@ -123,6 +124,7 @@ def map_candidate_processes(
             entry["new_vs_original_count"] += int(row["new_vs_original"] or 0)
             if row["src"] not in entry["contributing_procedures"]:
                 entry["contributing_procedures"].append(str(row["src"]))
+                entry["contributing_call_paths"].append(traversal["paths"].get(str(row["src"]), [str(row["src"])]))
         mapped.append({
             **candidate,
             "reachable_procedure_count": len(traversal["procedure_nodes"]),

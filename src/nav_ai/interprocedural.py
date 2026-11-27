@@ -129,7 +129,7 @@ def analyze_direct_call_bindings(
             actual = actuals[index]
             record_type = receiver_types.get(actual.strip('"').casefold())
             literal = actual.upper() in {"TRUE", "FALSE"}
-            formal_record = re.search(r"Record\\s+(\\d+)", formal["data_type"], re.I)
+            formal_record = re.search(r"Record\s+(\d+)", formal["data_type"], re.I)
             mapped.append({
                 "parameter": formal["name"],
                 "formal_type": formal["data_type"],

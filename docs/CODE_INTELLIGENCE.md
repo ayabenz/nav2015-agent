@@ -525,7 +525,7 @@ It contains five evidence families:
 
 - **Typed variable calls:** resolves a receiver declared as `Codeunit N`, `Page N`, `Report N`, `XMLport N` or `Query N` to the target object's procedure when the graph contains one unique procedure with that name. Record variables are deliberately excluded from object-procedure resolution because their members are NAV Record APIs.
 - **Dynamic RUN targets:** records `CODEUNIT.RUN`, `PAGE.RUN`, `REPORT.RUN` and `XMLPORT.RUN` argument expressions, any statically resolved object target, graph-index presence and unresolved reason. Variable expressions without a proven constant or typed declaration remain unresolved.
-- **Event subscribers:** extracts `EventSubscriber` attribute declarations, including event object type/ID or name and event name. A declaration is not proof that the publisher raises the event or that the subscriber executes.
+- **Event subscribers and publishers:** extracts `EventSubscriber` attributes and `IntegrationEvent` / `BusinessEvent` / `InternalEvent` publisher procedure declarations. It links a subscriber to a publisher when object identity and event name match uniquely. A declaration is not proof that the publisher raises the event or that the subscriber executes.
 - **Job Queue evidence:** identifies Table 472 source and source objects referencing Job Queue Entry / Codeunit 448. It does not read configured Job Queue Entry rows, enabled state, schedule, parameter strings or runtime outcomes.
 - **Individual Table field triggers:** extracts Table field `OnValidate`, `OnLookup`, `OnDrillDown` and `OnAssistEdit` bodies with field ID/name and source line ranges. This is distinct from Table-level triggers and does not imply that a field validation occurred.
 

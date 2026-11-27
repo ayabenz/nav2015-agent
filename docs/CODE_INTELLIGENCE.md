@@ -159,7 +159,7 @@ Example against Codeunit 50107:
 nav-intel --company datascrip --json conditions --source-file "reports/datascrip/ownership/Codeunit_50107.txt" --object "Codeunit 50107" --procedure "BlockStocktakeSalesHeader" --table-source "reports/datascrip/stocktake/Table_50063.txt"
 ```
 
-**Important limitations:** filter expressions and `%1` substitution arguments are preserved as source text, not evaluated. The current pass scans calls in source order. If the analyzed region contains IF/CASE/ELSE, lookup filter state is explicitly marked `branch_ambiguous`; it is not a path-sensitive merge and must not be interpreted as the exact filter set on every branch. It also does not model interprocedural flow, dynamic RecordRef/FieldRef or WITH-scope field references. A lookup result is always `unknown_static`: only NAV runtime evidence can establish whether a row was found.
+**Important limitations:** filter expressions and `%1` substitution arguments are preserved as source text, not evaluated. The current CLI uses the path-sensitive IF/CASE pass described below. It does not model interprocedural flow, dynamic RecordRef/FieldRef or WITH-scope field references. A lookup result is always `unknown_static`: only NAV runtime evidence can establish whether a row was found.
 
 
 ## Path-sensitive filter state across IF / CASE

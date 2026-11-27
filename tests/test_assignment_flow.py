@@ -50,3 +50,30 @@ def test_call_inside_assignment_invalidates_other_tracked_values():
     context = nodes[-1]["assignment_context"]["alternatives"][0]
     assert context["known_assignments"] == []
     assert any(e["kind"] == "unknown_call_invalidation" for e in result["events"])
+
+
+def test_transitive_assignment_provenance_reaches_condition_context():
+    nodes, _ = run(
+        "Status := 'Released';\n"
+        "SalesHeader.Status := Status;\n"
+        "IF SalesHeader.Status = SalesHeader.Status::Released THEN Post;"
+    )
+    context = nodes[-1]["assignment_context"]["alternatives"][0]
+    direct = next(x for x in context["known_assignments"]
+                  if x["target"] == "SalesHeader.Status")
+    upstream = direct["dependency_chain"]
+    assert upstream[0]["state"] == "resolved"
+    assert upstream[0]["reference"] == "Status"
+    assert upstream[0]["assignment"]["expression"] == "'Released'"
+
+
+def test_assignment_provenance_does_not_treat_string_contents_as_variables():
+    nodes, _ = run(
+        "Status := 'Released';\n"
+        "Description := 'Status is Released';\n"
+        "IF Description = 'Status is Released' THEN Post;"
+    )
+    context = nodes[-1]["assignment_context"]["alternatives"][0]
+    description = next(x for x in context["known_assignments"]
+                       if x["target"] == "Description")
+    assert description["dependency_chain"] == []

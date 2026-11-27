@@ -9,6 +9,8 @@ import re
 from typing import Any
 
 from .entrypoint_intelligence import _source_files
+from .control_flow import analyze_control_flow
+from .branch_effects import summarize_all_branch_effects
 from .parser import OBJECT_RE, split_objects
 
 SECTION_RE = re.compile(r"^\s{2,}([A-Z][A-Z0-9 -]*)\s*$")
@@ -114,14 +116,22 @@ def discover_extended_entrypoints(source_roots: list[str], graph=None) -> dict[s
                                             if d <= 0 and re.search(r"\bEND\s*;?", clean):
                                                 break
                                             k += 1
-                                    field_triggers.append({
+                                    field_entry = {
                                         "entry_id": f"{node}.Field[{field_id}].{tm.group(1)}",
                                         "object": node, "object_name": name, "field_id": field_id,
                                         "field_name": field_name, "trigger": tm.group(1),
                                         "source": display, "line_start": j + 1 + offset,
                                         "line_end": k + 1 + offset, "body": "\n".join(trigger_body),
                                         "evidence": "table_field_trigger_body", "runtime_invoked": False,
-                                    })
+                                    }
+                                    flow = analyze_control_flow(
+                                        field_entry["body"], object_type=typ, object_id=oid,
+                                        object_name=name, procedure=field_entry["entry_id"],
+                                        source_file=display, line_offset=j + offset,
+                                    )
+                                    field_entry["control_flow"] = flow
+                                    field_entry["branch_effects"] = summarize_all_branch_effects(flow.get("nodes", []))
+                                    field_triggers.append(field_entry)
                 object_sources.append({"node": node, "name": name, "source": display, "text": block,
                                        "object_vars": vars_by_name})
                 # Second pass uses object + procedure-local declarations and literal assignments.

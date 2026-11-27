@@ -24,7 +24,7 @@ def trace_entrypoint_graph(
     for src, dst in graph.execute(
         "SELECT src,dst FROM edges WHERE kind='CALL' ORDER BY src,dst"
     ):
-        adjacency.setdefault(str(src).casefold(), []).append(str(dst))
+        adjacency.setdefault(str(src).casefold(), []).append((str(dst).casefold(), str(dst)))
 
     procedures = {
         str(row[0]).casefold(): str(row[0])
@@ -79,19 +79,19 @@ def trace_entrypoint_graph(
             depth = depths[current]
             if depth >= max_depth:
                 continue
-            for target in adjacency.get(current, []):
-                if target not in procedures:
-                    unresolved.add((current, target))
+            for target_key, target_label in adjacency.get(current, []):
+                if target_key not in procedures:
+                    unresolved.add((procedures.get(current, current), target_label))
                     continue
-                if target in depths:
+                if target_key in depths:
                     continue
                 if len(depths) >= max_nodes:
                     truncated = True
                     queue.clear()
                     break
-                depths[target] = depth + 1
-                parents[target] = current
-                queue.append(target)
+                depths[target_key] = depth + 1
+                parents[target_key] = current
+                queue.append(target_key)
 
         reachable = []
         for key in sorted(depths, key=lambda item: (depths[item], procedures.get(item, item))):

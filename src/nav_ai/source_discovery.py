@@ -21,6 +21,7 @@ from .semantic_conditions import (parse_record_variables, parse_table_metadata,
 from .record_filters import analyze_record_filter_paths, annotate_record_lookup_conditions
 from .trace_interprocedural import analyze_trace_call_edges
 from .trace_filters import analyze_trace_filter_edges
+from .branch_effects import summarize_all_branch_effects
 
 
 def _iter_source_texts(root: str, source_labels: set[str] | None = None):
@@ -470,6 +471,29 @@ def trace_call_graph(graph: sqlite3.Connection, start: str,
                 }
         procedures.append(item)
 
+    business_flow: list[dict[str, Any]] = []
+    effect_counts: dict[str, int] = {}
+    for item in procedures:
+        analysis = item.get("condition_analysis", {})
+        effects = (
+            summarize_all_branch_effects(analysis.get("nodes", []))
+            if analysis.get("status") == "analyzed" else []
+        )
+        for effect in effects:
+            action = effect["action"]
+            effect_counts[action] = effect_counts.get(action, 0) + 1
+        business_flow.append({
+            "procedure": item["node"],
+            "depth": item["depth"],
+            "call_path": item["call_path"],
+            "source_status": item["source"].get("status"),
+            "table_usage": item["table_usage"],
+            "effects": effects,
+            "effect_count": len(effects),
+            "condition_analysis_status": analysis.get("status", "not_requested"),
+            "runtime_executed": False,
+        })
+
     reached_objects = sorted({item["object_node"] for item in procedures})
     aggregate_table_usage: list[dict[str, Any]] = []
     if reached_objects:
@@ -515,6 +539,7 @@ def trace_call_graph(graph: sqlite3.Connection, start: str,
         "condition_analysis_count": condition_analysis_count,
         "table_metadata_count": len(tables),
         "procedures": procedures,
+        "business_flow": business_flow,
         "call_edges": trace_edges,
         "interprocedural_analysis": interprocedural_analysis,
         "interprocedural_filter_analysis": filter_interprocedural_analysis,
@@ -530,6 +555,8 @@ def trace_call_graph(graph: sqlite3.Connection, start: str,
                 for usage in sorted({row["usage"] for row in aggregate_table_usage})
             },
             "condition_node_counts": condition_node_counts,
+            "branch_effect_counts": dict(sorted(effect_counts.items())),
+            "business_flow_procedure_count": len(business_flow),
             "unresolved_call_target_count": len(unresolved_call_targets),
         },
         "unresolved_call_targets": [
@@ -540,7 +567,7 @@ def trace_call_graph(graph: sqlite3.Connection, start: str,
             "graph_source": "existing dependency graph CALL edges",
             "source_resolution": "exact object type/id; symbol source_file labels used to disambiguate",
             "condition_analysis": (
-                "static IF/ELSE/CASE, assignment and filter analysis for resolved procedures"
+                "static IF/ELSE/CASE, assignment, filter and branch-effect analysis for resolved procedures"
                 if analyze_conditions else "not requested"
             ),
             "interprocedural_analysis": "direct call-site bindings and explicit callee VAR mutations for discovered CALL edges",

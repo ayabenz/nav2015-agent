@@ -33,7 +33,7 @@ nav-intel --company datascrip --json trace "Codeunit 50107" --source-root "repor
 nav-intel --company datascrip --json trace "Codeunit 50107.BlockStocktakeSalesHeader" --source-root "data\input\datascrip.zip" --max-depth 3
 ```
 
-The output contains reachable procedure nodes, call edges, source paths, procedure line ranges, origin classification, and explicit missing/ambiguous source statuses. Object starts include all indexed procedures at depth zero. `--max-depth` counts procedure-call edges; `--max-nodes` bounds output size.
+The output contains reachable procedure nodes, call edges, source paths, procedure line ranges, origin classification, and explicit missing/ambiguous source statuses. Object starts include all indexed procedures plus the object-level and trigger-scope graph sources at depth zero. `--max-depth` counts procedure-call edges; `--max-nodes` bounds output size.
 
 This command does not automatically analyze IF/ELSE bodies yet; it establishes the source-resolved procedure set that can be passed into the existing `conditions` analysis. It follows only dependency-graph `CALL` edges, so dynamic calls, triggers, implicit side effects, and edges missing from the graph are not discovered. It is static analysis and never proves runtime execution.
 

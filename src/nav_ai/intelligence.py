@@ -380,7 +380,9 @@ def main(argv: list[str] | None = None) -> int:
     mapping = sub.add_parser("map-processes", help="group entry candidates by overlapping direct Table usage")
     mapping.add_argument("--limit", type=int, default=200, help="maximum entry candidates to map")
     mapping.add_argument("--include-standard", action="store_true", help="include STANDARD_UNCHANGED objects")
-    mapping.add_argument("--min-similarity", type=float, default=0.25, help="minimum Jaccard overlap of direct Table sets (0, 1]")
+    mapping.add_argument("--min-similarity", type=float, default=0.25, help="minimum Jaccard overlap of transitive Table sets (0, 1]")
+    mapping.add_argument("--max-depth", type=int, default=5, help="maximum CALL edges from each candidate (default: 5)")
+    mapping.add_argument("--max-nodes", type=int, default=5000, help="maximum graph nodes per candidate (default: 5000)")
 
     trace = sub.add_parser("trace", help="trace reachable CALL procedures and discover their source exports")
     trace.add_argument("start", help='object or procedure node, e.g. "Codeunit 50107"')
@@ -567,6 +569,7 @@ def main(argv: list[str] | None = None) -> int:
                     result = map_candidate_processes(
                         graph, limit=args.limit, include_standard=args.include_standard,
                         min_similarity=args.min_similarity,
+                        max_depth=args.max_depth, max_nodes_per_candidate=args.max_nodes,
                     )
                 elif args.command == "trace":
                     if not args.source_root:

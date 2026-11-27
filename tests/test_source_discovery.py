@@ -35,6 +35,8 @@ def graph_db():
             in_original INT,semantic_change INT,procedures INT,out_edges INT,in_edges INT);
         CREATE TABLE procedures(node TEXT PRIMARY KEY,object_node TEXT,name TEXT,line INT,is_local INT,origin TEXT);
         CREATE TABLE edges(src TEXT,dst TEXT,kind TEXT,count INT,new_vs_original INT,src_object TEXT,dst_object TEXT);
+        CREATE TABLE table_usage(src TEXT,src_origin TEXT,table_node TEXT,table_name TEXT,usage TEXT,
+            count INT,new_vs_original INT,src_object TEXT);
         INSERT INTO objects VALUES
             ('Codeunit 60001','Codeunit',60001,'Parent','CUSTOM',0,0,1,1,0),
             ('Codeunit 60002','Codeunit',60002,'Child','CUSTOM',0,0,1,0,1);

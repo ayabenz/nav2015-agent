@@ -171,7 +171,7 @@ def _describe_operand(expression: str, variables: dict[str, int],
     stripped = expression.strip()
     if len(stripped) >= 2 and stripped[0] == "'" and stripped[-1] == "'":
         kind = "string_literal"
-    elif re.fullmatch(r"-?\\d+(?:\\.\\d+)?", stripped):
+    elif re.fullmatch(r"-?\d+(?:\.\d+)?", stripped):
         kind = "numeric_literal"
     elif stripped.upper() in {"TRUE", "FALSE"}:
         kind = "boolean_literal"

@@ -52,22 +52,27 @@ def _split_args(value: str) -> list[str]:
     return args
 
 
+def _mask_non_code(source: str) -> str:
+    """Mask C/AL strings and comments while preserving every source offset."""
+    chars = list(source)
+    for pattern in (r"'(?:''|[^'])*'", r"//[^\\n]*", r"\\{[^{}]*\\}"):
+        for match in re.finditer(pattern, source):
+            for pos in range(match.start(), match.end()):
+                if chars[pos] != "\\n":
+                    chars[pos] = " "
+    return "".join(chars)
+
+
 def _calls(source: str):
-    """Yield balanced call argument lists, ignoring parentheses inside quoted strings."""
-    for match in _CALL.finditer(source):
-        depth, quoted, i = 1, False, match.end()
-        while i < len(source) and depth:
-            ch = source[i]
-            if ch == "'":
-                if quoted and i + 1 < len(source) and source[i + 1] == "'":
-                    i += 2
-                    continue
-                quoted = not quoted
-            elif not quoted:
-                if ch == "(":
-                    depth += 1
-                elif ch == ")":
-                    depth -= 1
+    """Yield call matches from masked code and arguments from original source."""
+    masked = _mask_non_code(source)
+    for match in _CALL.finditer(masked):
+        depth, i = 1, match.end()
+        while i < len(masked) and depth:
+            if masked[i] == "(":
+                depth += 1
+            elif masked[i] == ")":
+                depth -= 1
             i += 1
         if depth == 0:
             yield match, _split_args(source[match.end():i - 1])
@@ -114,10 +119,19 @@ def analyze_direct_call_bindings(
         raise ValueError(f"Expected one callee procedure {callee_procedure!r}; found {len(targets)}")
     target = targets[0]
     receiver_types = _record_types(caller, caller_block)
+    for variable in _VAR.finditer(caller_block):
+        name = (variable.group("quoted") or variable.group("name") or "").strip()
+        data_type = variable.group("type")
+        if name:
+            receiver_types[name.casefold()] = data_type.title().replace("Codeunit", "Codeunit")
+    target_object = f"{callee['object']['type']} {callee['object']['id']}"
     code = caller_block
     bindings = []
     for match, actuals in _calls(code):
         if match.group("procedure").strip('"').casefold() != callee_procedure.casefold():
+            continue
+        receiver_type = receiver_types.get(match.group("receiver").strip('"').casefold())
+        if receiver_type != target_object:
             continue
         formals = target.get("parameters", [])
         mapped = []

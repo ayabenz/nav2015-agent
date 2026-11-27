@@ -29,7 +29,8 @@ IF tblStocktake.FINDFIRST THEN
     assert [item["field"] for item in lookup["active_filters"]] == [
         "Start Date", "End Date", "Jenis Transaksi"
     ]
-    assert lookup["active_filters"][0]["arguments"] == ["'< =%1'", "CURRENTDATETIME"] or lookup["active_filters"][0]["arguments"] == ["'<=%1'", "CURRENTDATETIME"]
+    assert lookup["active_filters"][0]["arguments"] == ["'<=%1'", "CURRENTDATETIME"]
+    assert lookup["filter_state"] == "branch_ambiguous"
     assert result["runtime_evaluated"] is False
 
 

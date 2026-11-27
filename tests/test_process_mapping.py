@@ -47,6 +47,9 @@ def test_mapping_groups_candidates_using_transitive_call_reachable_tables():
     }
     page = next(item for item in result["candidates"] if item["object"] == "Page 42")
     assert page["table_ids"] == ["Table 36", "Table 37"]
+    sales_header = next(item for item in page["tables"] if item["table"] == "Table 36")
+    assert "Codeunit 60001.Write" in sales_header["contributing_procedures"]
+    assert ["Page 42.OnOpen", "Codeunit 60001.Run", "Codeunit 60001.Write"] in sales_header["contributing_call_paths"]
     assert page["reachable_procedure_count"] == 3
     run_proc = next(item for item in page["reachable_procedures"]
                     if item["node"] == "Codeunit 60001.Run")

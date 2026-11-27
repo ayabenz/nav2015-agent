@@ -434,3 +434,16 @@ nav-intel --company datascrip --json map-processes --limit 300 --min-similarity 
 ```
 
 The mapper follows bounded indexed `CALL` edges from each candidate's procedures and object/trigger scopes, aggregates Table usage from reachable procedures, and calculates Jaccard similarity over those transitive Table sets. Each candidate reports reachable procedures and call paths, contributing procedures per Table, unresolved CALL targets, and truncation state. This remains static dependency evidence: dynamic RUN targets, UI navigation, job queues, integration entry points and actual runtime execution are not inferred. Shared master Tables may connect unrelated workflows, and transitive clustering can connect members that do not all share Tables pairwise. Use the results to prioritize source-backed `trace` and `document` investigations.
+
+
+## Full automatic business-process inventory
+
+The `inventory` command orchestrates candidate ranking, bounded transitive CALL/Table mapping, and per-candidate source traces. It writes an inventory summary plus individual Markdown/JSON trace reports and heuristic cluster summaries:
+
+```powershell
+nav-intel --company datascrip inventory --source-root "data\\input\\datascrip\\datascrip.zip" --limit 100 --max-depth 5 --max-nodes 5000
+```
+
+Default output: `reports/<company>/business_process/`. Source-unavailable candidates are recorded as unavailable and do not stop the remaining candidates. Condition analysis is enabled by default; `--skip-conditions` skips IF/ELSE/CASE, assignment and filter analysis for a faster inventory pass. This command may take significant time for large exports because it traces each candidate independently. The inventory records its limits and source roots for reproducibility.
+
+Generated reports are static evidence. They do not prove that a process was executed, that a branch was selected at runtime, or that a database transaction committed. Candidate clusters are heuristic and require business-owner review before being treated as process boundaries.

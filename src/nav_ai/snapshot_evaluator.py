@@ -84,29 +84,33 @@ def evaluate_condition_snapshot(tree: dict[str, Any], snapshot: dict[str, Any],
                                 tables: dict[int, dict[str, Any]]) -> dict[str, Any]:
     """Evaluate a normalized predicate using only caller-supplied values."""
     missing: list[str] = []
+    explanation: list[dict[str, Any]] = []
 
-    def evaluate(node: dict[str, Any]) -> bool | None:
+    def evaluate(node: dict[str, Any], path: str = "root") -> bool | None:
         kind = node.get("type")
         if kind == "operand":
             value, reason = _snapshot_value(str(node.get("value", "")), snapshot, variables, tables)
             if reason:
                 missing.append(reason)
                 return None
-            return value if isinstance(value, bool) else None
+            result = value if isinstance(value, bool) else None
+            explanation.append({"path": path, "kind": "boolean_operand", "expression": node.get("value"), "value": value if reason is None else None, "result": result, "status": "evaluated" if result is not None else "indeterminate"})
+            return result
         if kind == "not":
-            value = evaluate(node.get("operand", {}))
-            return None if value is None else not value
+            value = evaluate(node.get("operand", {}), path + ".not")
+            result = None if value is None else not value
+            explanation.append({"path": path, "kind": "not", "result": result, "status": "evaluated" if result is not None else "indeterminate"})
+            return result
         if kind == "boolean":
-            values = [evaluate(child) for child in node.get("operands", [])]
+            values = [evaluate(child, f"{path}.{node.get('operator', 'bool').lower()}[{index}]") for index, child in enumerate(node.get("operands", []))]
             if node.get("operator") == "AND":
-                if False in values:
-                    return False
-                return True if values and all(value is True for value in values) else None
-            if node.get("operator") == "OR":
-                if True in values:
-                    return True
-                return False if values and all(value is False for value in values) else None
-            return None
+                result = False if False in values else (True if values and all(value is True for value in values) else None)
+            elif node.get("operator") == "OR":
+                result = True if True in values else (False if values and all(value is False for value in values) else None)
+            else:
+                result = None
+            explanation.append({"path": path, "kind": "boolean", "operator": node.get("operator"), "operand_results": values, "result": result, "status": "evaluated" if result is not None else "indeterminate"})
+            return result
         if kind == "comparison":
             left, reason = _snapshot_value(str(node.get("left", "")), snapshot, variables, tables)
             if reason:
@@ -123,7 +127,9 @@ def evaluate_condition_snapshot(tree: dict[str, Any], snapshot: dict[str, Any],
                 if any(not _compatible_values(left, value) for value in rights):
                     missing.append(f"incompatible_value_types:{type(left).__name__}:IN")
                     return None
-                return left in rights
+                result = left in rights
+                explanation.append({"path": path, "kind": "comparison", "operator": "IN", "left_expression": node.get("left"), "left_value": left, "right_values": rights, "result": result, "status": "evaluated"})
+                return result
             right, reason = _snapshot_value(str(node.get("right", "")), snapshot, variables, tables)
             if reason:
                 missing.append(reason)
@@ -136,17 +142,21 @@ def evaluate_condition_snapshot(tree: dict[str, Any], snapshot: dict[str, Any],
             operator = node.get("operator")
             try:
                 if operator == "=":
-                    return left == right
-                if operator == "<>":
-                    return left != right
-                if operator == "<":
-                    return left < right
-                if operator == ">":
-                    return left > right
-                if operator == "<=":
-                    return left <= right
-                if operator == ">=":
-                    return left >= right
+                    result = left == right
+                elif operator == "<>":
+                    result = left != right
+                elif operator == "<":
+                    result = left < right
+                elif operator == ">":
+                    result = left > right
+                elif operator == "<=":
+                    result = left <= right
+                elif operator == ">=":
+                    result = left >= right
+                else:
+                    return None
+                explanation.append({"path": path, "kind": "comparison", "operator": operator, "left_expression": node.get("left"), "left_value": left, "right_expression": node.get("right"), "right_value": right, "result": result, "status": "evaluated"})
+                return result
             except (TypeError, ValueError):
                 missing.append(f"incompatible_values:{left!r}:{right!r}")
                 return None
@@ -159,4 +169,5 @@ def evaluate_condition_snapshot(tree: dict[str, Any], snapshot: dict[str, Any],
         "provenance": "caller_supplied_snapshot",
         "runtime_evaluated": False,
         "missing_or_unsupported": sorted(set(missing)),
+        "explanation": explanation,
     }

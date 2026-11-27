@@ -230,3 +230,29 @@ A separate helper, `nav_ai.snapshot_evaluator.evaluate_condition_snapshot`, eval
 For NAV Option fields, a SQL-style integer ordinal is translated through the supplied Table TXT `OptionString` (zero-based option position) before comparison with an Option member. For example, Table 50063 `Jenis Transaksi` ordinal `2` resolves to `ALL` when its OptionString is `IN,OUT,ALL`.
 
 The result provenance is `caller_supplied_snapshot` and `runtime_evaluated=false`. This is a deterministic evaluation of the supplied values, not proof that those values existed at posting time or that NAV executed the procedure. A future CLI integration must require an explicit snapshot file and preserve its provenance.
+
+
+### CLI usage with a supplied snapshot
+
+The optional `--snapshot-json` argument attaches a snapshot evaluation to IF nodes. It requires at least one `--table-source` so Option ordinals can be interpreted against metadata.
+
+Example snapshot file:
+
+```json
+{
+  "tblStocktake": {
+    "Block Type": 2,
+    "Item Category Code": "ELEC",
+    "Product Group Code": "",
+    "Item No.": ""
+  }
+}
+```
+
+Example command:
+
+```powershell
+nav-intel --company datascrip --json conditions --source-file "reports/datascrip/ownership/Codeunit_50107.txt" --object "Codeunit 50107" --procedure "BlockStocktakeSalesHeader" --table-source "reports/datascrip/stocktake/Table_50063.txt" --snapshot-json "stocktake_snapshot.json"
+```
+
+The snapshot keys are Record variable names; nested keys are NAV field names. Record variable declarations in both local VAR sections and procedure parameters are resolved. The example is illustrative only: values must come from an explicitly selected and properly scoped record snapshot. If a predicate references a field whose Table metadata or snapshot value is missing, its result remains indeterminate.

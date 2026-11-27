@@ -34,3 +34,14 @@ def test_indeterminate_outer_condition_labels_both_branches_as_possible():
     assert [effect["certainty"] for effect in effects] == [
         "possible_true_branch", "possible_false_branch"
     ]
+
+
+def test_nested_snapshot_selected_if_limits_effects_to_its_selected_path():
+    tree = analyze_control_flow(
+        "IF Ready THEN IF CreditOK THEN SalesHeader.MODIFY ELSE ERROR('credit');"
+    )
+    nested = tree["nodes"][0]["true_branch"]
+    nested["snapshot_evaluation"] = {"result": True}
+    effects = summarize_branch_effects(tree["nodes"][0]["true_branch"])
+    assert [effect["action"] for effect in effects] == ["record_write"]
+    assert effects[0]["certainty"] == "selected_by_snapshot"

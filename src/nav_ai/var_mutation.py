@@ -13,6 +13,7 @@ def analyze_var_parameter_mutations(
     callee_source: str,
     procedure_name: str,
     source_file: str = "<callee>",
+    call_effects: dict[int, list[dict[str, Any]]] | None = None,
 ) -> dict[str, Any]:
     """Summarize explicit assignments to VAR parameters in one procedure.
 
@@ -37,14 +38,14 @@ def analyze_var_parameter_mutations(
     body = "\n".join(raw_lines[begin:])
     tree = analyze_control_flow(body, source_file=source_file,
                                 line_offset=procedure["line_start"] + begin - 1)
-    flow = analyze_assignment_flow(tree["nodes"], source_file)
+    flow = analyze_assignment_flow(tree["nodes"], source_file, call_effects=call_effects)
     summaries = []
     for parameter in var_parameters:
         name = parameter["name"]
         key = re.sub(r"\s+", "", name).casefold()
         effects = []
         for event in flow.get("events", []):
-            if event.get("kind") != "explicit_assignment":
+            if event.get("kind") not in {"explicit_assignment", "interprocedural_var_mutation"}:
                 continue
             target_key = event.get("target_key", "")
             # Exact scalar parameter assignment or explicit field mutation on a Record VAR.
@@ -56,8 +57,18 @@ def analyze_var_parameter_mutations(
                     "path": event.get("path", []),
                     "source_file": event.get("source_file"),
                     "evaluated": False,
-                    "effect_kind": "explicit_var_parameter_assignment" if target_key == key
-                                   else "explicit_record_field_mutation",
+                    "effect_kind": (
+                        "interprocedural_var_parameter_mutation"
+                        if event.get("interprocedural") and target_key == key
+                        else "interprocedural_record_field_mutation"
+                        if event.get("interprocedural")
+                        else "explicit_var_parameter_assignment" if target_key == key
+                        else "explicit_record_field_mutation"
+                    ),
+                    "interprocedural": bool(event.get("interprocedural", False)),
+                    "callee_line": event.get("callee_line"),
+                    "callee_parameter": event.get("callee_parameter"),
+                    "mapping": event.get("mapping"),
                 })
         summaries.append({
             "parameter": name,
@@ -71,8 +82,8 @@ def analyze_var_parameter_mutations(
         "var_parameters": summaries,
         "runtime_evaluated": False,
         "limitations": [
-            "Only explicit := assignments to a VAR parameter or its qualified fields are summarized.",
-            "Nested procedure calls, triggers, database writes and implicit side effects are not propagated.",
+            "Explicit := assignments and caller-supplied mapped call effects to a VAR parameter or its qualified fields are summarized.",
+            "Nested procedure calls are included only when the caller supplies a validated call_effects map; triggers, database writes and implicit side effects are not propagated.",
             "No expression is evaluated; assigned values remain symbolic.",
             "No mutation found means no supported explicit assignment was detected, not proof of immutability.",
         ],

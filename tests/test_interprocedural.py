@@ -1,4 +1,4 @@
-from nav_ai.interprocedural import analyze_direct_call_bindings
+from nav_ai.interprocedural import analyze_direct_call_bindings, build_caller_var_effect_map
 
 CALLEE = """OBJECT Codeunit 50107 Block Stocktake
 {
@@ -63,3 +63,41 @@ def test_does_not_bind_same_named_method_on_wrong_codeunit():
         caller, CALLEE, "BlockStocktakeSalesHeader", "caller.txt", "callee.txt"
     )
     assert result["call_sites"] == []
+
+
+
+def test_maps_only_unconditional_var_mutations_to_caller_state():
+    binding = {
+        "call_sites": [{
+            "line": 12,
+            "var_parameter_effects": [{
+                "parameter": "SalesHeader",
+                "caller_argument": "Rec",
+                "mutations": [
+                    {"target": "SalesHeader.Status", "expression": "Status::Released",
+                     "line": 8, "source_file": "callee.txt", "path": []},
+                    {"target": "SalesHeader.Blocked", "expression": "TRUE",
+                     "line": 10, "source_file": "callee.txt",
+                     "path": [{"if": "DoBlock", "outcome": True}]},
+                ],
+            }],
+        }],
+    }
+    mapped = build_caller_var_effect_map(binding)
+    assert len(mapped[12]) == 1
+    assert mapped[12][0]["target"] == "Rec.Status"
+    assert mapped[12][0]["mapping"] == "var_record_field_argument"
+
+
+def test_does_not_map_complex_var_argument_expression():
+    binding = {
+        "call_sites": [{
+            "line": 4,
+            "var_parameter_effects": [{
+                "parameter": "Status",
+                "caller_argument": "GetStatus()",
+                "mutations": [{"target": "Status", "expression": "'Released'", "path": []}],
+            }],
+        }],
+    }
+    assert build_caller_var_effect_map(binding) == {}

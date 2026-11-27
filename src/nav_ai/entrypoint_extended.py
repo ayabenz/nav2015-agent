@@ -11,19 +11,19 @@ from typing import Any
 from .entrypoint_intelligence import _source_files
 from .parser import OBJECT_RE, split_objects
 
-SECTION_RE = re.compile(r"^  ([A-Z][A-Z0-9 -]*)\\s*$")
-VAR_RE = re.compile(r'^\\s*(?:"([^"]+)"|([A-Za-z_][\\w ]*?))(?:@\\d+)?\\s*:\\s*(Codeunit|Page|Report|XMLport|Query|Record)\\s+(\\d+)\\s*;', re.I)
-PROC_RE = re.compile(r"^\\s*(?:LOCAL\\s+)?PROCEDURE\\s+([^ (]+)", re.I)
-EVENT_RE = re.compile(r"EventSubscriber\\s*\\(\\s*ObjectType\\s*::\\s*(Codeunit|Page|Table|Report|XMLport)\\s*,\\s*(?:\\1\\s*::\\s*)?(\\d+|\\"([^\\"]+)\\")\\s*,\\s*'([^']+)'", re.I)
-RUN_RE = re.compile(r"\\b(CODEUNIT|PAGE|REPORT|XMLPORT)\\s*\\.\\s*RUN(?:MODAL)?\\s*\\(\\s*([^,;)]+)", re.I)
-ASSIGN_RE = re.compile(r'\\b([A-Za-z_][\\w ]*)\\s*:=\\s*(\\d+)\\s*;', re.I)
-FIELD_START_RE = re.compile(r'^\\s*\\{\\s*(\\d+)\\s*;\\s*;\\s*([^;]+?)\\s*;', re.I)
-TRIGGER_LINE_RE = re.compile(r'^\\s*(OnValidate|OnLookup|OnDrillDown|OnAssistEdit)\\s*=\\s*(.*)$', re.I)
+SECTION_RE = re.compile(r"^  ([A-Z][A-Z0-9 -]*)\s*$")
+VAR_RE = re.compile(r'^\s*(?:"([^"]+)"|([A-Za-z_][\w ]*?))(?:@\d+)?\s*:\s*(Codeunit|Page|Report|XMLport|Query|Record)\s+(\d+)\s*;', re.I)
+PROC_RE = re.compile(r"^\s*(?:LOCAL\s+)?PROCEDURE\s+([^ (]+)", re.I)
+EVENT_RE = re.compile(r"EventSubscriber\s*\(\s*ObjectType\s*::\s*(Codeunit|Page|Table|Report|XMLport)\s*,\s*(?:\1\s*::\s*)?(\d+|\"([^\"]+)\")\s*,\s*'([^']+)'", re.I)
+RUN_RE = re.compile(r"\b(CODEUNIT|PAGE|REPORT|XMLPORT)\s*\.\s*RUN(?:MODAL)?\s*\(\s*([^,;)]+)", re.I)
+ASSIGN_RE = re.compile(r'\b([A-Za-z_][\w ]*)\s*:=\s*(\d+)\s*;', re.I)
+FIELD_START_RE = re.compile(r'^\s*\{\s*(\d+)\s*;\s*;\s*([^;]+?)\s*;', re.I)
+TRIGGER_LINE_RE = re.compile(r'^\s*(OnValidate|OnLookup|OnDrillDown|OnAssistEdit)\s*=\s*(.*)$', re.I)
 
 def _mask(text: str) -> str:
     text = re.sub(r"'(?:[^']|'')*'", " ", text)
-    text = re.sub(r"//[^\\n]*", " ", text)
-    return re.sub(r"\\{[^{}]*\\}", " ", text)
+    text = re.sub(r"//[^\n]*", " ", text)
+    return re.sub(r"\{[^{}]*\}", " ", text)
 
 def discover_extended_entrypoints(source_roots: list[str], graph=None) -> dict[str, Any]:
     typed_calls, dynamic_runs, subscribers, job_queue, field_triggers = [], [], [], [], []
@@ -36,7 +36,7 @@ def discover_extended_entrypoints(source_roots: list[str], graph=None) -> dict[s
                     continue
                 typ, oid, name = hm.group(1).title(), int(hm.group(2)), hm.group(3).strip()
                 node = f"{typ} {oid}"
-                offset = source.count("\\n", 0, match.start())
+                offset = source.count("\n", 0, match.start())
                 lines = block.splitlines()
                 section = ""
                 vars_by_name: dict[str, dict[str, Any]] = {}
@@ -90,8 +90,8 @@ def discover_extended_entrypoints(source_roots: list[str], graph=None) -> dict[s
                                         while k < min(end + 1, len(lines)):
                                             trigger_body.append(lines[k])
                                             clean = _mask(lines[k]).upper()
-                                            d += len(re.findall(r"\\bBEGIN\\b", clean)) - len(re.findall(r"\\bEND\\b", clean))
-                                            if d <= 0 and re.search(r"\\bEND\\s*;?", clean):
+                                            d += len(re.findall(r"\bBEGIN\b", clean)) - len(re.findall(r"\bEND\b", clean))
+                                            if d <= 0 and re.search(r"\bEND\s*;?", clean):
                                                 break
                                             k += 1
                                     field_triggers.append({
@@ -99,7 +99,7 @@ def discover_extended_entrypoints(source_roots: list[str], graph=None) -> dict[s
                                         "object": node, "object_name": name, "field_id": field_id,
                                         "field_name": field_name, "trigger": tm.group(1),
                                         "source": display, "line_start": j + 1 + offset,
-                                        "line_end": k + 1 + offset, "body": "\\n".join(trigger_body),
+                                        "line_end": k + 1 + offset, "body": "\n".join(trigger_body),
                                         "evidence": "table_field_trigger_body", "runtime_invoked": False,
                                     })
                 object_sources.append({"node": node, "name": name, "source": display, "text": block,
@@ -135,7 +135,7 @@ def discover_extended_entrypoints(source_roots: list[str], graph=None) -> dict[s
                 for receiver, var in all_vars.items():
                     if var["type"] not in {"Codeunit", "Page", "Report", "XMLport", "Query"}:
                         continue
-                    for call in re.finditer(r"\\b" + re.escape(receiver) + r"\\s*\\.\\s*([A-Za-z_][\\w]*)\\s*(?:\\(|;)", clean, re.I):
+                    for call in re.finditer(r"\b" + re.escape(receiver) + r"\s*\.\s*([A-Za-z_][\w]*)\s*(?:\(|;)", clean, re.I):
                         target = f"{var['type']} {var['object_id']}"
                         method = call.group(1)
                         target_node = None
@@ -157,7 +157,7 @@ def discover_extended_entrypoints(source_roots: list[str], graph=None) -> dict[s
                     job_queue.append({"kind": "standard_job_queue_entry_table", "object": node,
                                       "source": display, "evidence": "Table 472 source export",
                                       "runtime_configured": False})
-                if re.search(r"\\bJob\\s*Queue\\s*Entry\\b|\\bJobQueueEntry\\b", block, re.I) or re.search(r"\\bCODEUNIT\\s*::\\s*448\\b", block, re.I):
+                if re.search(r"\bJob\s*Queue\s*Entry\b|\bJobQueueEntry\b", block, re.I) or re.search(r"\bCODEUNIT\s*::\s*448\b", block, re.I):
                     job_queue.append({"kind": "job_queue_source_consumer_candidate", "object": node,
                                       "source": display, "evidence": "Job Queue Entry / Codeunit 448 source reference",
                                       "runtime_configured": False})

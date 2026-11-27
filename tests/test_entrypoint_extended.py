@@ -58,3 +58,23 @@ def test_extracts_individual_table_field_onvalidate(tmp_path):
     assert trigger["field_id"] == 1
     assert trigger["field_name"] == "Status"
     assert trigger["trigger"] == "OnValidate"
+
+
+
+def test_maps_job_queue_configuration_snapshot_without_claiming_execution():
+    from nav_ai.entrypoint_extended import map_job_queue_snapshot
+
+    result = map_job_queue_snapshot({
+        "snapshot_at": "2026-11-27T10:00:00+07:00",
+        "company": "PT DATASCRIP",
+        "entries": [{
+            "entry_no": "JOB-001", "object_type": "Codeunit", "object_id": 50001,
+            "status": "Ready", "parameter_string": "sensitive-value",
+            "recurring": True,
+        }],
+    }, _graph())
+    entry = result["entries"][0]
+    assert entry["target_object"] == "Codeunit 50001"
+    assert entry["parameter_string_present"] is True
+    assert "sensitive-value" not in str(result)
+    assert entry["runtime_executed"] is False

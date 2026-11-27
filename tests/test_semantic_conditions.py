@@ -74,3 +74,11 @@ def test_condition_explanation_keeps_unknown_operands_explicit():
     assert result["left"]["resolution"] == "unresolved"
     assert result["right"]["kind"] == "numeric_literal"
     assert result["evaluated"] is False
+
+
+
+def test_record_parameter_declarations_are_resolved():
+    variables = parse_record_variables(
+        'PROCEDURE CheckHeader@1(SalesHeader@1003 : Record 36; CreateWhseShipment : Boolean);'
+    )
+    assert variables == {"salesheader": 36}

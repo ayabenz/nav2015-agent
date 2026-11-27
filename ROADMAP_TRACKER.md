@@ -423,7 +423,7 @@ These are separate historical runs with different collection scopes. They must n
 - [ ] Expand typed variable scope resolution across every procedure and object-level VAR block; handle aliases and assignments.
 - [ ] Resolve named and expression-based RUN targets, including variables assigned through branches and function returns.
 - [ ] Map EventSubscriber declarations to matching publisher event declarations and publisher call sites.
-- [ ] Read actual Job Queue Entry configuration snapshots and map Object Type / Object ID / Parameter String / schedule state to source targets. Keep snapshots time-scoped and redact sensitive parameter values.
+- [x] Add optional JSON Job Queue Entry configuration snapshot input; map Object Type / Object ID to indexed NAV targets, retain schedule metadata and redact Parameter String content. This remains configuration evidence, not execution evidence.
 - [ ] Validate Table field trigger extraction against representative Datascrip Table exports, including multiline properties, nested BEGIN/END and quoted field names.
 - [ ] Integrate field-trigger CALL paths, conditions, data provenance and downstream Table effects into per-field reports.
 - [ ] Run full CI on the current branch head and publish the canonical result.

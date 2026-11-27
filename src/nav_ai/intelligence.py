@@ -296,6 +296,8 @@ def main(argv: list[str] | None = None) -> int:
                 result = analyze_control_flow(code, parsed["object"]["type"], parsed["object"]["id"],
                                               parsed["object"]["name"], None, args.source_file,
                                               line_offset=line_offset)
+            if args.call_source and not args.procedure:
+                raise ValueError("--call-source requires --procedure")
             assignment_analysis = analyze_assignment_flow(result["nodes"], args.source_file)
             result["assignment_flow_analysis"] = assignment_analysis
             if args.call_source:

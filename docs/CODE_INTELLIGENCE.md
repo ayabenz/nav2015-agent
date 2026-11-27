@@ -160,3 +160,24 @@ nav-intel --company datascrip --json conditions --source-file "reports/datascrip
 ```
 
 **Important limitations:** filter expressions and `%1` substitution arguments are preserved as source text, not evaluated. The current pass scans calls in source order. If the analyzed region contains IF/CASE/ELSE, lookup filter state is explicitly marked `branch_ambiguous`; it is not a path-sensitive merge and must not be interpreted as the exact filter set on every branch. It also does not model interprocedural flow, dynamic RecordRef/FieldRef or WITH-scope field references. A lookup result is always `unknown_static`: only NAV runtime evidence can establish whether a row was found.
+
+
+## Path-sensitive filter state across IF / CASE
+
+The condition analyzer now has a path-sensitive pass over the parsed IF/ELSE and CASE tree. Instead of scanning the whole procedure as one linear stream, it forks a filter state for each syntactic branch and keeps the states separate after branches rejoin.
+
+For example:
+
+```pascal
+IF IsOutbound THEN
+  R.SETFILTER("Jenis Transaksi", 'OUT|ALL')
+ELSE
+  R.SETFILTER("Jenis Transaksi", 'IN|ALL');
+
+IF R.FINDFIRST THEN
+  ...
+```
+
+The lookup after the first IF is represented by two possible source paths, one carrying `OUT|ALL` and the other carrying `IN|ALL`. CASE arms and ELSE are handled similarly. Each lookup includes `path_conditions`, `active_filters`, and `filter_state=path_specific`. The IF predicate annotation retains all matching lookup alternatives in `lookup_paths`.
+
+This remains static path enumeration, not symbolic execution. Predicates such as `IsOutbound` are not evaluated, filter placeholders are not substituted, and the analyzer does not prove either path is reachable. Unknown or unsupported statement forms remain outside the interpreted subset. Database row existence is never inferred from FINDFIRST.

@@ -402,3 +402,10 @@ nav-intel --company datascrip document "Codeunit 50107" --source-root "data\\inp
 By default, files are written under `reports/datascrip/business_process/` using the start object as the filename. Supply `--output "reports\\datascrip\\business_process\\stocktake.md"` to choose a Markdown path; the companion JSON uses the same basename. The report includes process scope, procedure call paths, source resolution, direct table usage, IF/ELSE/CASE effect inventory with branch paths and source line references, aggregate table usage, unresolved call targets, and evidence limitations.
 
 The JSON companion retains the complete trace payload for downstream agent retrieval, including condition trees, assignment/filter analysis, interprocedural summaries, graph edges, and source evidence. Reports explicitly state that static effects are not runtime execution counts or proof of committed changes. Missing/ambiguous source remains visible. The command does not require a NAV database connection or runtime test.
+
+
+#### Custom/standard NAV boundary mapping
+
+The `business_flow` payload retains each procedure's object-origin classification (for example `CUSTOM`, `MODIFIED_STANDARD`, or `STANDARD_UNCHANGED`). It also reports `origin_transitions`: discovered procedure CALL edges where caller and callee origins differ. The Markdown report presents these transitions separately so a reader can see where a Datascrip customization crosses into standard NAV code, or where a standard object calls back into custom code.
+
+These transitions are dependency-graph evidence only. They do not prove the call occurred in a particular transaction. Edges with object-level or unresolved targets are still reported separately; no procedure target is invented.

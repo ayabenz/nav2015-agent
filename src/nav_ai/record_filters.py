@@ -166,6 +166,7 @@ def analyze_record_filter_paths(
     variables: dict[str, int],
     tables: dict[int, dict[str, Any]],
     source_file: str = "<memory>",
+    call_effects: dict[int, list[dict[str, Any]]] | None = None,
 ) -> dict[str, Any]:
     """Interpret filter mutations over the extracted IF/CASE tree, keeping path states separate."""
     from copy import deepcopy
@@ -271,8 +272,54 @@ def analyze_record_filter_paths(
         if kind == "block":
             return walk(node.get("children", []), states)
         if kind == "statement":
+            statement_line = int(node.get("line_start", 1))
             for state in states:
-                scan_statement(node.get("source", ""), node.get("line_start", 1), state)
+                scan_statement(node.get("source", ""), statement_line, state)
+                for effect in (call_effects or {}).get(statement_line, []):
+                    receiver = str(effect.get("record_variable", "")).strip()
+                    if not receiver:
+                        continue
+                    key = receiver.casefold()
+                    record_filters = state["filters"].setdefault(key, {})
+                    operation = effect.get("operation")
+                    field_name = str(effect.get("field") or "").strip()
+                    if operation == "RESET":
+                        record_filters.clear()
+                    elif operation == "SETRANGE_CLEAR" and field_name:
+                        record_filters.pop(field_name.casefold(), None)
+                    elif operation in {"SETRANGE", "SETFILTER"} and field_name:
+                        resolved = resolve_condition(
+                            f'{receiver}."{field_name}"', variables, tables
+                        )
+                        detail = {
+                            "operation": operation,
+                            "record_variable": receiver,
+                            "field": field_name,
+                            "arguments": effect.get("arguments", []),
+                            "line": statement_line,
+                            "source_file": source_file,
+                            "table_id": variables.get(key),
+                            "field_resolution": resolved["field_references"][0]
+                                if resolved["field_references"] else None,
+                            "interprocedural": True,
+                            "callee_line": effect.get("callee_line"),
+                            "callee_source_file": effect.get("callee_source_file"),
+                            "callee_parameter": effect.get("callee_parameter"),
+                        }
+                        record_filters[field_name.casefold()] = detail
+                    else:
+                        continue
+                    events.append({
+                        "operation": operation,
+                        "record_variable": receiver,
+                        "field": field_name or None,
+                        "line": statement_line,
+                        "filters_after": deepcopy(list(record_filters.values())),
+                        "path": list(state["path"]),
+                        "interprocedural": True,
+                        "callee_line": effect.get("callee_line"),
+                        "callee_source_file": effect.get("callee_source_file"),
+                    })
             return states
         if kind == "if":
             condition = str(node.get("condition", ""))
@@ -320,7 +367,7 @@ def analyze_record_filter_paths(
             "Paths represent syntactic IF/CASE alternatives, not evaluated runtime conditions.",
             "Boolean predicates are preserved as source text; values and SETFILTER placeholders are not evaluated.",
             "Only operations represented by parsed statement nodes are interpreted; opaque or unsupported C/AL constructs may be omitted.",
-            "Interprocedural calls, WITH scopes, RecordRef/FieldRef and database state are not modeled.",
+            "Only explicitly mapped direct-call VAR Record filter effects are modeled; nested calls, WITH scopes, RecordRef/FieldRef and database state are not modeled.",
             "Every lookup result remains unknown_static.",
         ],
     }

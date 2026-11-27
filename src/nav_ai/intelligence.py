@@ -42,22 +42,38 @@ def _attach_snapshot_evaluations(nodes: Any, snapshot: dict[str, Any],
 
 
 def _build_nested_call_effects(caller_block: str, caller_path: str,
-                               nested_sources: list[str]) -> dict[int, list[dict[str, Any]]]:
-    """Summarize one level of direct nested callees for the selected caller object.
+                               nested_sources: list[str], max_depth: int = 1,
+                               _visited: set[str] | None = None) -> dict[int, list[dict[str, Any]]]:
+    """Summarize direct nested callees up to a bounded call depth.
 
-    The returned effects are keyed by source line in caller_block and can be
-    passed to analyze_var_parameter_mutations for the caller procedure. This is
-    the building block for bounded multi-hop propagation; it does not recurse
-    through arbitrary call graphs.
+    Each hop is resolved against supplied NAV object exports. Repeated object
+    identities on the current path are skipped to prevent recursive cycles.
     """
     combined: dict[int, list[dict[str, Any]]] = {}
+    if max_depth <= 0:
+        return combined
+    caller_parsed = parse_nav_text(caller_block, caller_path)
+    caller_identity = caller_parsed["object"]
+    caller_key = f'{caller_identity["type"]} {caller_identity["id"]}'.casefold()
+    visited = set(_visited or ())
+    visited.add(caller_key)
     for nested_path in nested_sources:
         nested_text = Path(nested_path).read_text(encoding="utf-8-sig", errors="replace")
         for _, nested_block in split_objects(nested_text):
             nested_parsed = parse_nav_text(nested_block, nested_path)
+            nested_identity = nested_parsed["object"]
+            nested_key = f'{nested_identity["type"]} {nested_identity["id"]}'.casefold()
+            if nested_key in visited:
+                continue
             for nested_procedure in nested_parsed.get("procedures", []):
+                child_effects = _build_nested_call_effects(
+                    nested_block, nested_path, nested_sources,
+                    max_depth=max_depth - 1,
+                    _visited=visited | {nested_key},
+                ) if max_depth > 1 else {}
                 mutation_summary = analyze_var_parameter_mutations(
-                    nested_block, nested_procedure["name"], nested_path
+                    nested_block, nested_procedure["name"], nested_path,
+                    call_effects=child_effects,
                 )
                 effects_by_parameter = {
                     item["parameter"].casefold(): item
@@ -342,7 +358,8 @@ def main(argv: list[str] | None = None) -> int:
     cond.add_argument("--table-source", action="append", default=[], help="Table TXT metadata export; repeat for multiple tables")
     cond.add_argument("--snapshot-json", help="explicit Record-variable snapshot JSON; requires --table-source")
     cond.add_argument("--call-source", action="append", default=[], help="caller NAV TXT export to inspect for direct calls into the selected procedure; repeatable")
-    cond.add_argument("--nested-source", action="append", default=[], help="NAV TXT export(s) called by the selected procedure; use to include one additional VAR-effect hop; repeatable")
+    cond.add_argument("--nested-source", action="append", default=[], help="NAV TXT exports containing nested callees; repeatable")
+    cond.add_argument("--max-call-depth", type=int, default=1, help="maximum nested VAR-effect hops from the selected procedure (default: 1)")
 
     args = parser.parse_args(argv)
     base = Path("data")
@@ -393,9 +410,15 @@ def main(argv: list[str] | None = None) -> int:
                                               line_offset=line_offset)
             if (args.call_source or args.nested_source) and not args.procedure:
                 raise ValueError("--call-source and --nested-source require --procedure")
+            if args.max_call_depth < 1:
+                raise ValueError("--max-call-depth must be at least 1")
+            if args.max_call_depth > 1 and not args.nested_source:
+                raise ValueError("--max-call-depth greater than 1 requires --nested-source")
             nested_effect_map = (
-                _build_nested_call_effects(block, args.source_file, args.nested_source)
-                if args.nested_source else {}
+                _build_nested_call_effects(
+                    block, args.source_file, args.nested_source,
+                    max_depth=args.max_call_depth,
+                ) if args.nested_source else {}
             )
             mutation_summary = analyze_var_parameter_mutations(
                 block, args.procedure, args.source_file, call_effects=nested_effect_map

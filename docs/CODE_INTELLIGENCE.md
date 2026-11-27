@@ -357,3 +357,18 @@ The `trace` command now adds `interprocedural_analysis` for every discovered CAL
 The result reports each edge as `analyzed`, `no_matching_direct_call`, `source_unavailable`, or `analysis_unavailable`, with the binding, mutation summary, and symbolic caller effect map. Object-scope/trigger edges and graph edges that cannot be resolved to direct source-level calls remain explicit rather than guessed.
 
 This is currently a **one-edge summary**: it does not yet recursively compose VAR effects across multiple discovered graph hops or feed those effects into every caller's later IF/ELSE assignment context. It does not evaluate expressions, access SQL data, or prove runtime execution. All results carry `runtime_evaluated: false`.
+
+
+#### Bounded multi-hop VAR-effect composition in `trace`
+
+The `trace` command composes explicit VAR mutations across discovered call edges. Set `--max-interprocedural-depth N` to control the number of additional propagation rounds (default: `2`). Each round takes effects summarized for a callee, maps them through its caller's direct call-site arguments, and feeds those mapped assignments into the caller's own VAR mutation summary. This supports chains such as A calls B, B calls C, and C assigns a field on a Record VAR parameter; the resulting symbolic field mutation can be mapped through B to A.
+
+The JSON output adds `interprocedural_analysis.procedure_summaries`, `propagated_hops`, and the composed `caller_state_effect_map` on each analyzed edge. Cycles are bounded by the configured round count rather than traversed indefinitely. A depth of zero disables cross-edge composition; direct source bindings are still reported.
+
+Example:
+
+```powershell
+nav-intel --company datascrip --json trace "Codeunit 50107" --source-root "data\\input\\datascrip\\datascrip.zip" --max-depth 3 --max-nodes 500 --max-interprocedural-depth 2 --analyze-conditions
+```
+
+Composition is conservative and only carries explicit VAR assignments whose simple Boolean path predicates are selected by literal call arguments. It does not propagate arbitrary expressions, infer SQL Record values, prove calls executed, or fully model triggers, implicit writes, WITH scopes, dynamic dispatch or indirect calls. `runtime_evaluated` remains false for all summaries.

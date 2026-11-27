@@ -277,6 +277,33 @@ def trace_call_graph(graph: sqlite3.Connection, start: str,
                 table_source_status.append({
                     "table_id": object_id, "status": "parse_error", "error": str(exc)
                 })
+    trace_edges = [
+        {
+            "src": src,
+            "dst": dst,
+            "src_depth": depth_by_node[src],
+            "dst_depth": depth_by_node[dst],
+            "tree_edge": parent_by_node.get(dst) == src,
+        }
+        for src, targets in adjacency.items() if src in depth_by_node
+        for dst in targets if dst in depth_by_node
+    ]
+    interprocedural_analysis = analyze_trace_call_edges(
+        trace_edges, catalog, symbols, max_call_depth=max_interprocedural_depth
+    )
+    call_effects_by_procedure: dict[str, dict[int, list[dict[str, Any]]]] = {}
+    for edge_result in interprocedural_analysis.get("edges", []):
+        if edge_result.get("status") != "analyzed":
+            continue
+        target_map = edge_result.get("caller_state_effect_map", {})
+        if not target_map:
+            continue
+        offset = int(edge_result.get("caller_object_line_offset", 0))
+        local_map = call_effects_by_procedure.setdefault(edge_result["src"], {})
+        for line, effects in target_map.items():
+            absolute_line = int(line) + offset
+            local_map.setdefault(absolute_line, []).extend(effects)
+
     procedures = []
     condition_analysis_count = 0
     object_cache: dict[str, dict[str, Any]] = {}
@@ -389,7 +416,11 @@ def trace_call_graph(graph: sqlite3.Connection, start: str,
                     "status": "analyzed",
                     "nodes": tree["nodes"],
                     "assignment_flow_analysis": analyze_assignment_flow(
-                        tree["nodes"], source["source_path"]
+                        tree["nodes"], source["source_path"],
+                        call_effects=call_effects_by_procedure.get(node, {}),
+                    ),
+                    "interprocedural_call_effect_count": sum(
+                        len(items) for items in call_effects_by_procedure.get(node, {}).values()
                     ),
                     "record_filter_analysis": filters,
                     "semantic_resolution": {
@@ -411,20 +442,6 @@ def trace_call_graph(graph: sqlite3.Connection, start: str,
                 }
         procedures.append(item)
 
-    trace_edges = [
-        {
-            "src": src,
-            "dst": dst,
-            "src_depth": depth_by_node[src],
-            "dst_depth": depth_by_node[dst],
-            "tree_edge": parent_by_node.get(dst) == src,
-        }
-        for src, targets in adjacency.items() if src in depth_by_node
-        for dst in targets if dst in depth_by_node
-    ]
-    interprocedural_analysis = analyze_trace_call_edges(
-        trace_edges, catalog, symbols, max_call_depth=max_interprocedural_depth
-    )
     reached_objects = sorted({item["object_node"] for item in procedures})
     aggregate_table_usage: list[dict[str, Any]] = []
     if reached_objects:

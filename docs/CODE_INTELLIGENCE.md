@@ -109,7 +109,7 @@ The analyzer should explain the outer predicate, its resolved table/field and Op
 
 ### Planned CLI and tests
 
-Proposed CLI: `nav-intel --company datascrip conditions "Codeunit 80.PostItemJnlLine"`. Integrate the output into existing object and procedure details after the dedicated query is stable. Tests should cover nested IF/ELSE, ELSEIF, CASE, Option values, field comparisons, variable assignment/data-flow and unresolved expressions.
+Current CLI: `nav-intel --company datascrip --json conditions --source-file <NAV-TXT> --object "Codeunit 80" --procedure "PostItemJnlLine" --table-source <TABLE-TXT>`. Automatic source-file resolution from the symbol index and integration into existing object/procedure details remain future work. Tests should cover nested IF/ELSE, ELSEIF, CASE, Option values, field comparisons, variable assignment/data-flow and unresolved expressions.
 
 See ROADMAP_TRACKER.md, Phase 2.5, for implementation tasks and exit criteria.
 
@@ -125,12 +125,12 @@ nav-intel --company datascrip conditions --source-file "data/input/datascrip/Cod
 
 The source file must contain one resolvable object (or use `--object` to select one object from a multi-object export). Omit `--procedure` to analyze the object's CODE section. The command currently requires an explicit source file; automatic source-file resolution from the symbol index is a subsequent integration step.
 
-**Current limits:** predicates are retained as source text and are not yet semantically resolved to Table/Field IDs or OptionString values. Assignment/data-flow, cross-procedure value propagation, full C/AL grammar coverage and runtime evaluation are not implemented. Unsupported statements are preserved as opaque statement nodes. Treat diagnostics and source spans as part of the evidence.
+**Current limits:** raw predicates and source spans are retained, with initial normalization, Table/Field/Option resolution and path-sensitive filter tracking described in the sections below. Local assignment/data-flow, cross-procedure value propagation, full C/AL grammar coverage and runtime evaluation are not implemented. Unsupported statements are preserved as opaque statement nodes. Treat diagnostics and unresolved operands as part of the evidence.
 
 
 ## Semantic resolution: Record fields and Option members
 
-The next increment adds `nav_ai.semantic_conditions`. It resolves qualified C/AL references such as `tblStocktake."Start Date"` using the Record variable declaration and an explicit Table TXT export. Resolved references include Table ID/name, Field ID/name/type, metadata source and line. Option members are checked against the field's OptionString; a value not present in the metadata is marked `unverified`, not silently accepted.
+The semantic-resolution increment adds `nav_ai.semantic_conditions`. It resolves qualified C/AL references such as `tblStocktake."Start Date"` using the Record variable declaration and an explicit Table TXT export. Resolved references include Table ID/name, Field ID/name/type, metadata source and line. Option members are checked against the field's OptionString; a value not present in the metadata is marked `unverified`, not silently accepted.
 
 Example against the actual Stocktake source exports:
 

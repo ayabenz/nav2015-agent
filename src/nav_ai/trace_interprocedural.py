@@ -59,6 +59,7 @@ def analyze_trace_call_edges(
                 "caller_procedure": caller_proc,
                 "callee_object": callee_object,
                 "callee_procedure": callee_proc,
+                "caller_object_line_offset": caller.get("object_line_offset", 0),
             })
             if caller.get("status") != "resolved" or callee.get("status") != "resolved":
                 item.update({

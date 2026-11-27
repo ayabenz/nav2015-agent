@@ -236,3 +236,6 @@ These are separate historical runs with different collection scopes. They must n
 
 
 **Validation (2026-11-27):** Bounded nested-call VAR propagation passed the complete GitHub Actions suite: [run #172](https://github.com/ayabenz/nav2015-agent/actions/runs/45928951416), **88 passed in 0.77s**. This validates the new nested mutation-summary path and the existing direct caller propagation tests; arbitrary-depth call graph traversal remains future work.
+
+
+**Validation (2026-11-27 — bounded multi-hop):** The configurable `--max-call-depth` implementation passed [GitHub Actions run #176](https://github.com/ayabenz/nav2015-agent/actions/runs/45929145882), **89 passed in 0.49s**. Regression coverage includes a three-Codeunit chain where the deepest callee's Boolean literal selects its ELSE-side Record field mutation, which is summarized through the intermediate Codeunit. This validates the bounded source-analysis fixture, not runtime NAV execution.

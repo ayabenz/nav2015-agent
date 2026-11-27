@@ -305,7 +305,7 @@ def main(argv: list[str] | None = None) -> int:
                 for caller_path in args.call_source:
                     caller_text = Path(caller_path).read_text(encoding="utf-8-sig", errors="replace")
                     call_bindings.append(analyze_direct_call_bindings(
-                        caller_text, source, args.procedure or "",
+                        caller_text, block, args.procedure or "",
                         caller_path, args.source_file,
                     ))
                 result["interprocedural_call_bindings"] = call_bindings

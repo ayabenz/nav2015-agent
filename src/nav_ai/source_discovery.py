@@ -15,6 +15,7 @@ from typing import Any
 from .parser import parse_nav_text, split_objects
 from .control_flow import analyze_control_flow
 from .assignment_flow import analyze_assignment_flow
+from .filter_value_resolution import enrich_record_filter_values
 from .semantic_conditions import (parse_record_variables, parse_table_metadata,
                                    enrich_control_flow, enrich_assignment_flow)
 from .record_filters import analyze_record_filter_paths, annotate_record_lookup_conditions
@@ -436,6 +437,7 @@ def trace_call_graph(graph: sqlite3.Connection, start: str,
                     tree["nodes"], source["source_path"],
                     call_effects=call_effects_by_procedure.get(node, {}),
                 )
+                enrich_record_filter_values(filters, assignment_flow)
                 if tables:
                     enrich_assignment_flow(assignment_flow, tree["nodes"], variables, tables)
                 item["condition_analysis"] = {

@@ -85,3 +85,21 @@ def test_source_catalog_marks_duplicate_object_exports_ambiguous(tmp_path):
     (tmp_path / "two.txt").write_text(OBJ_B, encoding="utf-8")
     catalog = build_source_catalog([str(tmp_path)])
     assert len(catalog[("codeunit", 60002)]) == 2
+
+
+
+def test_trace_reports_object_level_run_target_without_guessing_procedure():
+    db = graph_db()
+    db.execute(
+        "INSERT INTO edges VALUES(?,?,?,?,?,?,?)",
+        ("Codeunit 60002.Update", "Codeunit 60001", "CALL", 1, 1,
+         "Codeunit 60002", "Codeunit 60001"),
+    )
+    result = trace_call_graph(
+        db, "Codeunit 60001", [], None, max_depth=3
+    )
+    assert result["unresolved_call_targets"] == [{
+        "src": "Codeunit 60002.Update",
+        "dst": "Codeunit 60001",
+        "reason": "CALL edge targets an object/non-procedure graph node",
+    }]

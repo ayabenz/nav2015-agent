@@ -44,3 +44,22 @@ def test_competing_domain_evidence_is_reported_as_ambiguous():
     assert result["primary_domain"] == "ambiguous"
     assert result["confidence"] == "ambiguous"
     assert len(result["ranked_domains"]) >= 2
+
+
+def test_operational_profile_uses_camel_case_posting_calls_and_table_writes():
+    result = classify_process_candidate({
+        "object": "Codeunit 60010",
+        "name": "Inventory Posting",
+        "type": "Codeunit",
+        "reachable_procedures": [
+            {"node": "Codeunit 60010.PostItemJnlLine"},
+            {"node": "Codeunit 60010.ValidateEntry"},
+        ],
+        "tables": [
+            {"table": "Table 32", "name": "Item Ledger Entry", "usages": ["READ", "WRITE"]},
+        ],
+    })
+    profile = result["operational_profile"]
+    assert profile["role_hint"] == "posting_or_transaction_candidate"
+    assert profile["write_evidence_present"] is True
+    assert "post" in profile["matched_procedure_verbs"]

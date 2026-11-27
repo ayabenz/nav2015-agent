@@ -134,3 +134,34 @@ def test_links_event_subscriber_to_publisher_declaration(tmp_path):
     assert event["publisher_matches"][0]["publisher_object"] == "Codeunit 50001"
     assert event["publisher_invocation_proven"] is False
     assert event["publisher_matches"][0]["static_callers"] == ["Codeunit 50003.RaiseEvent"]
+
+
+
+def test_dynamic_run_with_conflicting_assignments_stays_unresolved(tmp_path):
+    source = tmp_path / "dynamic.txt"
+    source.write_text("""OBJECT Codeunit 50002 Subscriber
+  CODE
+    VAR
+      RunID : Integer;
+    BEGIN
+      RunID := 50001;
+      IF UseOther THEN
+        RunID := 50002;
+      CODEUNIT.RUN(RunID);
+    END;
+""", encoding="utf-8")
+    result = discover_extended_entrypoints([str(source)], _graph())
+    assert result["dynamic_run_targets"][0]["resolved_target"] is None
+    assert result["dynamic_run_targets"][0]["resolution_evidence"] == "unresolved_dynamic_run"
+
+
+def test_resolves_named_codeunit_run_target(tmp_path):
+    source = tmp_path / "named_run.txt"
+    source.write_text("""OBJECT Codeunit 50002 Subscriber
+  CODE
+    BEGIN
+      CODEUNIT.RUN(CODEUNIT::"Worker");
+    END;
+""", encoding="utf-8")
+    result = discover_extended_entrypoints([str(source)], _graph())
+    assert result["dynamic_run_targets"][0]["resolved_target"] == "Codeunit 50001"

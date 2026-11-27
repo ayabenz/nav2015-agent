@@ -22,6 +22,7 @@ from .assignment_flow import analyze_assignment_flow
 from .interprocedural import (analyze_direct_call_bindings, build_caller_var_effect_map,
                               annotate_callsite_boolean_branches)
 from .var_mutation import analyze_var_parameter_mutations
+from .source_discovery import trace_call_graph
 
 
 def _attach_snapshot_evaluations(nodes: Any, snapshot: dict[str, Any],
@@ -347,6 +348,12 @@ def main(argv: list[str] | None = None) -> int:
     imp.add_argument("node")
     imp.add_argument("--kinds", default="CALL")
 
+    trace = sub.add_parser("trace", help="trace reachable CALL procedures and discover their source exports")
+    trace.add_argument("start", help='object or procedure node, e.g. "Codeunit 50107"')
+    trace.add_argument("--source-root", action="append", required=True, help="TXT file, ZIP file, or directory containing NAV TXT exports; repeatable")
+    trace.add_argument("--max-depth", type=int, default=5, help="maximum procedure-call edges from the start (default: 5)")
+    trace.add_argument("--max-nodes", type=int, default=5000, help="maximum procedure nodes to include (default: 5000)")
+
     tab = sub.add_parser("table", help="show all indexed READ/WRITE usage for a table")
     tab.add_argument("node", help='canonical table node, e.g. "Table 36"')
     tab.add_argument("--usage", choices=("READ", "WRITE", "VAR", "SOURCE", "RELATION", "REF"))
@@ -506,7 +513,15 @@ def main(argv: list[str] | None = None) -> int:
                 result = symbol_search(symbols, args.terms, args.limit)
         else:
             with _connect(graph_path) as graph:
-                if args.command == "object":
+                if args.command == "trace":
+                    if not args.source_root:
+                        raise ValueError("trace requires at least one --source-root")
+                    with _connect(symbol_path) as symbols:
+                        result = trace_call_graph(
+                            graph, args.start, args.source_root, symbols,
+                            max_depth=args.max_depth, max_nodes=args.max_nodes,
+                        )
+                elif args.command == "object":
                     result = object_detail(graph, args.node)
                 elif args.command == "procedure":
                     result = procedure_detail(graph, args.node)

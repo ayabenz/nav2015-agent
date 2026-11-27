@@ -1,4 +1,4 @@
-from nav_ai.branch_effects import summarize_branch_effects
+from nav_ai.branch_effects import summarize_all_branch_effects, summarize_branch_effects
 from nav_ai.control_flow import analyze_control_flow
 
 
@@ -61,3 +61,34 @@ def test_classifies_record_lookup_calculation_and_bulk_writes():
     assert [effect["action"] for effect in effects] == [
         "record_lookup", "record_calculation", "record_write", "exit"
     ]
+
+
+def test_inventory_keeps_both_if_branches_and_their_conditions():
+    tree = analyze_control_flow(
+        "IF Released THEN CODEUNIT.RUN(80) ELSE ERROR('not released');"
+    )
+    effects = summarize_all_branch_effects(tree["nodes"])
+    assert [effect["action"] for effect in effects] == ["object_run", "error"]
+    assert effects[0]["branch_path"] == ["IF (Released) THEN"]
+    assert effects[1]["branch_path"] == ["IF (Released) ELSE"]
+    assert all(effect["certainty"] == "condition_not_evaluated" for effect in effects)
+    assert all(effect["runtime_executed"] is False for effect in effects)
+
+
+def test_inventory_preserves_case_arm_and_default_paths():
+    tree = analyze_control_flow(
+        "CASE Status OF 1: Item.MODIFY; 2: Item.DELETE; ELSE ERROR('invalid'); END;"
+    )
+    effects = summarize_all_branch_effects(tree["nodes"])
+    assert [effect["action"] for effect in effects] == ["record_write", "record_write", "error"]
+    assert effects[0]["branch_path"] == ["CASE (Status) = 1"]
+    assert effects[1]["branch_path"] == ["CASE (Status) = 2"]
+    assert effects[2]["branch_path"] == ["CASE (Status) ELSE"]
+
+
+def test_inventory_marks_unconditional_procedure_effects_separately():
+    tree = analyze_control_flow("Item.MODIFY; IF Ready THEN MESSAGE('ok');")
+    effects = summarize_all_branch_effects(tree["nodes"])
+    assert effects[0]["certainty"] == "procedure_reachable_not_runtime_proven"
+    assert effects[0]["branch_path"] == []
+    assert effects[1]["certainty"] == "condition_not_evaluated"

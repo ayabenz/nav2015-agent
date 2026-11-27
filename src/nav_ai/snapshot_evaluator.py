@@ -69,6 +69,16 @@ def _snapshot_value(expression: str, snapshot: dict[str, Any],
     return None, f"unsupported_operand:{raw}"
 
 
+def _compatible_values(left: Any, right: Any) -> bool:
+    """Reject Python's implicit bool/int equality and cross-type comparisons."""
+    if isinstance(left, bool) or isinstance(right, bool):
+        return isinstance(left, bool) and isinstance(right, bool)
+    numeric = (int, float)
+    if isinstance(left, numeric) or isinstance(right, numeric):
+        return isinstance(left, numeric) and isinstance(right, numeric)
+    return type(left) is type(right)
+
+
 def evaluate_condition_snapshot(tree: dict[str, Any], snapshot: dict[str, Any],
                                 variables: dict[str, int],
                                 tables: dict[int, dict[str, Any]]) -> dict[str, Any]:
@@ -110,10 +120,18 @@ def evaluate_condition_snapshot(tree: dict[str, Any], snapshot: dict[str, Any],
                         missing.append(reason)
                         return None
                     rights.append(value)
+                if any(not _compatible_values(left, value) for value in rights):
+                    missing.append(f"incompatible_value_types:{type(left).__name__}:IN")
+                    return None
                 return left in rights
             right, reason = _snapshot_value(str(node.get("right", "")), snapshot, variables, tables)
             if reason:
                 missing.append(reason)
+                return None
+            if not _compatible_values(left, right):
+                missing.append(
+                    f"incompatible_value_types:{type(left).__name__}:{type(right).__name__}"
+                )
                 return None
             operator = node.get("operator")
             try:

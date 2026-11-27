@@ -50,8 +50,9 @@ def build_source_catalog(source_roots: list[str]) -> dict[tuple[str, int], list[
             if identity_key in seen:
                 continue
             seen.add(identity_key)
-            for object_match, block in split_objects(text):
-                line_offset = text.count("\n", 0, object_match.start())
+            normalized_text = text.replace("\r\n", "\n").replace("\r", "\n")
+            for object_match, block in split_objects(normalized_text):
+                line_offset = normalized_text.count("\n", 0, object_match.start())
                 try:
                     parsed = parse_nav_text(block, display_path)
                 except ValueError:

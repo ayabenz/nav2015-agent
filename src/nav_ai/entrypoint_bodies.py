@@ -12,7 +12,7 @@ from .parser import OBJECT_RE, split_objects
 
 SECTION_RE = re.compile(r"^  ([A-Z][A-Z0-9 -]*)\s*$")
 ACTION_START_RE = re.compile(r"^\s*\{\s*(\d+)\s*;\s*(\d+)\s*;\s*Action(?:Container|Group|)?\s*;?", re.I)
-ACTION_ID_RE = re.compile(r"^\s*\{\s*(\d+)\s*;\s*(?:\d+)?\s*;\s*Action\s*;?", re.I)
+ACTION_ID_RE = re.compile(r"^\s*\{\s*(\d+)\s*;\s*(?:(\d+))?\s*;\s*Action\s*;?", re.I)
 ON_ACTION_RE = re.compile(r"^\s*OnAction\s*=\s*(.*)$", re.I)
 TRIGGER_RE = re.compile(
     r"^\s*(OnRun|OnInsert|OnModify|OnDelete|OnRename|OnValidate|OnLookup|"

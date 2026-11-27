@@ -352,3 +352,17 @@ These are separate historical runs with different collection scopes. They must n
 - [ ] Evaluate clustering against manually audited Datascrip process examples; tune thresholds only from evidence.
 
 **Current boundary:** direct Table overlap is a prioritization heuristic. It is not yet transitive process mapping and must not be presented as a complete business-process inventory.
+
+
+### Phase 2.7 — Automated full business-process inventory
+
+- [x] Orchestrate ranked entry-point discovery and transitive CALL/Table mapping.
+- [x] Generate an inventory summary in Markdown and JSON.
+- [x] Generate individual Markdown/JSON source-trace reports for each resolvable candidate.
+- [x] Generate heuristic cluster summaries with pairwise shared-Table evidence.
+- [x] Continue when individual source traces are missing or ambiguous; record per-candidate status.
+- [ ] Run against the complete Datascrip TXT export and review coverage, duration, source-resolution rate and duplicate/ambiguous exports.
+- [ ] Audit candidate clusters with business owners and label validated business-process boundaries.
+- [ ] Add explicit UI action, job queue, XMLport and integration entry-point evidence beyond CALL-only traversal.
+
+**Evidence boundary:** inventory generation is implemented as a static analysis pipeline. It is not a runtime execution monitor and does not certify business-process completeness.

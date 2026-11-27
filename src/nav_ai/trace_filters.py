@@ -106,7 +106,7 @@ def analyze_trace_filter_edges(
         procedure = context.get("procedure_data", {})
         formals = {
             p["name"].casefold(): p for p in procedure.get("parameters", [])
-            if p.get("by_reference") and re.search(r"Record\\s+\\d+", p.get("data_type", ""), re.I)
+            if p.get("by_reference") and re.search(r"Record\s+\d+", p.get("data_type", ""), re.I)
         }
         for site in binding.get("call_sites", []):
             bool_args = {
@@ -124,7 +124,7 @@ def analyze_trace_filter_edges(
                 actual = str(argument.get("argument", "")).strip()
                 if not _SIMPLE_NAME.fullmatch(actual):
                     continue
-                record_type = re.search(r"Record\\s+(\\d+)", formals[formal_key]["data_type"], re.I)
+                record_type = re.search(r"Record\s+(\d+)", formals[formal_key]["data_type"], re.I)
                 if not record_type or argument.get("argument_record_type") != f"Table {record_type.group(1)}":
                     continue
                 for event in summary.get("events", []):
@@ -188,7 +188,7 @@ def analyze_trace_filter_edges(
                     p["name"]: sum(1 for e in summary.get("events", [])
                                    if str(e.get("record_variable", "")).casefold() == p["name"].casefold())
                     for p in contexts[edge["dst"]].get("procedure_data", {}).get("parameters", [])
-                    if p.get("by_reference") and re.search(r"Record\\s+\\d+", p.get("data_type", ""), re.I)
+                    if p.get("by_reference") and re.search(r"Record\s+\d+", p.get("data_type", ""), re.I)
                 }
             else:
                 result["status"] = "callee_summary_unavailable"

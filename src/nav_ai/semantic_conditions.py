@@ -9,6 +9,8 @@ import re
 from pathlib import Path
 from typing import Any
 
+from .condition_expression import normalize_condition_expression
+
 _VAR_RE = re.compile(
     r'^\s*(?:"(?P<quoted>[^"]+)"|(?P<plain>[A-Za-z_][A-Za-z0-9_]*))'
     r'(?:@\d+)?\s*:\s*Record\s+(?P<table_id>\d+)\s*;\s*$',
@@ -147,8 +149,10 @@ def enrich_control_flow(node: Any, variables: dict[str, int],
             enrich_control_flow(child, variables, tables)
     elif isinstance(node, dict):
         if node.get("type") == "if" and isinstance(node.get("condition"), str):
+            node["normalized_condition"] = normalize_condition_expression(node["condition"])
             node["condition_resolution"] = resolve_condition(node["condition"], variables, tables)
         if node.get("type") == "case" and isinstance(node.get("expression"), str):
+            node["normalized_expression"] = normalize_condition_expression(node["expression"])
             node["expression_resolution"] = resolve_condition(node["expression"], variables, tables)
         for value in node.values():
             if isinstance(value, (dict, list)):

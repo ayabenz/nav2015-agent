@@ -89,7 +89,7 @@ These are recorded analysis outputs, not a claim that every NAV object or indire
 - [x] Summarize explicit assignments to VAR scalar parameters and qualified fields of VAR Record parameters; attach these symbolic effects to matching caller arguments. Nested-call effects, complete caller-state propagation and runtime values remain open.
 - [x] Propagate supported direct-call VAR mutations into caller assignment flow when unconditional or fully selected by Boolean literal arguments; automatic caller procedure analysis now exposes the mutation to subsequent IF predicates. Function return values, multi-hop call chains and unresolved conditional effects remain open.
 - [x] Add initial nav-intel conditions command with explicit source-file and optional object/procedure selection; return branch tree, raw predicates and source spans.
-- [ ] Resolve source files automatically from the symbol index and integrate conditions into object/procedure queries.
+- [x] Add automatic source discovery for a CALL-graph trace: resolve exact object type/ID against TXT/ZIP/directory exports, use symbol-index source labels to disambiguate, and report missing/ambiguous exports and object-level CALL targets explicitly. Conditions integration into object/procedure queries remains open.
 - [x] Add unit fixtures for nested IF/ELSE, CASE arms/default, comment/string masking and source line spans.
 - [x] Add fixtures for Option values, qualified field comparisons and unresolved metadata.
 - [x] Add fixtures for SETRANGE clearing, SETFILTER placeholders, RESET invalidation, FINDFIRST lookup annotation and path isolation across IF / ELSE / CASE.
@@ -239,3 +239,15 @@ These are separate historical runs with different collection scopes. They must n
 
 
 **Validation (2026-11-27 — bounded multi-hop):** The configurable `--max-call-depth` implementation passed [GitHub Actions run #176](https://github.com/ayabenz/nav2015-agent/actions/runs/45929145882), **89 passed in 0.49s**. Regression coverage includes a three-Codeunit chain where the deepest callee's Boolean literal selects its ELSE-side Record field mutation, which is summarized through the intermediate Codeunit. This validates the bounded source-analysis fixture, not runtime NAV execution.
+
+
+### Phase 2.6 — Automatic source discovery and call tracing
+
+- [x] Add `nav-intel trace` to traverse existing procedure-level `CALL` edges from an object or procedure with depth/node limits.
+- [x] Resolve reachable objects against user-supplied TXT, ZIP, or directory roots; use symbol-index `source_file` labels when multiple exports share an object identity.
+- [x] Report source procedure line ranges and origin classification, and preserve missing/ambiguous source states.
+- [x] Report object-level/non-procedure CALL targets (such as possible `Var.RUN` edges) instead of expanding them into guessed procedures.
+- [ ] Feed discovered source files directly into the existing `conditions` analysis and add table metadata auto-discovery from the same source catalog.
+- [ ] Validate tracing against the full Datascrip export and review uncovered dynamic/trigger call paths.
+
+**Design boundary:** trace follows only existing dependency-graph `CALL` edges. It is a source-discovery and call-graph traversal layer, not proof that a call or branch ran in NAV.

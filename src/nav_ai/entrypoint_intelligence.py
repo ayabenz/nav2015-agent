@@ -13,22 +13,22 @@ from typing import Any
 from .parser import OBJECT_RE, split_objects
 
 TRIGGER_RE = re.compile(
-    r"^\\s*(OnRun|OnInsert|OnModify|OnDelete|OnRename|OnValidate|"
+    r"^\s*(OnRun|OnInsert|OnModify|OnDelete|OnRename|OnValidate|"
     r"OnLookup|OnDrillDown|OnAssistEdit|OnOpenPage|OnClosePage|"
     r"OnAfterGetRecord|OnAfterGetCurrRecord|OnNewRecord|OnQueryClosePage|"
     r"OnPreReport|OnPostReport|OnPreDataItem|OnAfterGetRecord|"
     r"OnPreXMLport|OnPostXMLport|OnInitXMLport|OnAfterInitRecord|"
     r"OnBeforeInsertRecord|OnAfterInsertRecord|OnBeforeModifyRecord|"
     r"OnAfterModifyRecord|OnBeforeDeleteRecord|OnAfterDeleteRecord)"
-    r"\\s*(?:\\([^)]*\\))?\\s*(?:=|$)", re.I
+    r"\s*(?:\([^)]*\))?\s*(?:=|$)", re.I
 )
 RUN_OBJECT_RE = re.compile(
-    r"^\\s*RunObject\\s*=\\s*(Table|Page|Codeunit|Report|XMLport|Query)\\s+(\\d+)",
+    r"^\s*RunObject\s*=\s*(Table|Page|Codeunit|Report|XMLport|Query)\s+(\d+)",
     re.I,
 )
-ON_ACTION_RE = re.compile(r"^\\s*OnAction\\s*=", re.I)
-SECTION_RE = re.compile(r"^  ([A-Z][A-Z0-9 -]*)\\s*$")
-PROCEDURE_RE = re.compile(r"^\\s*(?:LOCAL\\s+)?PROCEDURE\\s+", re.I)
+ON_ACTION_RE = re.compile(r"^\s*OnAction\s*=", re.I)
+SECTION_RE = re.compile(r"^  ([A-Z][A-Z0-9 -]*)\s*$")
+PROCEDURE_RE = re.compile(r"^\s*(?:LOCAL\s+)?PROCEDURE\s+", re.I)
 
 
 def _source_files(root: str):

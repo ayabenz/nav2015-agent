@@ -194,6 +194,28 @@ def discover_extended_entrypoints(source_roots: list[str], graph=None) -> dict[s
                     job_queue.append({"kind": "job_queue_source_consumer_candidate", "object": node,
                                       "source": display, "evidence": "Job Queue Entry / Codeunit 448 source reference",
                                       "runtime_configured": False})
+    # Attach static graph callers to publisher procedures as candidate call sites.
+    for publisher in publishers:
+        publisher_node = None
+        if graph is not None:
+            rows = graph.execute(
+                "SELECT node FROM procedures WHERE object_node=? COLLATE NOCASE AND name=? COLLATE NOCASE",
+                (publisher["publisher_object"], publisher["event_name"]),
+            ).fetchall()
+            if len(rows) == 1:
+                publisher_node = str(rows[0][0])
+        callers = []
+        if publisher_node:
+            callers = [
+                str(row[0]) for row in graph.execute(
+                    "SELECT src FROM edges WHERE dst=? COLLATE NOCASE AND kind='CALL' ORDER BY src",
+                    (publisher_node,),
+                ).fetchall()
+            ]
+        publisher["procedure_node"] = publisher_node
+        publisher["static_callers"] = callers
+        publisher["call_site_evidence"] = "dependency_graph_CALL_edge" if callers else "no_indexed_CALL_callers"
+        publisher["runtime_invoked"] = False
     # Link subscriber attributes to matching publisher declarations where identity is unique.
     for subscriber in subscribers:
         target_id = subscriber.get("event_object_id")

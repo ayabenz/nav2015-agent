@@ -41,3 +41,34 @@ def test_no_explicit_mutation_is_not_claimed_as_immutable():
     status = next(item for item in result["var_parameters"] if item["parameter"] == "Status")
     assert status["mutation_state"] == "no_explicit_mutation_found"
     assert status["mutations"] == []
+
+
+
+def test_summarizes_mapped_nested_call_mutation_to_var_parameter():
+    nested_effect = {
+        "target": "SalesHeader.Status",
+        "expression": "SalesHeader.Status::Released",
+        "callee_line": 24,
+        "callee_source_file": "child.txt",
+        "callee_parameter": "Header",
+        "mapping": "var_record_field_argument",
+    }
+    # The procedure body starts immediately after BEGIN; call line is the
+    # next physical line in this fixture.
+    result = analyze_var_parameter_mutations(
+        CALLEE.replace(
+            "        SalesHeader.Status := SalesHeader.Status::Released;",
+            "        Child.Change(SalesHeader);",
+        ).replace(
+            "    PROCEDURE UpdateHeader@1(VAR SalesHeader@1000 : Record 36;VAR Status@1001 : Text[30];DoUpdate@1002 : Boolean);",
+            "    PROCEDURE UpdateHeader@1(VAR SalesHeader@1000 : Record 36;VAR Status@1001 : Text[30];DoUpdate@1002 : Boolean);",
+        ),
+        "UpdateHeader",
+        "parent.txt",
+        call_effects={8: [nested_effect]},
+    )
+    header = next(item for item in result["var_parameters"] if item["parameter"] == "SalesHeader")
+    assert any(item["target"] == "SalesHeader.Status"
+               and item["interprocedural"]
+               and item["expression"] == "SalesHeader.Status::Released"
+               for item in header["mutations"])

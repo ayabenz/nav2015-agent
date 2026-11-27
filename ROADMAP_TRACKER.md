@@ -18,7 +18,7 @@
 | NAV runtime validation | BLOCKED | Requires isolated non-production NAV 2015 test company and matching Datascrip build |
 | Remediation implementation | NOT STARTED / gated | Do not change posting logic until policy is confirmed and runtime cases are reproducible |
 | Deterministic Code Intelligence query layer | IMPLEMENTED — first vertical slice | `nav-intel` queries existing symbol/graph SQLite databases; object/procedure/callers/callees/impact/table usage; tests added, execution pending |
-| Conditional Logic Intelligence | IMPLEMENTED — static analysis foundation | IF/ELSE/CASE parsing, metadata-backed predicates, filter paths, explicit snapshots, local assignment provenance and first direct-call argument binding; CI and broader grammar validation remain pending |
+| Conditional Logic Intelligence | IMPLEMENTED — static analysis foundation | IF/ELSE/CASE parsing, metadata-backed predicates, filter paths, explicit snapshots, local assignment provenance, Boolean-specialized direct-call VAR propagation and automatic caller assignment-flow analysis; broader grammar validation remains open |
 | AI-assisted NAV reasoning / agent workflows | PLANNED | Build on deterministic query layer, conditional logic, parser, symbol index, semantic diff and dependency graph; keep source evidence traceable |
 
 ## 2. Roadmap
@@ -87,7 +87,7 @@ These are recorded analysis outputs, not a claim that every NAV object or indire
 - [x] Add conservative local assignment tracking for explicit `:=` statements; attach incoming assignments to IF predicates and preserve divergent IF/CASE path alternatives. Expressions remain symbolic, not evaluated.
 - [x] Add first conservative direct-call argument binding: match receiver Codeunit type, map positional actual arguments to formal parameters, resolve Record variables/Rec via TableNo and identify Boolean literals; mark VAR formals by-reference. 
 - [x] Summarize explicit assignments to VAR scalar parameters and qualified fields of VAR Record parameters; attach these symbolic effects to matching caller arguments. Nested-call effects, complete caller-state propagation and runtime values remain open.
-- [ ] Propagate values through direct calls, including VAR mutation and return values, only when source evidence and call context are sufficient.
+- [x] Propagate supported direct-call VAR mutations into caller assignment flow when unconditional or fully selected by Boolean literal arguments; automatic caller procedure analysis now exposes the mutation to subsequent IF predicates. Function return values, multi-hop call chains and unresolved conditional effects remain open.
 - [x] Add initial nav-intel conditions command with explicit source-file and optional object/procedure selection; return branch tree, raw predicates and source spans.
 - [ ] Resolve source files automatically from the symbol index and integrate conditions into object/procedure queries.
 - [x] Add unit fixtures for nested IF/ELSE, CASE arms/default, comment/string masking and source line spans.

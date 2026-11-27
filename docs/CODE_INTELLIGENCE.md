@@ -426,11 +426,11 @@ The output is a review queue, not a list of confirmed business processes. A Page
 
 ## Automatic candidate mapping by Table footprint
 
-Use `discover` to rank likely entry objects, then `map-processes` to group candidates whose direct Table usage overlaps:
+Use `discover` to rank likely entry objects, then `map-processes` to group candidates whose CALL-reachable procedures use overlapping Tables:
 
 ```powershell
 nav-intel --company datascrip --json discover --limit 300
-nav-intel --company datascrip --json map-processes --limit 300 --min-similarity 0.25
+nav-intel --company datascrip --json map-processes --limit 300 --min-similarity 0.25 --max-depth 5 --max-nodes 5000
 ```
 
-The mapper calculates Jaccard similarity over each candidate object's direct `table_usage` set. It reports the shared Tables, pairwise similarity and heuristic clusters. It deliberately does not claim that these are confirmed business processes: reachable callee footprints are not yet included, shared master Tables may connect unrelated workflows, and transitive grouping can join candidates that do not all share Tables pairwise. Use the results to prioritize source-backed `trace` and `document` investigations.
+The mapper follows bounded indexed `CALL` edges from each candidate's procedures and object/trigger scopes, aggregates Table usage from reachable procedures, and calculates Jaccard similarity over those transitive Table sets. Each candidate reports reachable procedures and call paths, contributing procedures per Table, unresolved CALL targets, and truncation state. This remains static dependency evidence: dynamic RUN targets, UI navigation, job queues, integration entry points and actual runtime execution are not inferred. Shared master Tables may connect unrelated workflows, and transitive clustering can connect members that do not all share Tables pairwise. Use the results to prioritize source-backed `trace` and `document` investigations.

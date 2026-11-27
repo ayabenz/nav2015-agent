@@ -84,14 +84,14 @@ These are recorded analysis outputs, not a claim that every NAV object or indire
 - [ ] Build branch paths with parent/child relationships and explicit TRUE / FALSE / CASE-match / CASE-default outcomes.
 - [x] Extract SETRANGE / SETFILTER / RESET and FIND operations, preserving arguments, source locations and resolved field metadata where available.
 - [x] Implement path-sensitive filter-state tracking across IF / ELSE / CASE branches; preserve distinct states at joins rather than merging incompatible filters. Compatible-state compaction remains an optimization.
-- [ ] Track local variable assignments and record-field values sufficiently to explain predicates whose operands are assigned earlier in the procedure.
+- [x] Add conservative local assignment tracking for explicit `:=` statements; attach incoming assignments to IF predicates and preserve divergent IF/CASE path alternatives. Expressions remain symbolic, not evaluated.
 - [ ] Trace relevant values across direct procedure calls where parameter and Record-variable flow can be resolved safely.
 - [x] Add initial nav-intel conditions command with explicit source-file and optional object/procedure selection; return branch tree, raw predicates and source spans.
 - [ ] Resolve source files automatically from the symbol index and integrate conditions into object/procedure queries.
 - [x] Add unit fixtures for nested IF/ELSE, CASE arms/default, comment/string masking and source line spans.
 - [x] Add fixtures for Option values, qualified field comparisons and unresolved metadata.
 - [x] Add fixtures for SETRANGE clearing, SETFILTER placeholders, RESET invalidation, FINDFIRST lookup annotation and path isolation across IF / ELSE / CASE.
-- [ ] Add fixtures for ELSEIF, variable assignments and unresolved/dynamic expressions.
+- [x] Add initial fixtures for literal and Record-field assignments, reassignment, IF/ELSE divergence and unknown-call invalidation. ELSEIF and broader unresolved/dynamic expression coverage remain open.
 - [x] Document static-analysis limits and avoid presenting inferred branch reachability as runtime fact.
 - [x] Add a separate pure evaluator for explicitly supplied Record snapshots; preserve provenance and return indeterminate for missing/unsupported values.
 - [ ] Add NAV runtime evidence integration only as a separate later capability; a supplied snapshot evaluation is not proof of historical execution.
@@ -202,3 +202,6 @@ These are separate historical runs with different collection scopes. They must n
 
 
 **Implementation update (2026-11-27 — Record filter flow):** Added `nav_ai.record_filters` and integrated it into `nav-intel conditions`. The analyzer extracts SETRANGE / SETFILTER / RESET and FINDFIRST / FINDLAST / FINDSET operations, preserves raw filter arguments and resolves filter fields against supplied Table metadata. Procedure-local Record declarations are included in variable resolution. The path-sensitive pass now forks state at IF/ELSE and CASE arms, preserves each filter state through subsequent statements, and attaches all path alternatives to direct FINDFIRST predicates. It never evaluates predicate values or claims a lookup found a row. Tests cover filter accumulation, clearing, RESET, IF/CASE branch isolation, NOT FINDFIRST annotation, the actual Stocktake Sales Header OUT / IN / unfiltered document-type alternatives, initial expression normalization, metadata-backed operand explanations, explicit snapshot evaluation, CLI snapshot annotation, Record parameter resolution, and conservative indeterminate handling when metadata is missing. GitHub Actions run [#57](https://github.com/ayabenz/nav2015-agent/actions/runs/45922644494) passed on commit `11006682e4d5b9a049b5061ca9923c27351ffe2b`: `59 passed in 0.53s`.
+
+
+**Implementation update (2026-11-27 — Static assignment flow):** Added `nav_ai.assignment_flow` and integrated it into `nav-intel conditions`. The first conservative pass tracks explicit local-variable and qualified Record-field assignments, links known assignments to later IF predicates, preserves separate incoming values across IF/ELSE and CASE paths, and invalidates tracked values when an unknown procedure call is encountered. Assignment expressions remain symbolic and are never evaluated. Interprocedural parameter flow, triggers, WITH scopes and implicit database mutations remain unsupported. Initial regression tests cover literal assignment, Record-field assignment, reassignment, divergent IF/ELSE values and unknown-call invalidation. GitHub Actions validation is running for the implementation commits; do not update the canonical test count until the run completes.

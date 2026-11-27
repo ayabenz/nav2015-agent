@@ -55,7 +55,10 @@ def test_extracts_individual_table_field_onvalidate(tmp_path):
     source.write_text("""OBJECT Table 50010 Demo
   FIELDS
     { 1 ;   ;Status;Option ; OnValidate=BEGIN
-                         MESSAGE('changed');
+                         IF Status = 1 THEN
+                           ERROR('blocked');
+                         ELSE
+                           MESSAGE('changed');
                        END;
     }
   CODE
@@ -65,6 +68,8 @@ def test_extracts_individual_table_field_onvalidate(tmp_path):
     assert trigger["field_id"] == 1
     assert trigger["field_name"] == "Status"
     assert trigger["trigger"] == "OnValidate"
+    assert isinstance(trigger["control_flow"], dict)
+    assert isinstance(trigger["branch_effects"], list)
 
 
 

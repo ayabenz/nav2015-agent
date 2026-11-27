@@ -237,3 +237,123 @@ def test_auto_condition_analysis_reports_missing_table_metadata(tmp_path):
         item for item in result["procedures"] if item["node"] == "Codeunit 60002.Update"
     )
     assert child_result["condition_analysis"]["semantic_resolution"]["missing_table_ids_for_procedure"] == [36]
+
+
+def test_trace_injects_composed_var_effects_into_reached_if_assignment_contexts(tmp_path):
+    parent = """OBJECT Codeunit 60001 Parent
+{
+  CODE
+  {
+    VAR
+      Header@1 : Record 36;
+      Middle@2 : Codeunit 60002;
+
+    PROCEDURE Run@3();
+    BEGIN
+      Middle.Mutate(Header,TRUE);
+      IF Header.Status = Header.Status::Released THEN
+        MESSAGE('parent released');
+    END;
+  }
+}"""
+    middle = """OBJECT Codeunit 60002 Middle
+{
+  CODE
+  {
+    VAR
+      Deep@1 : Codeunit 60003;
+
+    PROCEDURE Mutate@2(VAR Header@3 : Record 36;DoMutate@4 : Boolean);
+    BEGIN
+      Deep.Apply(Header,TRUE);
+      IF Header.Status = Header.Status::Released THEN
+        MESSAGE('middle released');
+    END;
+  }
+}"""
+    deep = """OBJECT Codeunit 60003 Deep
+{
+  CODE
+  {
+    PROCEDURE Apply@1(VAR Header@2 : Record 36;DoSet@3 : Boolean);
+    BEGIN
+      IF DoSet THEN
+        Header.Status := Header.Status::Released;
+    END;
+  }
+}"""
+    table = """OBJECT Table 36 Sales Header
+{
+  FIELDS
+  {
+    { 1 ; ; Status ; Option }
+    {
+      OptionString=Open,Released;
+    }
+  }
+}"""
+    (tmp_path / "parent.txt").write_text(parent, encoding="utf-8")
+    (tmp_path / "middle.txt").write_text(middle, encoding="utf-8")
+    (tmp_path / "deep.txt").write_text(deep, encoding="utf-8")
+    (tmp_path / "table36.txt").write_text(table, encoding="utf-8")
+
+    db = sqlite3.connect(":memory:")
+    db.row_factory = sqlite3.Row
+    db.executescript("""
+        CREATE TABLE objects(node TEXT PRIMARY KEY,type TEXT,id INT,name TEXT,origin TEXT,
+            in_original INT,semantic_change INT,procedures INT,out_edges INT,in_edges INT);
+        CREATE TABLE procedures(node TEXT PRIMARY KEY,object_node TEXT,name TEXT,line INT,is_local INT,origin TEXT);
+        CREATE TABLE edges(src TEXT,dst TEXT,kind TEXT,count INT,new_vs_original INT,src_object TEXT,dst_object TEXT);
+        CREATE TABLE table_usage(src TEXT,src_origin TEXT,table_node TEXT,table_name TEXT,usage TEXT,
+            count INT,new_vs_original INT,src_object TEXT);
+        INSERT INTO objects VALUES
+            ('Codeunit 60001','Codeunit',60001,'Parent','CUSTOM',0,0,1,1,0),
+            ('Codeunit 60002','Codeunit',60002,'Middle','CUSTOM',0,0,1,1,1),
+            ('Codeunit 60003','Codeunit',60003,'Deep','CUSTOM',0,0,1,0,1);
+        INSERT INTO procedures VALUES
+            ('Codeunit 60001.Run','Codeunit 60001','Run',8,0,'CUSTOM'),
+            ('Codeunit 60002.Mutate','Codeunit 60002','Mutate',8,0,'CUSTOM'),
+            ('Codeunit 60003.Apply','Codeunit 60003','Apply',6,0,'CUSTOM');
+        INSERT INTO edges VALUES
+            ('Codeunit 60001.Run','Codeunit 60002.Mutate','CALL',1,1,'Codeunit 60001','Codeunit 60002'),
+            ('Codeunit 60002.Mutate','Codeunit 60003.Apply','CALL',1,1,'Codeunit 60002','Codeunit 60003');
+    """)
+    symbols = sqlite3.connect(":memory:")
+    symbols.execute("""CREATE TABLE symbols(kind TEXT,name TEXT,num INT,object_type TEXT,object_id INT,
+                       object_name TEXT,detail TEXT,source_file TEXT,line INT,line_end INT)""")
+    for object_id, name, filename, proc in [
+        (60001, "Parent", "parent.txt", "Run"),
+        (60002, "Middle", "middle.txt", "Mutate"),
+        (60003, "Deep", "deep.txt", "Apply"),
+    ]:
+        symbols.execute("INSERT INTO symbols VALUES(?,?,?,?,?,?,?,?,?,?)",
+                        ("procedure", proc, None, "Codeunit", object_id, name,
+                         proc + "()", filename, 1, 20))
+
+    result = trace_call_graph(
+        db, "Codeunit 60001", [str(tmp_path)], symbols,
+        max_depth=3, analyze_conditions=True, max_interprocedural_depth=2,
+    )
+    def find_if(value, condition_fragment):
+        if isinstance(value, dict):
+            if value.get("type") == "if" and condition_fragment in value.get("condition", ""):
+                return value
+            for child in value.values():
+                found = find_if(child, condition_fragment) if isinstance(child, (dict, list)) else None
+                if found:
+                    return found
+        elif isinstance(value, list):
+            for child in value:
+                found = find_if(child, condition_fragment)
+                if found:
+                    return found
+        return None
+
+    for node in ("Codeunit 60001.Run", "Codeunit 60002.Mutate"):
+        procedure = next(item for item in result["procedures"] if item["node"] == node)
+        analysis = procedure["condition_analysis"]
+        assert analysis["interprocedural_call_effect_count"] >= 1
+        condition = find_if(analysis["nodes"], "Header.Status")
+        assert condition is not None
+        incoming = condition["assignment_context"]["alternatives"][0]["known_assignments"]
+        assert any(item["target"] == "Header.Status" for item in incoming)

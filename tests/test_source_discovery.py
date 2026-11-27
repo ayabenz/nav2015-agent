@@ -403,8 +403,12 @@ def test_trace_propagates_callee_var_record_filter_into_caller_lookup(tmp_path):
     (tmp_path / "parent.txt").write_text(parent, encoding="utf-8")
     (tmp_path / "child.txt").write_text(child, encoding="utf-8")
     (tmp_path / "table36.txt").write_text(table, encoding="utf-8")
+    symbols = symbol_db()
+    symbols.execute("INSERT INTO symbols VALUES(?,?,?,?,?,?,?,?,?,?)",
+                    ("procedure", "Run", None, "Codeunit", 60001, "Parent",
+                     "Run()", "parent.txt", 1, 20))
     result = trace_call_graph(
-        graph_db(), "Codeunit 60001", [str(tmp_path)], symbol_db(),
+        graph_db(), "Codeunit 60001", [str(tmp_path)], symbols,
         max_depth=2, analyze_conditions=True,
     )
     parent_result = next(

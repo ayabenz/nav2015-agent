@@ -159,3 +159,14 @@ nav-intel --company datascrip --json map-processes --limit 300 --min-similarity 
 ```
 
 The mapping follows indexed `CALL` edges to bounded reachable procedures and aggregates their `table_usage` records. Results include call paths, unresolved targets, traversal truncation and contributing procedures. A cluster is a related-candidate group for investigation, not a confirmed end-to-end business process.
+
+
+### Generate the complete business-process inventory
+
+Run a bounded automatic discovery, map candidates by transitive CALL-reachable Table usage, and create Markdown/JSON reports for every candidate whose source can be resolved:
+
+```powershell
+nav-intel --company datascrip inventory --source-root "data\\input\\datascrip\\datascrip.zip" --limit 100 --max-depth 5 --max-nodes 5000
+```
+
+Outputs are written under `reports/datascrip/business_process/`: `process_inventory.md/.json`, one `objects/<Type_ID>.md/.json` pair per successfully traced candidate, and cluster summaries under `clusters/`. Missing or ambiguous source is recorded per candidate; it does not abort the inventory. Use `--skip-conditions` for a faster first pass.

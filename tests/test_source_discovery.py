@@ -131,5 +131,5 @@ def test_object_trace_includes_object_and_trigger_scope_call_edges(tmp_path):
     result = trace_call_graph(db, "Codeunit 60001", [], None, max_depth=1)
     assert result["procedure_count"] == 2
     assert {edge["src"] for edge in result["call_edges"]} == {
-        "Codeunit 60001", "Codeunit 60001 TRIGGERS"
+        "Codeunit 60001", "Codeunit 60001 TRIGGERS", "Codeunit 60001.Run"
     }

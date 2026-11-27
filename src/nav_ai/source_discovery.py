@@ -51,7 +51,7 @@ def build_source_catalog(source_roots: list[str]) -> dict[tuple[str, int], list[
                 continue
             seen.add(identity_key)
             for object_match, block in split_objects(text):
-                line_offset = text.count("\\n", 0, object_match.start())
+                line_offset = text.count("\n", 0, object_match.start())
                 try:
                     parsed = parse_nav_text(block, display_path)
                 except ValueError:

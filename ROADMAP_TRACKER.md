@@ -395,3 +395,18 @@ These are separate historical runs with different collection scopes. They must n
 
 **Current boundary:** extraction is implemented, but exact per-Action call trees are not yet implemented. The existing object-level entry-point trace must not be presented as an individual Action's call tree. No test or CI pass is claimed for this change set.
 
+### Phase 2.10 — Per-entry-point CALL mapping
+
+- [x] Match individual entry bodies to same-object procedure identifiers as independent graph roots.
+- [x] Resolve explicit numeric or uniquely named `CODEUNIT.RUN`, `REPORT.RUN`, `PAGE.RUN`, and `XMLPORT.RUN` object references.
+- [x] Traverse existing CALL edges from resolved procedure roots with bounded depth/node limits and per-entry call paths.
+- [x] Emit `entrypoint_call_mapping.json` during automatic inventory generation.
+- [x] Preserve explicit non-runtime and non-execution-order semantics.
+- [ ] Resolve typed variable method calls using source VAR declarations and graph object/procedure metadata.
+- [ ] Resolve direct calls with parameter/receiver typing and distinguish same-name local symbols from actual invocations.
+- [ ] Add procedure-level roots for individual Table field triggers, Report DataItem triggers and XMLport triggers.
+- [ ] Add Event Subscriber and Job Queue configuration-to-entry mapping.
+- [ ] Validate against representative Datascrip source exports and run the complete CI suite.
+
+**Current boundary:** only local procedure identifier matches and explicit RUN object references are mapped. Object RUN targets are not expanded into object-wide procedure lists because that would overstate per-entry reachability. No runtime execution or call ordering is inferred.
+\n

@@ -17,7 +17,7 @@
 | Business-rule confirmation | PARTIAL | Accepted behavior documented in Issue #3; other policy decisions remain open |
 | NAV runtime validation | BLOCKED | Requires isolated non-production NAV 2015 test company and matching Datascrip build |
 | Remediation implementation | NOT STARTED / gated | Do not change posting logic until policy is confirmed and runtime cases are reproducible |
-| Deterministic Code Intelligence query layer | IMPLEMENTED — first vertical slice | `nav-intel` queries existing symbol/graph SQLite databases; object/procedure/callers/callees/impact/table usage; tests and CI validation passing (89 passed on 2026-11-27) |
+| Deterministic Code Intelligence query layer | IMPLEMENTED — first vertical slice | `nav-intel` queries existing symbol/graph SQLite databases; object/procedure/callers/callees/impact/table usage; tests and CI validation passing (97 passed on 2026-11-27) |
 | Conditional Logic Intelligence | IMPLEMENTED — static analysis foundation | IF/ELSE/CASE parsing, metadata-backed predicates, filter paths, explicit snapshots, local assignment provenance, Boolean-specialized direct-call VAR propagation and automatic caller assignment-flow analysis; broader grammar validation remains open |
 | AI-assisted NAV reasoning / agent workflows | PLANNED | Build on deterministic query layer, conditional logic, parser, symbol index, semantic diff and dependency graph; keep source evidence traceable |
 
@@ -94,8 +94,8 @@ These are recorded analysis outputs, not a claim that every NAV object or indire
 - [x] Add fixtures for Option values, qualified field comparisons and unresolved metadata.
 - [x] Add fixtures for SETRANGE clearing, SETFILTER placeholders, RESET invalidation, FINDFIRST lookup annotation and path isolation across IF / ELSE / CASE.
 - [x] Add initial fixtures for literal and Record-field assignments, reassignment, IF/ELSE divergence and unknown-call invalidation. ELSEIF and broader unresolved/dynamic expression coverage remain open.
-- [x] Trace simple intra-procedural assignment provenance transitively (local variable → Record field → IF predicate), preserving source locations and unresolved/cycle markers. Regression tests included in the passing 89-test suite (2026-11-27).
-- [x] Add `--call-source` to `nav-intel conditions` for direct call-site binding evidence; repeated caller exports are supported. Regression fixtures cover typed `Rec`, Boolean literals, comments and receiver type mismatch; included in the passing 89-test suite (2026-11-27).
+- [x] Trace simple intra-procedural assignment provenance transitively (local variable → Record field → IF predicate), preserving source locations and unresolved/cycle markers. Regression tests included in the passing 97-test suite (2026-11-27).
+- [x] Add `--call-source` to `nav-intel conditions` for direct call-site binding evidence; repeated caller exports are supported. Regression fixtures cover typed `Rec`, Boolean literals, comments and receiver type mismatch; included in the passing 97-test suite (2026-11-27).
 - [x] Document static-analysis limits and avoid presenting inferred branch reachability as runtime fact.
 - [x] Add a separate pure evaluator for explicitly supplied Record snapshots; preserve provenance and return indeterminate for missing/unsupported values.
 - [ ] Add NAV runtime evidence integration only as a separate later capability; a supplied snapshot evaluation is not proof of historical execution.
@@ -251,3 +251,6 @@ These are separate historical runs with different collection scopes. They must n
 - [ ] Validate tracing against the full Datascrip export and review uncovered dynamic/trigger call paths.
 
 **Design boundary:** trace follows only existing dependency-graph `CALL` edges. It is a source-discovery and call-graph traversal layer, not proof that a call or branch ran in NAV.
+
+
+**Validation (2026-11-27 — automatic trace and conditions):** [GitHub Actions run #209](https://github.com/ayabenz/nav2015-agent/actions/runs/45930614213) passed: **97 tests in 0.81s**. Coverage includes TXT/ZIP source discovery, exact graph traversal, missing/ambiguous source handling, object/trigger roots, absolute source line offsets, and automatic condition analysis with Table Option metadata. This is parser/source-fixture validation; no live NAV runtime execution was performed.

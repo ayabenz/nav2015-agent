@@ -75,10 +75,12 @@ def test_trace_resolves_call_graph_nodes_to_source_exports(tmp_path):
 def test_trace_reports_missing_source_instead_of_guessing(tmp_path):
     (tmp_path / "parent.txt").write_text(OBJ_A, encoding="utf-8")
     result = trace_call_graph(
-        graph_db(), "Codeunit 60001", [str(tmp_path)], symbol_db(), max_depth=1
+        graph_db(), "Codeunit 60001", [str(tmp_path)], symbol_db(),
+        max_depth=1, analyze_conditions=True,
     )
     child = next(item for item in result["procedures"] if item["node"] == "Codeunit 60002.Update")
     assert child["source"]["status"] == "missing"
+    assert child["condition_analysis"]["status"] == "source_unavailable"
 
 
 def test_source_catalog_marks_duplicate_object_exports_ambiguous(tmp_path):
@@ -199,3 +201,29 @@ def test_trace_can_analyze_conditions_and_auto_load_table_metadata(tmp_path):
     if_nodes = list(walk(analysis["nodes"]))
     assert len(if_nodes) == 1
     assert "normalized_condition" in if_nodes[0]
+
+
+
+def test_auto_condition_analysis_reports_missing_table_metadata(tmp_path):
+    child = """OBJECT Codeunit 60002 Child
+{
+  CODE
+  {
+    PROCEDURE Update@1(VAR Header@1000 : Record 36);
+    BEGIN
+      IF Header.Status = Header.Status::Released THEN BEGIN
+        MESSAGE('released');
+      END;
+    END;
+  }
+}"""
+    (tmp_path / "parent.txt").write_text(OBJ_A, encoding="utf-8")
+    (tmp_path / "child.txt").write_text(child, encoding="utf-8")
+    result = trace_call_graph(
+        graph_db(), "Codeunit 60001", [str(tmp_path)], symbol_db(),
+        max_depth=2, analyze_conditions=True,
+    )
+    child_result = next(
+        item for item in result["procedures"] if item["node"] == "Codeunit 60002.Update"
+    )
+    assert child_result["condition_analysis"]["semantic_resolution"]["missing_table_ids_for_procedure"] == [36]

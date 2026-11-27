@@ -348,3 +348,12 @@ nav-intel --company datascrip --json conditions --source-file "reports/datascrip
 ```
 
 The output is static call-site evidence only. It does not prove execution or fully propagate caller state. Only unconditional explicit VAR mutations through simple arguments are mapped; conditional effects remain possible rather than definite. WITH-scoped/unqualified calls, dynamic dispatch, indirect callbacks, and arbitrary expression types are not resolved. Caller source line numbers are relative to the supplied object export.
+
+
+### Automatic interprocedural summaries in process traces
+
+The `trace` command now adds `interprocedural_analysis` for every discovered CALL edge. For edges whose caller and callee source exports are resolved, it attempts to bind direct `Receiver.Procedure(...)` call sites, summarizes explicit callee `VAR` parameter assignments, and maps safe effects back to simple caller arguments. Supported Boolean literal arguments specialize simple callee IF paths; incompatible mutations are excluded and unresolved paths are not promoted.
+
+The result reports each edge as `analyzed`, `no_matching_direct_call`, `source_unavailable`, or `analysis_unavailable`, with the binding, mutation summary, and symbolic caller effect map. Object-scope/trigger edges and graph edges that cannot be resolved to direct source-level calls remain explicit rather than guessed.
+
+This is currently a **one-edge summary**: it does not yet recursively compose VAR effects across multiple discovered graph hops or feed those effects into every caller's later IF/ELSE assignment context. It does not evaluate expressions, access SQL data, or prove runtime execution. All results carry `runtime_evaluated: false`.

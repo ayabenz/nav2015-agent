@@ -266,3 +266,16 @@ These are separate historical runs with different collection scopes. They must n
 
 
 **Process-trace output validation (2026-11-27):** [GitHub Actions run #233](https://github.com/ayabenz/nav2015-agent/actions/runs/45932114995) passed: **99 passed, 1 opt-in full-export test skipped in 1.29s**. The trace now returns a representative shortest call path per procedure, preserves all discovered edges (including alternate/cycle edges), and aggregates table usage and IF/CASE counts into `process_summary`.
+
+
+### Phase 2.7 — Automatic interprocedural analysis on traced edges
+
+- [x] For every discovered CALL edge, resolve caller/callee source and attempt direct receiver/procedure argument binding.
+- [x] Summarize explicit callee VAR parameter and Record-field mutations and map supported effects back to simple caller arguments.
+- [x] Apply existing Boolean-literal path specialization so incompatible mutations are discarded and unresolved paths are not treated as definite.
+- [x] Preserve unavailable, ambiguous, nonmatching and unsupported edge states explicitly; retain `runtime_evaluated: false`.
+- [ ] Compose mutation summaries recursively across multiple graph hops with bounded depth and cycle detection.
+- [ ] Feed edge effects into caller assignment-flow analysis so downstream caller IF/ELSE conditions expose interprocedural symbolic context.
+- [ ] Join propagated Record field effects with Table/Field/Option metadata and Record filter state for business-process explanations.
+
+**Current boundary:** this phase provides direct per-edge bindings and symbolic VAR effects. It does not yet perform recursive graph-wide effect composition or assert that any branch/call executed in NAV.

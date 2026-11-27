@@ -17,6 +17,24 @@ from .control_flow import analyze_control_flow
 from .parser import parse_nav_text, split_objects
 from .semantic_conditions import enrich_control_flow, load_table_sources, parse_record_variables
 from .record_filters import analyze_record_filter_paths, annotate_record_lookup_conditions
+from .snapshot_evaluator import evaluate_condition_snapshot
+
+
+def _attach_snapshot_evaluations(nodes: Any, snapshot: dict[str, Any],
+                                 variables: dict[str, int],
+                                 tables: dict[int, dict[str, Any]]) -> None:
+    if isinstance(nodes, list):
+        for node in nodes:
+            _attach_snapshot_evaluations(node, snapshot, variables, tables)
+    elif isinstance(nodes, dict):
+        if nodes.get("type") == "if" and isinstance(nodes.get("normalized_condition"), dict):
+            nodes["snapshot_evaluation"] = evaluate_condition_snapshot(
+                nodes["normalized_condition"], snapshot, variables, tables
+            )
+        for value in nodes.values():
+            if isinstance(value, (dict, list)):
+                _attach_snapshot_evaluations(value, snapshot, variables, tables)
+
 
 
 def _connect(path: str | Path) -> sqlite3.Connection:
@@ -226,6 +244,7 @@ def main(argv: list[str] | None = None) -> int:
     cond.add_argument("--object", dest="object_node", help='optional object identity, e.g. "Codeunit 80"')
     cond.add_argument("--procedure", help="procedure name; omit to analyze the full object CODE section")
     cond.add_argument("--table-source", action="append", default=[], help="Table TXT metadata export; repeat for multiple tables")
+    cond.add_argument("--snapshot-json", help="explicit Record-variable snapshot JSON; requires --table-source")
 
     args = parser.parse_args(argv)
     base = Path("data")
@@ -274,6 +293,8 @@ def main(argv: list[str] | None = None) -> int:
                 result = analyze_control_flow(code, parsed["object"]["type"], parsed["object"]["id"],
                                               parsed["object"]["name"], None, args.source_file,
                                               line_offset=line_offset)
+            if args.snapshot_json and not args.table_source:
+                raise ValueError("--snapshot-json requires at least one --table-source")
             if args.table_source:
                 variable_source = "\n".join(v["raw"] for v in parsed_block["variables"])
                 if args.procedure:
@@ -292,6 +313,14 @@ def main(argv: list[str] | None = None) -> int:
                     "table_ids_loaded": sorted(tables),
                     "runtime_evaluated": False,
                 }
+                if args.snapshot_json:
+                    snapshot = json.loads(Path(args.snapshot_json).read_text(encoding="utf-8"))
+                    if not isinstance(snapshot, dict) or not all(isinstance(v, dict) for v in snapshot.values()):
+                        raise ValueError("Snapshot JSON must map Record variable names to field/value objects")
+                    _attach_snapshot_evaluations(result["nodes"], snapshot, variables, tables)
+                    result["snapshot_source"] = str(args.snapshot_json)
+                    result["snapshot_provenance"] = "caller_supplied_snapshot"
+                    result["runtime_evaluated"] = False
             else:
                 result["semantic_resolution"] = {
                     "enabled": False,

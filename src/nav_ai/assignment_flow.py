@@ -91,7 +91,8 @@ def _assignment(source: str, line: int, source_file: str) -> dict[str, Any] | No
     }
 
 
-def analyze_assignment_flow(nodes: list[dict[str, Any]], source_file: str = "<memory>",\n                            call_effects: dict[int, list[dict[str, Any]]] | None = None) -> dict[str, Any]:
+def analyze_assignment_flow(nodes: list[dict[str, Any]], source_file: str = "<memory>",
+                            call_effects: dict[int, list[dict[str, Any]]] | None = None) -> dict[str, Any]:
     """Attach incoming assignment alternatives to IF nodes without evaluating them."""
     events: list[dict[str, Any]] = []
 

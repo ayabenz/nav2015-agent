@@ -62,6 +62,17 @@ def parse_table_metadata(source: str, source_file: str = "<memory>") -> dict[str
             i += 1
             if depth <= 0:
                 break
+        # NAV exports may close the field declaration on its first line and
+        # place field properties (including OptionString) in a following block.
+        if depth <= 0 and i < len(lines) and lines[i].strip() == "{":
+            depth = 0
+            while i < len(lines):
+                line = lines[i]
+                body_lines.append(line)
+                depth += line.count("{") - line.count("}")
+                i += 1
+                if depth <= 0:
+                    break
         body = "\n".join(body_lines)
         options = re.search(r"\bOptionString\s*=\s*([^;\r\n]+)", body, re.I)
         field = {

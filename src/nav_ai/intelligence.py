@@ -80,6 +80,7 @@ def _analyze_caller_effect_flows(caller_text: str, caller_path: str,
                 "line_start": proc_start,
                 "line_end": proc_end,
                 "assignment_flow_analysis": flow,
+                "control_flow_nodes": tree["nodes"],
                 "runtime_evaluated": False,
             })
     return results

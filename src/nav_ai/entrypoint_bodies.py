@@ -85,7 +85,7 @@ def discover_entrypoint_bodies(source_roots: list[str]) -> dict[str, Any]:
                         continue
                     action = ACTION_ID_RE.match(line) if section == "ACTIONS" else None
                     if action:
-                        current_action = {"id": int(action.group(1)), "indent": int(action.group(2))}
+                        current_action = {"id": int(action.group(1)), "indent": int(action.group(2) or 0)}
                         idx += 1
                         continue
                     action_start = ON_ACTION_RE.match(line) if section == "ACTIONS" else None

@@ -29,8 +29,8 @@ python -m nav_ai.intelligence --company datascrip table "Table 36" --usage WRITE
 The `trace` command starts from an object or procedure node, follows existing `CALL` edges to a configurable depth, and resolves each reached object against source exports supplied as TXT files, ZIP files, or directories. It uses the symbol index's `source_file` labels to disambiguate duplicate object exports where possible.
 
 ```powershell
-nav-intel --company datascrip --json trace "Codeunit 50107" --source-root "data\\input\\datascrip\\datascrip.zip" --max-depth 2 --max-nodes 300 --analyze-conditions
-nav-intel --company datascrip --json trace "Codeunit 50107.BlockStocktakeSalesHeader" --source-root "data\\input\\datascrip\\datascrip.zip" --max-depth 1 --max-nodes 100
+nav-intel --company datascrip --json trace "Codeunit 50107" --source-root "data\input\datascrip\datascrip.zip" --max-depth 2 --max-nodes 300 --analyze-conditions
+nav-intel --company datascrip --json trace "Codeunit 50107.BlockStocktakeSalesHeader" --source-root "data\input\datascrip\datascrip.zip" --max-depth 1 --max-nodes 100
 ```
 
 The output contains reachable procedure nodes, call edges, source paths, procedure line ranges, origin classification, and explicit missing/ambiguous source statuses. Object starts include all indexed procedures plus the object-level and trigger-scope graph sources at depth zero. `--max-depth` counts procedure-call edges; `--max-nodes` bounds output size.

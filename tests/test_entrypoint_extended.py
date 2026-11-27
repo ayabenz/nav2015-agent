@@ -78,3 +78,26 @@ def test_maps_job_queue_configuration_snapshot_without_claiming_execution():
     assert entry["parameter_string_present"] is True
     assert "sensitive-value" not in str(result)
     assert entry["runtime_executed"] is False
+
+
+
+def test_resolves_typed_variables_from_nonfinal_procedure_scope(tmp_path):
+    source = tmp_path / "scoped.txt"
+    source.write_text("""OBJECT Codeunit 50002 Subscriber
+  CODE
+    LOCAL PROCEDURE First()
+    VAR
+      Worker : Codeunit 50001;
+    BEGIN
+      Worker.DoWork;
+    END;
+
+    LOCAL PROCEDURE Second()
+    VAR
+      Another : Codeunit 50002;
+    BEGIN
+    END;
+""", encoding="utf-8")
+    result = discover_extended_entrypoints([str(source)], _graph())
+    assert any(item["method"] == "DoWork" and item["target_procedure"] == "Codeunit 50001.DoWork"
+               for item in result["typed_variable_calls"])

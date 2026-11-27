@@ -41,7 +41,7 @@ def analyze_var_parameter_mutations(
     summaries = []
     for parameter in var_parameters:
         name = parameter["name"]
-        key = re.sub(r"\\s+", "", name).casefold()
+        key = re.sub(r"\s+", "", name).casefold()
         effects = []
         for event in flow.get("events", []):
             if event.get("kind") != "explicit_assignment":

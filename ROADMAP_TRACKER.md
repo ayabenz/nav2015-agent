@@ -276,7 +276,7 @@ These are separate historical runs with different collection scopes. They must n
 - [x] Preserve unavailable, ambiguous, nonmatching and unsupported edge states explicitly; retain `runtime_evaluated: false`.
 - [x] Compose mutation summaries across multiple graph hops with bounded propagation rounds; cycles cannot expand beyond the configured depth.
 - [ ] Feed the composed graph effects into every reached procedure's condition/assignment-flow output so downstream IF/ELSE nodes expose multi-hop symbolic context.
-- [x] Resolve propagated Record-field assignment targets against Table/Field metadata and validate Option RHS members against OptionString; Record-filter state correlation remains open.
+- [x] Resolve propagated Record-field assignment targets against Table/Field metadata and validate Option RHS members against OptionString; Direct callee Record-filter effects are now propagated into caller path states; nested interprocedural filter composition remains open.
 
 **Current boundary:** this phase provides direct per-edge bindings and symbolic VAR effects. It does not yet perform recursive graph-wide effect composition or assert that any branch/call executed in NAV.
 
@@ -294,3 +294,6 @@ These are separate historical runs with different collection scopes. They must n
 
 
 **Validation (2026-11-27 — multi-hop condition and assignment semantics):** [GitHub Actions run #261](https://github.com/ayabenz/nav2015-agent/actions/runs/45935404655) passed: **108 passed, 1 opt-in full-export test skipped in 1.38s**. Regression coverage verifies A → B → C VAR-field propagation into both caller IF assignment contexts, semantic Table/Field resolution, OptionString membership, unresolved/unknown Option handling, and Table metadata stored in a separate field-property block. The earlier failed run exposed that the Table parser did not read OptionString when its property block followed a closed field declaration; that parser case is now covered and fixed.
+
+
+**Implementation update (2026-11-27 — direct interprocedural Record filters):** Added a separate filter-effect summary for direct CALL edges. Explicit callee `SETRANGE`, `SETFILTER`, `SETRANGE(Field)` clear, and `RESET` operations on typed VAR Record parameters are mapped to simple caller Record arguments. Supported Boolean call literals specialize conditional filter operations. With condition analysis enabled, these effects are applied at the caller's call statement and appear in later lookup snapshots. A regression fixture verifies a callee-set Sales Header Status filter is visible at the caller's subsequent FINDFIRST. Nested filter-effect composition remains open; CI validation is running.

@@ -48,6 +48,10 @@ def sample_trace():
         }],
         "table_usage_summary": [{"table_node": "Table 36", "table_name": "Sales Header",
                                  "usage": "WRITE", "count": 1, "new_vs_original": 1}],
+        "origin_transitions": [{
+            "src": "Codeunit 60001.Run", "src_origin": "CUSTOM",
+            "dst": "Codeunit 60002.Update", "dst_origin": "STANDARD_UNCHANGED",
+        }],
         "unresolved_call_targets": [],
         "semantics": {"limitations": ["Only CALL edges already present are traversed."]},
     }
@@ -60,6 +64,8 @@ def test_markdown_report_contains_paths_effects_and_evidence():
     assert "IF (Ready) THEN" in report
     assert "child.txt:12" in report
     assert "runtime executed: `False`" in report
+    assert "Custom/standard NAV boundaries" in report
+    assert "STANDARD_UNCHANGED" in report
     assert "does not prove runtime execution" in report
 
 

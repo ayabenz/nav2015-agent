@@ -120,6 +120,8 @@ def generate_business_process_inventory(
         max_nodes_per_candidate=max_nodes,
     )
     mapping["candidates"] = classify_process_candidates(mapping["candidates"])
+    entrypoints = discover_source_entrypoints(source_roots)
+    (output / "entrypoints.json").write_text(json.dumps(entrypoints, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     traces: dict[str, dict[str, Any]] = {}
     failures: dict[str, dict[str, str]] = {}
     for candidate in mapping["candidates"]:
@@ -167,6 +169,7 @@ def generate_business_process_inventory(
     inventory = {
         "company": output.parent.name,
         "mapping": mapping,
+        "entrypoints": entrypoints,
         "traces": traces,
         "trace_failures": failures,
         "trace_success_count": sum(item["status"] == "generated" for item in traces.values()),

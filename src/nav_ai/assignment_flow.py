@@ -91,7 +91,7 @@ def _assignment(source: str, line: int, source_file: str) -> dict[str, Any] | No
     }
 
 
-def analyze_assignment_flow(nodes: list[dict[str, Any]], source_file: str = "<memory>") -> dict[str, Any]:
+def analyze_assignment_flow(nodes: list[dict[str, Any]], source_file: str = "<memory>",\n                            call_effects: dict[int, list[dict[str, Any]]] | None = None) -> dict[str, Any]:
     """Attach incoming assignment alternatives to IF nodes without evaluating them."""
     events: list[dict[str, Any]] = []
 
@@ -110,8 +110,51 @@ def analyze_assignment_flow(nodes: list[dict[str, Any]], source_file: str = "<me
             return walk(node.get("children", []), states)
         if kind == "statement":
             for state in states:
-                assignment = _assignment(str(node.get("source", "")),
-                                          int(node.get("line_start", 1)), source_file)
+                statement_line = int(node.get("line_start", 1))
+                statement_source = str(node.get("source", ""))
+                mapped_effects = (call_effects or {}).get(statement_line, [])
+                if mapped_effects and _CALL.search(statement_source):
+                    # A recognized call may mutate VAR arguments. Invalidate prior
+                    # facts first, then restore only the explicit effects mapped from
+                    # the selected callee; all other state remains unknown.
+                    invalidated = list(state["values"])
+                    state["values"].clear()
+                    if invalidated:
+                        events.append({
+                            "kind": "interprocedural_call_invalidation",
+                            "line": statement_line,
+                            "source": statement_source,
+                            "invalidated": invalidated,
+                            "path": list(state["path"]),
+                            "source_file": source_file,
+                        })
+                    for effect in mapped_effects:
+                        target = str(effect.get("target", "")).strip()
+                        expression = str(effect.get("expression", "")).strip()
+                        if not target or not expression:
+                            continue
+                        assignment = {
+                            "target": target,
+                            "target_key": _key(target),
+                            "expression": expression,
+                            "line": statement_line,
+                            "source_file": effect.get("callee_source_file", "<callee>"),
+                            "kind": "explicit_assignment",
+                            "evaluated": False,
+                            "expression_references": _expression_references(expression),
+                            "interprocedural": True,
+                            "callee_line": effect.get("callee_line"),
+                            "callee_parameter": effect.get("callee_parameter"),
+                            "mapping": effect.get("mapping"),
+                        }
+                        state["values"][assignment["target_key"]] = assignment
+                        events.append({
+                            **assignment,
+                            "kind": "interprocedural_var_mutation",
+                            "path": list(state["path"]),
+                        })
+                    continue
+                assignment = _assignment(statement_source, statement_line, source_file)
                 if assignment:
                     if _CALL.search(assignment["expression"]):
                         invalidated = list(state["values"])
@@ -203,7 +246,7 @@ def analyze_assignment_flow(nodes: list[dict[str, Any]], source_file: str = "<me
         "limitations": [
             "Only simple explicit := statements in parsed statement nodes are tracked.",
             "Assignment expressions are preserved symbolically and are never evaluated.",
-            "Unknown procedure calls invalidate all tracked values because VAR mutation cannot be ruled out.",
+            "Unknown procedure calls invalidate all tracked values because VAR mutation cannot be ruled out; recognized calls restore only explicitly mapped VAR effects.",
             "Interprocedural parameter/return flow, WITH scope, implicit database changes and trigger side effects are not modeled.",
             "A static path is a syntactic possibility, not proof that NAV executed it.",
         ],

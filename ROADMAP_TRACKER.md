@@ -245,7 +245,7 @@ These are separate historical runs with different collection scopes. They must n
 
 - [x] Add `nav-intel trace` to traverse existing `CALL` edges from an object or procedure with depth/node limits, including object-level and trigger-scope roots.
 - [x] Resolve reachable objects against user-supplied TXT, ZIP, or directory roots; use symbol-index `source_file` labels when multiple exports share an object identity.
-- [x] Report source procedure absolute line ranges and origin classification, and preserve missing/ambiguous source states.
+- [x] Report source procedure absolute line ranges, shortest discovered call paths, direct Table usage, aggregate process summary/origin counts, and explicit missing/ambiguous source states.
 - [x] Report object-level/non-procedure CALL targets (such as possible `Var.RUN` edges) instead of expanding them into guessed procedures.
 - [x] Feed discovered source files directly into IF/ELSE/CASE, assignment and Record-filter analysis; automatically load Table metadata from the same source roots with explicit missing/ambiguous statuses.
 - [x] Validate tracing against the full Datascrip export with automatic conditions and Table metadata discovery; review uncovered dynamic/trigger call paths remains open.

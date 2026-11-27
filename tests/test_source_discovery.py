@@ -357,3 +357,6 @@ def test_trace_injects_composed_var_effects_into_reached_if_assignment_contexts(
         assert condition is not None
         incoming = condition["assignment_context"]["alternatives"][0]["known_assignments"]
         assert any(item["target"] == "Header.Status" for item in incoming)
+        propagated = next(item for item in incoming if item["target"] == "Header.Status")
+        assert propagated["semantic_assignment"]["target_resolution"]["resolution"] == "resolved"
+        assert propagated["semantic_assignment"]["value_resolution"]["resolution"] == "resolved"

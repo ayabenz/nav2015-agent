@@ -15,9 +15,9 @@ _PATTERNS = (
     ("confirmation", re.compile(r"\bCONFIRM\s*\(", re.I)),
     ("exit", re.compile(r"\bEXIT\s*;", re.I)),
     ("commit", re.compile(r"\bCOMMIT\s*;", re.I)),
-    ("record_write", re.compile(r"\b[A-Za-z_][A-Za-z0-9_@]*\s*\.\s*(?:INSERT|MODIFY|DELETE|RENAME)\s*(?:\(|;)", re.I)),
+    ("record_write", re.compile(r"\b[A-Za-z_][A-Za-z0-9_@]*\s*\.\s*(?:INSERT|MODIFY|DELETE|RENAME)\s*(?:\(|;|$)", re.I)),
     ("record_validation", re.compile(r"\b[A-Za-z_][A-Za-z0-9_@]*\s*\.\s*(?:VALIDATE|TESTFIELD|FIELDERROR)\s*\(", re.I)),
-    ("record_filter", re.compile(r"\b[A-Za-z_][A-Za-z0-9_@]*\s*\.\s*(?:SETRANGE|SETFILTER|RESET|SETCURRENTKEY)\s*(?:\(|;)", re.I)),
+    ("record_filter", re.compile(r"\b[A-Za-z_][A-Za-z0-9_@]*\s*\.\s*(?:SETRANGE|SETFILTER|RESET|SETCURRENTKEY)\s*(?:\(|;|$)", re.I)),
     ("object_run", re.compile(r"\b(?:CODEUNIT|REPORT|PAGE)\s*\.\s*RUN\w*\s*\(", re.I)),
 )
 

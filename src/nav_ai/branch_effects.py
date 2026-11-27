@@ -10,17 +10,17 @@ from typing import Any
 
 
 _PATTERNS = (
-    ("error", re.compile(r"\\bERROR\\s*\\(", re.I)),
-    ("message", re.compile(r"\\bMESSAGE\\s*\\(", re.I)),
-    ("confirmation", re.compile(r"\\bCONFIRM\\s*\\(", re.I)),
-    ("exit", re.compile(r"\\bEXIT\\s*(?:\\([^;]*\\))?\\s*;?", re.I)),
-    ("commit", re.compile(r"\\bCOMMIT\\s*;", re.I)),
-    ("record_write", re.compile(r"\\b[A-Za-z_][A-Za-z0-9_@]*\\s*\\.\\s*(?:INSERT|MODIFY|DELETE|RENAME|DELETEALL|MODIFYALL)\\s*(?:\\(|;|$)", re.I)),
-    ("record_validation", re.compile(r"\\b[A-Za-z_][A-Za-z0-9_@]*\\s*\\.\\s*(?:VALIDATE|TESTFIELD|FIELDERROR)\\s*\\(", re.I)),
-    ("record_filter", re.compile(r"\\b[A-Za-z_][A-Za-z0-9_@]*\\s*\\.\\s*(?:SETRANGE|SETFILTER|RESET|SETCURRENTKEY)\\s*(?:\\(|;|$)", re.I)),
-    ("record_lookup", re.compile(r"\\b[A-Za-z_][A-Za-z0-9_@]*\\s*\\.\\s*(?:GET|FIND|FINDFIRST|FINDLAST|FINDSET|ISEMPTY|COUNT)\\s*(?:\\(|;|$)", re.I)),
-    ("record_calculation", re.compile(r"\\b[A-Za-z_][A-Za-z0-9_@]*\\s*\\.\\s*(?:CALCFIELDS|CALCSUMS)\\s*\\(", re.I)),
-    ("object_run", re.compile(r"\\b(?:CODEUNIT|REPORT|PAGE)\\s*\\.\\s*RUN\\w*\\s*\\(", re.I)),
+    ("error", re.compile(r"\bERROR\s*\(", re.I)),
+    ("message", re.compile(r"\bMESSAGE\s*\(", re.I)),
+    ("confirmation", re.compile(r"\bCONFIRM\s*\(", re.I)),
+    ("exit", re.compile(r"\bEXIT\s*(?:\([^;]*\))?\s*;?", re.I)),
+    ("commit", re.compile(r"\bCOMMIT\s*;", re.I)),
+    ("record_write", re.compile(r"\b[A-Za-z_][A-Za-z0-9_@]*\s*\.\s*(?:INSERT|MODIFY|DELETE|RENAME|DELETEALL|MODIFYALL)\s*(?:\(|;|$)", re.I)),
+    ("record_validation", re.compile(r"\b[A-Za-z_][A-Za-z0-9_@]*\s*\.\s*(?:VALIDATE|TESTFIELD|FIELDERROR)\s*\(", re.I)),
+    ("record_filter", re.compile(r"\b[A-Za-z_][A-Za-z0-9_@]*\s*\.\s*(?:SETRANGE|SETFILTER|RESET|SETCURRENTKEY)\s*(?:\(|;|$)", re.I)),
+    ("record_lookup", re.compile(r"\b[A-Za-z_][A-Za-z0-9_@]*\s*\.\s*(?:GET|FIND|FINDFIRST|FINDLAST|FINDSET|ISEMPTY|COUNT)\s*(?:\(|;|$)", re.I)),
+    ("record_calculation", re.compile(r"\b[A-Za-z_][A-Za-z0-9_@]*\s*\.\s*(?:CALCFIELDS|CALCSUMS)\s*\(", re.I)),
+    ("object_run", re.compile(r"\b(?:CODEUNIT|REPORT|PAGE)\s*\.\s*RUN\w*\s*\(", re.I)),
 )
 
 

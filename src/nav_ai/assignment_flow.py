@@ -29,7 +29,7 @@ def _is_known_record_method_call(source: str) -> bool:
     """Record API calls do not mutate unrelated scalar locals tracked here."""
     methods = "|".join(sorted(_NON_MUTATING_RECORD_METHODS))
     return bool(re.search(
-        r"\\b[A-Za-z_][A-Za-z0-9_@]*\\s*\\.\\s*(?:" + methods + r")\\s*(?:\\(|\\b)",
+        r"\b[A-Za-z_][A-Za-z0-9_@]*\s*\.\s*(?:" + methods + r")\s*(?:\(|\b)",
         source,
         re.I,
     ))

@@ -276,7 +276,7 @@ These are separate historical runs with different collection scopes. They must n
 - [x] Preserve unavailable, ambiguous, nonmatching and unsupported edge states explicitly; retain `runtime_evaluated: false`.
 - [x] Compose mutation summaries across multiple graph hops with bounded propagation rounds; cycles cannot expand beyond the configured depth.
 - [ ] Feed the composed graph effects into every reached procedure's condition/assignment-flow output so downstream IF/ELSE nodes expose multi-hop symbolic context.
-- [ ] Join propagated Record field effects with Table/Field/Option metadata and Record filter state for business-process explanations.
+- [x] Resolve propagated Record-field assignment targets against Table/Field metadata and validate Option RHS members against OptionString; Record-filter state correlation remains open.
 
 **Current boundary:** this phase provides direct per-edge bindings and symbolic VAR effects. It does not yet perform recursive graph-wide effect composition or assert that any branch/call executed in NAV.
 
@@ -288,3 +288,6 @@ These are separate historical runs with different collection scopes. They must n
 
 
 **Implementation update (2026-11-27 — condition-context integration):** The bounded interprocedural effect maps are now injected into assignment-flow analysis for each reached caller procedure. Call-site line numbers are translated from object-local coordinates to absolute source-file lines before injection. This makes multi-hop Record-field mutations visible in downstream IF nodes' `assignment_context`, with an `interprocedural_call_effect_count` per procedure. A three-Codeunit trace fixture validates A → B → C propagation into both A and B's later IF contexts. CI validation for this integration is running.
+
+
+**Implementation update (2026-11-27 — semantic assignment enrichment):** Assignment events and IF-node incoming assignment alternatives now carry `semantic_assignment` metadata. Record variable declarations resolve target Table IDs; target fields resolve to field IDs/types; Option RHS members are checked against the field's exported OptionString and classified as resolved, unverified, or unresolved. This enriches the A → B → C multi-hop fixture so the downstream caller context identifies the Sales Header Status field and verifies the Released Option member without evaluating it. Record-filter-state correlation remains the next enhancement.

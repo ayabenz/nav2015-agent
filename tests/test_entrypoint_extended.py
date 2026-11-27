@@ -101,3 +101,28 @@ def test_resolves_typed_variables_from_nonfinal_procedure_scope(tmp_path):
     result = discover_extended_entrypoints([str(source)], _graph())
     assert any(item["method"] == "DoWork" and item["target_procedure"] == "Codeunit 50001.DoWork"
                for item in result["typed_variable_calls"])
+
+
+
+def test_links_event_subscriber_to_publisher_declaration(tmp_path):
+    publisher = tmp_path / "publisher.txt"
+    publisher.write_text("""OBJECT Codeunit 50001 Worker
+  CODE
+    [IntegrationEvent(false, false)]
+    LOCAL PROCEDURE OnAfterPost()
+    BEGIN
+    END;
+""", encoding="utf-8")
+    subscriber = tmp_path / "subscriber.txt"
+    subscriber.write_text("""OBJECT Codeunit 50002 Subscriber
+  CODE
+    [EventSubscriber(ObjectType::Codeunit, Codeunit::50001, 'OnAfterPost', '', false, false)]
+    LOCAL PROCEDURE HandleEvent()
+    BEGIN
+    END;
+""", encoding="utf-8")
+    result = discover_extended_entrypoints([str(publisher), str(subscriber)], _graph())
+    event = result["event_subscribers"][0]
+    assert event["publisher_declaration_found"] is True
+    assert event["publisher_matches"][0]["publisher_object"] == "Codeunit 50001"
+    assert event["publisher_invocation_proven"] is False

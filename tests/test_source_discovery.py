@@ -516,3 +516,40 @@ def test_trace_composes_nested_record_filter_effects_through_two_call_hops(tmp_p
     assert lookup["active_filters"][0]["interprocedural"] is True
     assert result["interprocedural_filter_analysis"]["propagated_hops"] >= 2
     assert result["interprocedural_filter_analysis"]["runtime_evaluated"] is False
+
+
+def test_trace_exposes_cross_procedure_business_flow_and_branch_effects(tmp_path):
+    child = """OBJECT Codeunit 60002 Child
+{
+  CODE
+  {
+    PROCEDURE Update@1();
+    BEGIN
+      IF Ready THEN
+        MESSAGE('ready')
+      ELSE
+        ERROR('not ready');
+      Item.MODIFY;
+    END;
+  }
+}"""
+    (tmp_path / "parent.txt").write_text(OBJ_A, encoding="utf-8")
+    (tmp_path / "child.txt").write_text(child, encoding="utf-8")
+    result = trace_call_graph(
+        graph_db(), "Codeunit 60001", [str(tmp_path)], symbol_db(),
+        max_depth=2, analyze_conditions=True,
+    )
+    flow = next(item for item in result["business_flow"]
+                if item["procedure"] == "Codeunit 60002.Update")
+    assert flow["call_path"] == ["Codeunit 60001.Run", "Codeunit 60002.Update"]
+    assert flow["table_usage"][0]["table_node"] == "Table 36"
+    assert [effect["action"] for effect in flow["effects"]] == [
+        "message", "error", "record_write"
+    ]
+    assert flow["effects"][0]["branch_path"] == ["IF (Ready) THEN"]
+    assert flow["effects"][1]["branch_path"] == ["IF (Ready) ELSE"]
+    assert flow["effects"][2]["branch_path"] == []
+    assert result["process_summary"]["branch_effect_counts"] == {
+        "error": 1, "message": 1, "record_write": 1
+    }
+    assert flow["runtime_executed"] is False

@@ -53,15 +53,28 @@ def _split_args(value: str) -> list[str]:
 
 
 def _mask_non_code(source: str) -> str:
-    """Mask C/AL strings and comments while preserving every source offset."""
+    """Mask C/AL strings and comments, preserving structural NAV braces and offsets."""
     chars = list(source)
-    for pattern in (r"'(?:''|[^'])*'", r"//[^\n]*", r"\{[^{}]*\}"):
+    for pattern in (r"'(?:''|[^'])*'", r"//[^\\n]*", r"\\{[^{}]*\\}"):
         for match in re.finditer(pattern, source):
+            if pattern.startswith(r"\\{"):
+                # Section/object braces occupy otherwise empty lines; they are syntax,
+                # not brace-delimited C/AL comments.
+                start_line = source.rfind("\\n", 0, match.start()) + 1
+                end_line = source.find("\\n", match.end())
+                if end_line < 0:
+                    end_line = len(source)
+                structural = (
+                    "\\n" in match.group(0)
+                    and not source[start_line:match.start()].strip()
+                    and not source[match.end():end_line].strip()
+                )
+                if structural:
+                    continue
             for pos in range(match.start(), match.end()):
-                if chars[pos] != "\n":
+                if chars[pos] != "\\n":
                     chars[pos] = " "
     return "".join(chars)
-
 
 def _calls(source: str):
     """Yield call matches from masked code and arguments from original source."""

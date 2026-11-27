@@ -185,6 +185,17 @@ def test_trace_can_analyze_conditions_and_auto_load_table_metadata(tmp_path):
     assert analysis["semantic_resolution"]["enabled"] is True
     assert analysis["semantic_resolution"]["table_ids_loaded"] == [36]
     assert analysis["runtime_evaluated"] is False
-    if_nodes = [node for node in analysis["nodes"] if node.get("type") == "if"]
+    def walk(value):
+        if isinstance(value, dict):
+            if value.get("type") == "if":
+                yield value
+            for child in value.values():
+                if isinstance(child, (dict, list)):
+                    yield from walk(child)
+        elif isinstance(value, list):
+            for child in value:
+                yield from walk(child)
+
+    if_nodes = list(walk(analysis["nodes"]))
     assert len(if_nodes) == 1
     assert "normalized_condition" in if_nodes[0]

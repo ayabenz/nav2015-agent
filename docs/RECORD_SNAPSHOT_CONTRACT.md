@@ -38,8 +38,10 @@ Unsupported C/AL expressions remain indeterminate. This is not a general C/AL ex
 ## Output semantics
 
 - `result=true/false`: the normalized predicate was deterministically evaluated from supplied values.
+- `explanation`: ordered predicate-level trace with each comparison's resolved left/right values, individual result, and parent AND/OR/NOT result.
+- For an IF node, `selected_branch` is `THEN`, `ELSE`, or `UNKNOWN`; UNKNOWN is used whenever the condition is indeterminate.
 - `result=null`, `status=indeterminate`: evidence was incomplete or unsupported; inspect `missing_or_unsupported`.
-- `provenance=caller_supplied_snapshot` and `runtime_evaluated=false` are always retained. A successful evaluation does not mean NAV executed that branch in production; it means the supplied snapshot satisfies the parsed predicate.
+- `provenance=caller_supplied_snapshot` and `runtime_evaluated=false` are always retained. A successful evaluation does not mean NAV executed that branch in production; it means the supplied snapshot satisfies the parsed predicate. The selected branch is a deterministic implication of the supplied snapshot only.
 
 ## CLI
 

@@ -410,3 +410,23 @@ These are separate historical runs with different collection scopes. They must n
 
 **Current boundary:** only local procedure identifier matches and explicit RUN object references are mapped. Object RUN targets are not expanded into object-wide procedure lists because that would overstate per-entry reachability. No runtime execution or call ordering is inferred.
 \n
+
+### Phase 2.11 — Extended source entry-point mapping
+
+- [x] Resolve typed object-variable method calls when receiver type, object ID and target procedure are uniquely available in source and graph metadata.
+- [x] Inventory explicit RUN expressions and preserve unresolved dynamic target expressions rather than guessing.
+- [x] Extract EventSubscriber attribute declarations with publisher type/identity and event name.
+- [x] Identify Job Queue Entry Table 472 and source-level Job Queue dispatcher/reference candidates.
+- [x] Extract individual Table field OnValidate / OnLookup / OnDrillDown / OnAssistEdit bodies with field identity and source locations.
+- [x] Integrate extended evidence into automatic inventory as `extended_entrypoints.json`.
+- [x] Document evidence semantics and limitations.
+- [ ] Expand typed variable scope resolution across every procedure and object-level VAR block; handle aliases and assignments.
+- [ ] Resolve named and expression-based RUN targets, including variables assigned through branches and function returns.
+- [ ] Map EventSubscriber declarations to matching publisher event declarations and publisher call sites.
+- [ ] Read actual Job Queue Entry configuration snapshots and map Object Type / Object ID / Parameter String / schedule state to source targets. Keep snapshots time-scoped and redact sensitive parameter values.
+- [ ] Validate Table field trigger extraction against representative Datascrip Table exports, including multiline properties, nested BEGIN/END and quoted field names.
+- [ ] Integrate field-trigger CALL paths, conditions, data provenance and downstream Table effects into per-field reports.
+- [ ] Run full CI on the current branch head and publish the canonical result.
+
+**Evidence boundary:** source-level typed calls, RUN expressions, subscriber attributes, Job Queue references and field trigger bodies are static declarations. None proves runtime invocation. Actual configured Job Queue rows require an explicitly supplied NAV snapshot; runtime invocation requires execution telemetry or equivalent evidence.
+

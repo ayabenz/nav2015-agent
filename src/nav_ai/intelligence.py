@@ -587,6 +587,10 @@ def main(argv: list[str] | None = None) -> int:
                     output_dir = args.output_dir or (
                         Path("reports") / args.company / "business_process"
                     )
+                    job_queue_snapshot = (
+                        json.loads(args.job_queue_snapshot.read_text(encoding="utf-8"))
+                        if args.job_queue_snapshot else None
+                    )
                     with _connect(symbol_path) as symbols:
                         inventory_result = generate_business_process_inventory(
                             graph, symbols, args.source_root, output_dir,
@@ -595,6 +599,7 @@ def main(argv: list[str] | None = None) -> int:
                             max_depth=args.max_depth, max_nodes=args.max_nodes,
                             analyze_conditions=not args.skip_conditions,
                             max_interprocedural_depth=args.max_interprocedural_depth,
+                            job_queue_snapshot=job_queue_snapshot,
                         )
                     print(f"Business process inventory: {output_dir / 'process_inventory.md'}")
                     print(f"Machine-readable inventory: {output_dir / 'process_inventory.json'}")

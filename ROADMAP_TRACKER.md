@@ -421,7 +421,8 @@ These are separate historical runs with different collection scopes. They must n
 - [x] Integrate extended evidence into automatic inventory as `extended_entrypoints.json`.
 - [x] Document evidence semantics and limitations.
 - [ ] Expand typed variable scope resolution across every procedure and object-level VAR block; handle aliases and assignments.
-- [x] Resolve numeric and uniquely named RUN targets plus unambiguous literal numeric assignments.\n- [ ] Resolve branch-dependent assignments, aliases, computed expressions and function-return RUN targets.
+- [x] Resolve numeric and uniquely named RUN targets plus unambiguous literal numeric assignments.
+- [ ] Resolve branch-dependent assignments, aliases, computed expressions and function-return RUN targets.
 - [x] Map EventSubscriber declarations to matching IntegrationEvent / BusinessEvent / InternalEvent publisher declarations by object identity and event name. Static CALL-graph caller candidates are attached; proving runtime publisher invocation remains open.
 - [x] Add optional JSON Job Queue Entry configuration snapshot input; map Object Type / Object ID to indexed NAV targets, retain schedule metadata and redact Parameter String content. This remains configuration evidence, not execution evidence.
 - [ ] Validate Table field trigger extraction against representative Datascrip Table exports, including multiline properties, nested BEGIN/END and quoted field names.

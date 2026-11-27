@@ -155,8 +155,9 @@ def test_trace_can_analyze_conditions_and_auto_load_table_metadata(tmp_path):
   {
     PROCEDURE Update@1(VAR Header@1000 : Record 36);
     BEGIN
-      IF Header.Status = Header.Status::Released THEN
+      IF Header.Status = Header.Status::Released THEN BEGIN
         MESSAGE('released');
+      END;
     END;
   }
 }"""

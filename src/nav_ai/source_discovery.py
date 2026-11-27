@@ -484,6 +484,8 @@ def trace_call_graph(graph: sqlite3.Connection, start: str,
             effect_counts[action] = effect_counts.get(action, 0) + 1
         business_flow.append({
             "procedure": item["node"],
+            "object_node": item["object_node"],
+            "origin": item["origin"],
             "depth": item["depth"],
             "call_path": item["call_path"],
             "source_status": item["source"].get("status"),
@@ -498,6 +500,22 @@ def trace_call_graph(graph: sqlite3.Connection, start: str,
             "condition_analysis_status": analysis.get("status", "not_requested"),
             "runtime_executed": False,
         })
+
+    origin_by_procedure = {item["node"]: item["origin"] for item in procedures}
+    origin_transitions = []
+    for edge in trace_edges:
+        src_origin = origin_by_procedure.get(edge["src"])
+        dst_origin = origin_by_procedure.get(edge["dst"])
+        if src_origin and dst_origin and src_origin != dst_origin:
+            origin_transitions.append({
+                "src": edge["src"],
+                "src_origin": src_origin,
+                "dst": edge["dst"],
+                "dst_origin": dst_origin,
+                "tree_edge": edge["tree_edge"],
+                "evidence": "dependency_graph_CALL_edge",
+                "runtime_executed": False,
+            })
 
     reached_objects = sorted({item["object_node"] for item in procedures})
     aggregate_table_usage: list[dict[str, Any]] = []
@@ -545,6 +563,7 @@ def trace_call_graph(graph: sqlite3.Connection, start: str,
         "table_metadata_count": len(tables),
         "procedures": procedures,
         "business_flow": business_flow,
+        "origin_transitions": origin_transitions,
         "call_edges": trace_edges,
         "interprocedural_analysis": interprocedural_analysis,
         "interprocedural_filter_analysis": filter_interprocedural_analysis,
@@ -562,6 +581,7 @@ def trace_call_graph(graph: sqlite3.Connection, start: str,
             "condition_node_counts": condition_node_counts,
             "branch_effect_counts": dict(sorted(effect_counts.items())),
             "business_flow_procedure_count": len(business_flow),
+            "origin_transition_count": len(origin_transitions),
             "unresolved_call_target_count": len(unresolved_call_targets),
         },
         "unresolved_call_targets": [

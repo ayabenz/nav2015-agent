@@ -131,7 +131,7 @@ def analyze_record_filters(
 
 
 def annotate_record_lookup_conditions(nodes: Any, lookups: list[dict[str, Any]]) -> None:
-    """Attach all path-specific lookup alternatives to direct IF predicates."""
+    """Attach path-specific lookup alternatives to direct IF predicates."""
     def visit(node: Any) -> None:
         if isinstance(node, list):
             for child in node:
@@ -139,16 +139,19 @@ def annotate_record_lookup_conditions(nodes: Any, lookups: list[dict[str, Any]])
         elif isinstance(node, dict):
             if node.get("type") == "if":
                 condition = str(node.get("condition", ""))
-                match = re.search(r'\b(?P<neg>NOT\s+)?(?P<var>[A-Za-z_][A-Za-z0-9_@]*)\s*\.\s*FINDFIRST\b', condition, re.I)
+                match = re.search(r"(?i)(NOT\\s+)?([A-Za-z_][A-Za-z0-9_@]*)\\s*\\.\\s*FINDFIRST", condition)
                 if match:
+                    variable = match.group(2).casefold()
                     line = node.get("condition_span", {}).get("line_start")
                     candidates = [item for item in lookups
-                                  if item["record_variable"].casefold() == match.group("var").casefold()
-                                  and item["line"] == line]
+                                  if str(item.get("record_variable", "")).casefold() == variable]
+                    exact = [item for item in candidates if item.get("line") == line]
+                    if exact:
+                        candidates = exact
                     if candidates:
                         node["record_lookup"] = {
-                            "record_variable": match.group("var"),
-                            "branch_meaning": "no_matching_record" if match.group("neg") else "matching_record",
+                            "record_variable": match.group(2),
+                            "branch_meaning": "no_matching_record" if match.group(1) else "matching_record",
                             "lookup_paths": candidates,
                             "runtime_evaluated": False,
                         }

@@ -153,7 +153,8 @@ def trace_call_graph(graph: sqlite3.Connection, start: str,
                      symbols: sqlite3.Connection | None = None,
                      max_depth: int = 5,
                      max_nodes: int = 5000,
-                     analyze_conditions: bool = False) -> dict[str, Any]:
+                     analyze_conditions: bool = False,
+                     max_interprocedural_depth: int = 2) -> dict[str, Any]:
     """Trace reachable CALL procedure nodes and resolve each to a source export."""
     if max_depth < 0:
         raise ValueError("max_depth must be zero or greater")
@@ -421,7 +422,9 @@ def trace_call_graph(graph: sqlite3.Connection, start: str,
         for src, targets in adjacency.items() if src in depth_by_node
         for dst in targets if dst in depth_by_node
     ]
-    interprocedural_analysis = analyze_trace_call_edges(trace_edges, catalog, symbols)
+    interprocedural_analysis = analyze_trace_call_edges(
+        trace_edges, catalog, symbols, max_call_depth=max_interprocedural_depth
+    )
     reached_objects = sorted({item["object_node"] for item in procedures})
     aggregate_table_usage: list[dict[str, Any]] = []
     if reached_objects:

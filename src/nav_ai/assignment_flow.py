@@ -27,7 +27,9 @@ _KEYWORDS = {
 def _expression_references(expression: str) -> list[str]:
     """Return conservative variable/field references from a simple expression."""
     # Mask quoted literals so their contents are never mistaken for identifiers.
-    masked = re.sub(r\"\x27(?:\x27\x27|[^\x27])*\x27\", " ", expression)\n    masked = re.sub(r\x27\"(?:\"\"|[^\"])*\"\x27, " ", masked)\n    refs = []
+    masked = re.sub(r"'(?:''|[^'])*'", " ", expression)
+    masked = re.sub(r'"(?:""|[^"])*"', " ", masked)
+    refs = []
     for match in _IDENTIFIER.finditer(masked):
         name = match.group(0).strip()
         prefix = masked[:match.start()].rstrip()

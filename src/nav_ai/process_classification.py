@@ -26,7 +26,7 @@ _DOMAIN_TERMS = {
 
 
 def _contains_term(text: str, term: str) -> bool:
-    text = re.sub(r"([a-z0-9])([A-Z])", r"\\1 \\2", text)
+    text = re.sub(r"([a-z0-9])([A-Z])", r"\1 \2", text)
     normalized = re.sub(r"[^a-z0-9]+", " ", text.casefold()).strip()
     needle = re.sub(r"[^a-z0-9]+", " ", term.casefold()).strip()
     return bool(needle) and f" {needle} " in f" {normalized} "

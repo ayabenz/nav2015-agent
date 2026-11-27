@@ -394,7 +394,7 @@ def main(argv: list[str] | None = None) -> int:
     inventory.add_argument("--max-depth", type=int, default=5)
     inventory.add_argument("--max-nodes", type=int, default=5000)
     inventory.add_argument("--max-interprocedural-depth", type=int, default=2)
-    inventory.add_argument("--skip-conditions", action="store_true", help="skip IF/ELSE/CASE, assignment and filter analysis")
+    inventory.add_argument("--skip-conditions", action="store_true", help="skip IF/ELSE/CASE, assignment and filter analysis")\n    inventory.add_argument("--job-queue-snapshot", type=Path, help="optional JSON export of Job Queue Entry configuration; Parameter String is redacted in reports")
 
     trace = sub.add_parser("trace", help="trace reachable CALL procedures and discover their source exports")
     trace.add_argument("start", help='object or procedure node, e.g. "Codeunit 50107"')

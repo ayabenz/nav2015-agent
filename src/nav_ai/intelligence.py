@@ -19,6 +19,7 @@ from .semantic_conditions import enrich_control_flow, load_table_sources, parse_
 from .record_filters import analyze_record_filter_paths, annotate_record_lookup_conditions
 from .snapshot_evaluator import evaluate_condition_snapshot
 from .assignment_flow import analyze_assignment_flow
+from .interprocedural import analyze_direct_call_bindings
 
 
 def _attach_snapshot_evaluations(nodes: Any, snapshot: dict[str, Any],
@@ -246,6 +247,7 @@ def main(argv: list[str] | None = None) -> int:
     cond.add_argument("--procedure", help="procedure name; omit to analyze the full object CODE section")
     cond.add_argument("--table-source", action="append", default=[], help="Table TXT metadata export; repeat for multiple tables")
     cond.add_argument("--snapshot-json", help="explicit Record-variable snapshot JSON; requires --table-source")
+    cond.add_argument("--call-source", action="append", default=[], help="caller NAV TXT export to inspect for direct calls into the selected procedure; repeatable")
 
     args = parser.parse_args(argv)
     base = Path("data")
@@ -296,6 +298,15 @@ def main(argv: list[str] | None = None) -> int:
                                               line_offset=line_offset)
             assignment_analysis = analyze_assignment_flow(result["nodes"], args.source_file)
             result["assignment_flow_analysis"] = assignment_analysis
+            if args.call_source:
+                call_bindings = []
+                for caller_path in args.call_source:
+                    caller_text = Path(caller_path).read_text(encoding="utf-8-sig", errors="replace")
+                    call_bindings.append(analyze_direct_call_bindings(
+                        caller_text, source, args.procedure or "",
+                        caller_path, args.source_file,
+                    ))
+                result["interprocedural_call_bindings"] = call_bindings
             if args.snapshot_json and not args.table_source:
                 raise ValueError("--snapshot-json requires at least one --table-source")
             if args.table_source:

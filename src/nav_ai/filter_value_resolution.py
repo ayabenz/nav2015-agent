@@ -82,7 +82,7 @@ def _resolve_filter_argument(expression, field_resolution, events, line, path):
 
 
 def _setfilter_template(expression, arguments, resolutions):
-    placeholders = sorted({int(x) for x in re.findall(r"%([1-9]\\d*)", expression)})
+    placeholders = sorted({int(x) for x in re.findall(r"%([1-9]\d*)", expression)})
     bindings = []
     for index in placeholders:
         if index >= len(arguments):

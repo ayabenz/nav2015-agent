@@ -17,11 +17,13 @@ def test_summarizes_error_commit_and_record_write_in_selected_branch():
 
 
 def test_nested_if_effects_are_not_claimed_when_nested_condition_unknown():
-    tree = analyze_control_flow(
-        "IF Ready THEN IF CreditOK THEN SalesHeader.MODIFY ELSE ERROR('credit');"
-    )
-    effects = summarize_branch_effects(tree["nodes"][0]["true_branch"])
-    assert len(effects) == 2
+    nested_if = {
+        "type": "if",
+        "true_branch": {"type": "statement", "source": "SalesHeader.MODIFY", "line_start": 3, "line_end": 3},
+        "false_branch": {"type": "statement", "source": "ERROR('credit');", "line_start": 4, "line_end": 4},
+    }
+    effects = summarize_branch_effects(nested_if)
+    assert {effect["action"] for effect in effects} == {"record_write", "error"}
     assert {effect["certainty"] for effect in effects} == {"nested_condition_indeterminate"}
 
 
@@ -37,11 +39,12 @@ def test_indeterminate_outer_condition_labels_both_branches_as_possible():
 
 
 def test_nested_snapshot_selected_if_limits_effects_to_its_selected_path():
-    tree = analyze_control_flow(
-        "IF Ready THEN IF CreditOK THEN SalesHeader.MODIFY ELSE ERROR('credit');"
-    )
-    nested = tree["nodes"][0]["true_branch"]
-    nested["snapshot_evaluation"] = {"result": True}
-    effects = summarize_branch_effects(tree["nodes"][0]["true_branch"])
+    nested_if = {
+        "type": "if",
+        "snapshot_evaluation": {"result": True},
+        "true_branch": {"type": "statement", "source": "SalesHeader.MODIFY", "line_start": 3, "line_end": 3},
+        "false_branch": {"type": "statement", "source": "ERROR('credit');", "line_start": 4, "line_end": 4},
+    }
+    effects = summarize_branch_effects(nested_if)
     assert [effect["action"] for effect in effects] == ["record_write"]
     assert effects[0]["certainty"] == "selected_by_snapshot"

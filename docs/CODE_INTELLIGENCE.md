@@ -409,3 +409,16 @@ The JSON companion retains the complete trace payload for downstream agent retri
 The `business_flow` payload retains each procedure's object-origin classification (for example `CUSTOM`, `MODIFIED_STANDARD`, or `STANDARD_UNCHANGED`). It also reports `origin_transitions`: discovered procedure CALL edges where caller and callee origins differ. The Markdown report presents these transitions separately so a reader can see where a Datascrip customization crosses into standard NAV code, or where a standard object calls back into custom code.
 
 These transitions are dependency-graph evidence only. They do not prove the call occurred in a particular transaction. Edges with object-level or unresolved targets are still reported separately; no procedure target is invented.
+
+
+#### Automatic business-process entry-point discovery
+
+Use `discover` to produce a ranked inventory of candidate entry objects before generating individual process traces:
+
+```powershell
+nav-intel --company datascrip discover --limit 300
+```
+
+The command reads the existing dependency graph only; it does not need source exports or rebuild the graph. It prioritizes Page, Report, XMLport, and Codeunit objects using object origin, incoming/outgoing graph-edge counts, and indexed procedure counts. Use `--include-standard` to include unchanged standard NAV objects.
+
+The output is a review queue, not a list of confirmed business processes. A Page may be a lookup/subpage, a Report may be an auxiliary report, and low incoming-edge count does not prove external initiation. Static graph edges may omit UI actions, job queues, integrations, events, and dynamic calls. After reviewing candidates, pass a selected object to `document` with the Datascrip source ZIP to build its evidence-backed Markdown and JSON process trace. Automatic grouping of related candidates into end-to-end processes is a subsequent capability.

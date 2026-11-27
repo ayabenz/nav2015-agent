@@ -34,7 +34,7 @@ In `nav-intel conditions` JSON output, inspect `assignment_flow_analysis`, `reco
 - A resolved literal proves source assignment lineage, not that a database row exists.
 - Assignments must precede the filter operation and have a compatible path. Built-in Record API calls such as `SETRANGE`, `SETFILTER`, `RESET`, and `FINDFIRST` do not invalidate unrelated scalar-local assignments; unknown/custom calls remain conservative invalidators.
 - Simple identifier aliases and literals are supported; other expressions remain symbolic or partially resolved.
-- Procedure side effects, implicit database changes, triggers, WITH scope, dynamic RecordRef/FieldRef, type coercion and SETFILTER placeholder formatting are not evaluated.
+- Procedure side effects, implicit database changes, triggers, WITH scope, dynamic RecordRef/FieldRef, type coercion and NAV filter execution are not evaluated. SETFILTER placeholders are linked symbolically, but filter syntax is not executed.
 - Runtime row existence requires a supplied data snapshot or NAV runtime evidence.
 
 ## Focused tests

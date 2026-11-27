@@ -103,3 +103,13 @@ def test_trace_reports_object_level_run_target_without_guessing_procedure():
         "dst": "Codeunit 60001",
         "reason": "CALL edge targets an object/non-procedure graph node",
     }]
+
+
+
+def test_source_catalog_reports_absolute_lines_for_later_objects(tmp_path):
+    path = tmp_path / "combined.txt"
+    path.write_text(OBJ_A + "\\n\\n" + OBJ_B, encoding="utf-8")
+    catalog = build_source_catalog([str(path)])
+    procedure = catalog[("codeunit", 60002)][0]["procedures"]["update"]
+    expected_offset = (OBJ_A + "\\n\\n").count("\\n")
+    assert procedure["line_start"] == expected_offset + 5

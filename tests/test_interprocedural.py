@@ -41,3 +41,25 @@ def test_direct_call_binds_record_rec_and_boolean_argument():
     assert args[1]["argument"] == "FALSE"
     assert args[1]["type_match"] == "compatible_literal"
     assert args[1]["by_reference"] is False
+
+
+def test_ignores_commented_call_sites():
+    caller = CALLER.replace(
+        "CUBlockStocktake.BlockStocktakeSalesHeader(Rec, FALSE);",
+        "// CUBlockStocktake.BlockStocktakeSalesHeader(Rec, FALSE);"
+    )
+    result = analyze_direct_call_bindings(
+        caller, CALLEE, "BlockStocktakeSalesHeader", "caller.txt", "callee.txt"
+    )
+    assert result["call_sites"] == []
+
+
+def test_does_not_bind_same_named_method_on_wrong_codeunit():
+    caller = CALLER.replace(
+        "CUBlockStocktake@1000 : Codeunit 50107;",
+        "CUBlockStocktake@1000 : Codeunit 80;"
+    )
+    result = analyze_direct_call_bindings(
+        caller, CALLEE, "BlockStocktakeSalesHeader", "caller.txt", "callee.txt"
+    )
+    assert result["call_sites"] == []

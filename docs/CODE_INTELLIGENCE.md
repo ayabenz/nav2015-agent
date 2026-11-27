@@ -375,3 +375,10 @@ Composition is conservative and only carries explicit VAR assignments whose simp
 
 
 When `--analyze-conditions` is enabled, the composed per-edge effects are also injected into the assignment-flow analysis of each reached caller procedure. The source line offset is applied when converting call-site lines from an object export into absolute file lines. Consequently, a later caller IF node can expose a multi-hop symbolic Record-field assignment in its `assignment_context`, not merely in the top-level interprocedural report. The output includes `interprocedural_call_effect_count` per analyzed procedure. This remains a symbolic assignment context; it does not establish the Record's database value or runtime branch outcome.
+
+
+#### Semantic resolution of propagated assignments
+
+For procedures with Table metadata available, `trace --analyze-conditions` now enriches explicit and interprocedural assignment events. A target such as `Header.Status` is resolved against the declared Record variable's Table ID and field metadata. An Option RHS such as `Header.Status::Released` is checked against that field's `OptionString`; results distinguish `resolved`, `unverified`, and `unresolved`. The same metadata is attached to assignment alternatives shown in later IF nodes' `assignment_context`.
+
+This explains *which Table field is being assigned and whether the named Option member exists in the exported Table definition*. It does not prove the assignment executed or that the field currently contains that value in SQL/NAV. Non-Option expressions remain symbolic.

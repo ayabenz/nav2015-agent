@@ -7,7 +7,7 @@ from collections import deque
 from typing import Any
 
 STRING_RE = re.compile(r"'(?:[^']|'')*'")
-LOCAL_CALL_RE = re.compile(r"(?<![\\w.\"])({names})(?![\\w\"@])", re.I)
+LOCAL_CALL_RE = re.compile(r"(?<![\w.\"])({names})(?![\w\"@])", re.I)
 
 
 def _mask_strings(text: str) -> str:
@@ -34,10 +34,8 @@ def map_entrypoint_calls(
         "SELECT node, object_node, name FROM procedures ORDER BY node"
     ).fetchall()
     by_object: dict[str, list[tuple[str, str]]] = {}
-    by_name: dict[str, list[str]] = {}
     for node, object_node, name in procedures:
         by_object.setdefault(str(object_node).casefold(), []).append((str(name), str(node)))
-        by_name.setdefault(str(name).strip('"').casefold(), []).append(str(node))
 
     adjacency: dict[str, list[str]] = {}
     for src, dst in graph.execute("SELECT src,dst FROM edges WHERE kind='CALL' ORDER BY src,dst"):
@@ -57,7 +55,7 @@ def map_entrypoint_calls(
             if proc_node.casefold() in seen:
                 continue
             pattern = re.compile(
-                r"(?<![\\w.\"])"+re.escape(proc_name.strip('"'))+r"(?![\\w\"@])",
+                r"(?<![\w.\"])"+re.escape(proc_name.strip('"'))+r"(?![\w\"@])",
                 re.I,
             )
             if pattern.search(body):
@@ -70,8 +68,8 @@ def map_entrypoint_calls(
         # Explicit CODEUNIT.RUN / REPORT.RUN / PAGE.RUN / XMLPORT.RUN with a
         # numeric ID or typed object-name literal.
         run_re = re.compile(
-            r"\\b(CODEUNIT|REPORT|PAGE|XMLPORT)\\s*\\.\\s*RUN(?:MODAL)?\\s*\\(\\s*"
-            r"(?:\\1\\s*::\\s*)?(?:(\\d+)|\"([^\"]+)\"|([A-Za-z_][A-Za-z0-9_]*))",
+            r"\b(CODEUNIT|REPORT|PAGE|XMLPORT)\s*\.\s*RUN(?:MODAL)?\s*\(\s*"
+            r"(?:\1\s*::\s*)?(?:(\d+)|\"([^\"]+)\"|([A-Za-z_][A-Za-z0-9_]*))",
             re.I,
         )
         for match in run_re.finditer(body):

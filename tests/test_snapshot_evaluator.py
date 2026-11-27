@@ -88,3 +88,19 @@ def test_cross_type_comparison_is_indeterminate_not_false():
     )
     assert result["result"] is None
     assert "incompatible_value_types:str:int" in result["missing_or_unsupported"]
+
+
+def test_explanation_reports_each_comparison_and_combined_boolean_result():
+    variables, tables = _context()
+    condition = normalize_condition_expression(
+        '(tblStocktake.Blocked = FALSE) AND (tblStocktake."Item Category Code" <> \'\')'
+    )
+    result = evaluate_condition_snapshot(
+        condition,
+        {"tblStocktake": {"Blocked": False, "Item Category Code": "ELEC"}},
+        variables, tables,
+    )
+    comparisons = [item for item in result["explanation"] if item["kind"] == "comparison"]
+    assert [item["result"] for item in comparisons] == [True, True]
+    assert any(item["kind"] == "boolean" and item["result"] is True
+               for item in result["explanation"])

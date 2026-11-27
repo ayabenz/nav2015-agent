@@ -68,6 +68,9 @@ def test_trace_resolves_call_graph_nodes_to_source_exports(tmp_path):
     assert child["depth"] == 1
     assert child["source"]["status"] == "resolved"
     assert child["source_line_start"] == 5
+    assert child["call_path"] == ["Codeunit 60001.Run", "Codeunit 60002.Update"]
+    assert result["process_summary"]["procedure_count"] == 2
+    assert result["process_summary"]["call_edge_count"] == 1
     assert result["edge_count"] == 1
     assert result["semantics"]["runtime_evaluated"] is False
 

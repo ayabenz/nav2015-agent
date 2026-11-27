@@ -14,7 +14,7 @@ from .parser import OBJECT_RE, split_objects
 SECTION_RE = re.compile(r"^  ([A-Z][A-Z0-9 -]*)\s*$")
 VAR_RE = re.compile(r'^\s*(?:"([^"]+)"|([A-Za-z_][\w ]*?))(?:@\d+)?\s*:\s*(Codeunit|Page|Report|XMLport|Query|Record)\s+(\d+)\s*;', re.I)
 PROC_RE = re.compile(r"^\s*(?:LOCAL\s+)?PROCEDURE\s+([^ (]+)", re.I)
-EVENT_RE = re.compile(r"EventSubscriber\s*\(\s*ObjectType\s*::\s*(Codeunit|Page|Table|Report|XMLport)\s*,\s*(?:\1\s*::\s*)?(\d+|\"([^\"]+)\")\s*,\s*'([^']+)'", re.I)
+EVENT_RE = re.compile(r"""EventSubscriber\s*\(\s*ObjectType\s*::\s*(Codeunit|Page|Table|Report|XMLport)\s*,\s*(?:\1\s*::\s*)?(\d+|"([^"]+)")\s*,\s*'([^']+)'""", re.I)
 RUN_RE = re.compile(r"\b(CODEUNIT|PAGE|REPORT|XMLPORT)\s*\.\s*RUN(?:MODAL)?\s*\(\s*([^,;)]+)", re.I)
 ASSIGN_RE = re.compile(r'\b([A-Za-z_][\w ]*)\s*:=\s*(\d+)\s*;', re.I)
 FIELD_START_RE = re.compile(r'^\s*\{\s*(\d+)\s*;\s*;\s*([^;]+?)\s*;', re.I)

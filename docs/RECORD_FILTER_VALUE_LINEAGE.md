@@ -44,3 +44,16 @@ In `nav-intel conditions` JSON output, inspect `assignment_flow_analysis`, `reco
 - `tests/test_filter_value_flow_integration.py`
 
 Run the test suite in the project virtual environment before treating this feature as validated. This feature has not been runtime-tested against NAV.
+
+## Option members and SETFILTER placeholders
+
+Filter argument enrichment also checks a direct Option member expression against the
+OptionString values of the filtered Table field. A known member is marked
+`resolved_option`; a member absent from the metadata is marked `unverified_option`.
+Neither status means that a record contains that value.
+
+For `SETFILTER`, format placeholders such as `%1` are linked to the corresponding
+argument (for example, `SETFILTER(Status, '=%1', TargetStatus)` links `%1` to
+`TargetStatus`). The argument's assignment lineage is attached when statically
+available. This does not execute NAV filter syntax, expand date formulas, interpret
+wildcards/ranges, or perform database matching.

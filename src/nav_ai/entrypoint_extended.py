@@ -154,7 +154,7 @@ def discover_extended_entrypoints(source_roots: list[str], graph=None) -> dict[s
                 for m in RUN_RE.finditer(clean):
                     kind = m.group(1).title().replace("Xmlport", "XMLport")
                     expr = m.group(2).strip()
-                    normalized_expr = re.sub(r"^(?:CODEUNIT|PAGE|REPORT|XMLPORT)\\s*::\\s*", "", expr, flags=re.I).strip()
+                    normalized_expr = re.sub(r"^(?:CODEUNIT|PAGE|REPORT|XMLPORT)\s*::\s*", "", expr, flags=re.I).strip()
                     variable_name = normalized_expr.strip('"')
                     var = all_vars.get(variable_name.casefold())
                     value = int(normalized_expr) if normalized_expr.isdigit() else literal_values.get(variable_name.casefold())

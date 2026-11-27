@@ -249,6 +249,7 @@ def trace_call_graph(graph: sqlite3.Connection, start: str,
             "graph_line": row["line"],
             "source": source_public,
         }
+        proc_info = None
         if source["status"] == "resolved":
             proc_info = source["procedures"].get(row["name"].casefold())
             if proc_info:
@@ -256,81 +257,82 @@ def trace_call_graph(graph: sqlite3.Connection, start: str,
                 item["source_line_end"] = proc_info["line_end"]
             else:
                 item["source_procedure_status"] = "not_found_in_resolved_object"
-            if analyze_conditions and source["status"] != "resolved":
+
+        if analyze_conditions and source["status"] != "resolved":
+            item["condition_analysis"] = {
+                "status": "source_unavailable",
+                "reason": source["status"],
+                "runtime_evaluated": False,
+            }
+        elif analyze_conditions and not proc_info:
+            item["condition_analysis"] = {
+                "status": "procedure_not_found",
+                "reason": "Procedure name from dependency graph was not found in resolved source object",
+                "runtime_evaluated": False,
+            }
+        elif analyze_conditions and proc_info:
+            try:
+                parsed_object = parse_nav_text(source["raw_block"], source["source_path"])
+                proc_matches = [
+                    proc for proc in parsed_object["procedures"]
+                    if proc["name"].casefold() == row["name"].casefold()
+                ]
+                if len(proc_matches) != 1:
+                    raise ValueError(
+                        f"Expected one source procedure {row['name']!r}; found {len(proc_matches)}"
+                    )
+                selected_proc = proc_matches[0]
+                raw_lines = selected_proc["raw"].splitlines()
+                begin = next((
+                    index for index, line in enumerate(raw_lines)
+                    if line.strip().upper() == "BEGIN"
+                ), None)
+                if begin is None:
+                    raise ValueError(f"Procedure {row['name']} has no BEGIN block")
+                code = "\n".join(raw_lines[begin:])
+                line_offset = (
+                    source["object_line_offset"] + selected_proc["line_start"] + begin - 1
+                )
+                tree = analyze_control_flow(
+                    code, object_type, object_id, source["object_name"],
+                    selected_proc["name"], source["source_path"],
+                    line_offset=line_offset,
+                )
+                variable_source = "\n".join(
+                    variable["raw"] for variable in parsed_object["variables"]
+                ) + "\n" + selected_proc["raw"]
+                variables = parse_record_variables(variable_source)
+                if tables:
+                    enrich_control_flow(tree["nodes"], variables, tables)
+                missing_table_ids = sorted(set(variables.values()) - set(tables))
+                filters = analyze_record_filter_paths(
+                    tree["nodes"], variables, tables, source["source_path"]
+                )
+                annotate_record_lookup_conditions(tree["nodes"], filters["lookups"])
                 item["condition_analysis"] = {
-                    "status": "source_unavailable",
-                    "reason": source["status"],
+                    "status": "analyzed",
+                    "nodes": tree["nodes"],
+                    "assignment_flow_analysis": analyze_assignment_flow(
+                        tree["nodes"], source["source_path"]
+                    ),
+                    "record_filter_analysis": filters,
+                    "semantic_resolution": {
+                        "enabled": bool(tables),
+                        "record_variables": variables,
+                        "table_ids_loaded": sorted(tables),
+                        "missing_table_ids_for_procedure": missing_table_ids,
+                        "table_source_status": table_source_status,
+                        "runtime_evaluated": False,
+                    },
                     "runtime_evaluated": False,
                 }
-            elif analyze_conditions and not proc_info:
+                condition_analysis_count += 1
+            except (ValueError, KeyError) as exc:
                 item["condition_analysis"] = {
-                    "status": "procedure_not_found",
-                    "reason": "Procedure name from dependency graph was not found in resolved source object",
+                    "status": "unavailable",
+                    "reason": str(exc),
                     "runtime_evaluated": False,
                 }
-            elif analyze_conditions and proc_info:
-                try:
-                    parsed_object = parse_nav_text(source["raw_block"], source["source_path"])
-                    proc_matches = [
-                        proc for proc in parsed_object["procedures"]
-                        if proc["name"].casefold() == row["name"].casefold()
-                    ]
-                    if len(proc_matches) != 1:
-                        raise ValueError(
-                            f"Expected one source procedure {row['name']!r}; found {len(proc_matches)}"
-                        )
-                    selected_proc = proc_matches[0]
-                    raw_lines = selected_proc["raw"].splitlines()
-                    begin = next((
-                        index for index, line in enumerate(raw_lines)
-                        if line.strip().upper() == "BEGIN"
-                    ), None)
-                    if begin is None:
-                        raise ValueError(f"Procedure {row['name']} has no BEGIN block")
-                    code = "\n".join(raw_lines[begin:])
-                    line_offset = (
-                        source["object_line_offset"] + selected_proc["line_start"] + begin - 1
-                    )
-                    tree = analyze_control_flow(
-                        code, object_type, object_id, source["object_name"],
-                        selected_proc["name"], source["source_path"],
-                        line_offset=line_offset,
-                    )
-                    variable_source = "\n".join(
-                        variable["raw"] for variable in parsed_object["variables"]
-                    ) + "\n" + selected_proc["raw"]
-                    variables = parse_record_variables(variable_source)
-                    if tables:
-                        enrich_control_flow(tree["nodes"], variables, tables)
-                    missing_table_ids = sorted(set(variables.values()) - set(tables))
-                    filters = analyze_record_filter_paths(
-                        tree["nodes"], variables, tables, source["source_path"]
-                    )
-                    annotate_record_lookup_conditions(tree["nodes"], filters["lookups"])
-                    item["condition_analysis"] = {
-                        "status": "analyzed",
-                        "nodes": tree["nodes"],
-                        "assignment_flow_analysis": analyze_assignment_flow(
-                            tree["nodes"], source["source_path"]
-                        ),
-                        "record_filter_analysis": filters,
-                        "semantic_resolution": {
-                            "enabled": bool(tables),
-                            "record_variables": variables,
-                            "table_ids_loaded": sorted(tables),
-                            "missing_table_ids_for_procedure": missing_table_ids,
-                            "table_source_status": table_source_status,
-                            "runtime_evaluated": False,
-                        },
-                        "runtime_evaluated": False,
-                    }
-                    condition_analysis_count += 1
-                except (ValueError, KeyError) as exc:
-                    item["condition_analysis"] = {
-                        "status": "unavailable",
-                        "reason": str(exc),
-                        "runtime_evaluated": False,
-                    }
         procedures.append(item)
 
     trace_edges = [

@@ -19,7 +19,7 @@ from .semantic_conditions import enrich_control_flow, load_table_sources, parse_
 from .record_filters import analyze_record_filter_paths, annotate_record_lookup_conditions
 from .snapshot_evaluator import evaluate_condition_snapshot
 from .assignment_flow import analyze_assignment_flow
-from .interprocedural import analyze_direct_call_bindings
+from .interprocedural import analyze_direct_call_bindings, build_caller_var_effect_map
 from .var_mutation import analyze_var_parameter_mutations
 
 
@@ -332,6 +332,8 @@ def main(argv: list[str] | None = None) -> int:
                                     "propagation": "symbolic_only",
                                 })
                     binding["callee_var_mutation_summary"] = mutation_summary
+                    binding["caller_state_effect_map"] = build_caller_var_effect_map(binding)
+                    binding["caller_state_effect_map_semantics"] = (\n                        "unconditional_explicit_mutations_only; apply to caller nodes with "\n                        "analyze_assignment_flow(call_effects=...); conditional callee effects "\n                        "remain possible effects and are not asserted as definite caller values"\n                    )
                     call_bindings.append(binding)
                 result["interprocedural_call_bindings"] = call_bindings
             if args.snapshot_json and not args.table_source:

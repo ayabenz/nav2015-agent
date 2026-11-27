@@ -10,27 +10,27 @@ from typing import Any
 
 from .parser import OBJECT_RE, split_objects
 
-SECTION_RE = re.compile(r"^  ([A-Z][A-Z0-9 -]*)\\s*$")
-ACTION_START_RE = re.compile(r"^\\s*\\{\\s*(\\d+)\\s*;\\s*(\\d+)\\s*;\\s*Action(?:Container|Group|)?\\s*;?", re.I)
-ACTION_ID_RE = re.compile(r"^\\s*\\{\\s*(\\d+)\\s*;\\s*(\\d+)\\s*;\\s*Action\\s*;?", re.I)
-ON_ACTION_RE = re.compile(r"^\\s*OnAction\\s*=\\s*(.*)$", re.I)
+SECTION_RE = re.compile(r"^  ([A-Z][A-Z0-9 -]*)\s*$")
+ACTION_START_RE = re.compile(r"^\s*\{\s*(\d+)\s*;\s*(\d+)\s*;\s*Action(?:Container|Group|)?\s*;?", re.I)
+ACTION_ID_RE = re.compile(r"^\s*\{\s*(\d+)\s*;\s*(\d+)\s*;\s*Action\s*;?", re.I)
+ON_ACTION_RE = re.compile(r"^\s*OnAction\s*=\s*(.*)$", re.I)
 TRIGGER_RE = re.compile(
-    r"^\\s*(OnRun|OnInsert|OnModify|OnDelete|OnRename|OnValidate|OnLookup|"
+    r"^\s*(OnRun|OnInsert|OnModify|OnDelete|OnRename|OnValidate|OnLookup|"
     r"OnDrillDown|OnAssistEdit|OnOpenPage|OnClosePage|OnAfterGetRecord|"
     r"OnAfterGetCurrRecord|OnNewRecord|OnQueryClosePage|OnPreReport|"
     r"OnPostReport|OnPreDataItem|OnPreXMLport|OnPostXMLport|OnInitXMLport|"
     r"OnAfterInitRecord|OnBeforeInsertRecord|OnAfterInsertRecord|"
     r"OnBeforeModifyRecord|OnAfterModifyRecord|OnBeforeDeleteRecord|"
-    r"OnAfterDeleteRecord)\\s*(?:\\([^)]*\\))?\\s*$", re.I
+    r"OnAfterDeleteRecord)\s*(?:\([^)]*\))?\s*$", re.I
 )
-PROC_RE = re.compile(r"^\\s*(?:LOCAL\\s+)?PROCEDURE\\s+", re.I)
+PROC_RE = re.compile(r"^\s*(?:LOCAL\s+)?PROCEDURE\s+", re.I)
 
 
 def _code_depth(line: str, depth: int) -> int:
     """Update BEGIN/END depth while ignoring quoted strings and // comments."""
     line = re.sub(r"'(?:[^']|'')*'", "''", line)
     line = line.split("//", 1)[0]
-    for token in re.findall(r"\\b(BEGIN|END)\\b", line, re.I):
+    for token in re.findall(r"\b(BEGIN|END)\b", line, re.I):
         depth += 1 if token.upper() == "BEGIN" else -1
     return depth
 
@@ -45,17 +45,17 @@ def _capture_body(lines: list[str], start: int, *, property_mode: bool = False) 
         body.append(line)
         before = depth
         depth = _code_depth(line, depth)
-        if re.search(r"\\bBEGIN\\b", re.sub(r"'(?:[^']|'')*'", "''", line), re.I):
+        if re.search(r"\bBEGIN\b", re.sub(r"'(?:[^']|'')*'", "''", line), re.I):
             seen_begin = True
-        if seen_begin and depth <= 0 and re.search(r"\\bEND\\s*;?", line, re.I):
-            return "\\n".join(body), idx
+        if seen_begin and depth <= 0 and re.search(r"\bEND\s*;?", line, re.I):
+            return "\n".join(body), idx
         if not seen_begin:
             # Single-line property expressions end at their property delimiter.
             if property_mode and idx == start and ";" in line:
                 return line, idx
             if idx > start and (SECTION_RE.match(line) or PROC_RE.match(line)):
-                return "\\n".join(body[:-1]), idx - 1
-    return "\\n".join(body), len(lines) - 1
+                return "\n".join(body[:-1]), idx - 1
+    return "\n".join(body), len(lines) - 1
 
 
 def discover_entrypoint_bodies(source_roots: list[str]) -> dict[str, Any]:
@@ -71,7 +71,7 @@ def discover_entrypoint_bodies(source_roots: list[str]) -> dict[str, Any]:
                     continue
                 object_type, object_id, object_name = header.group(1).title(), int(header.group(2)), header.group(3).strip()
                 object_node = f"{object_type} {object_id}"
-                offset = text.count("\\n", 0, match.start())
+                offset = text.count("\n", 0, match.start())
                 lines = block.splitlines()
                 section = ""
                 current_action: dict[str, Any] | None = None

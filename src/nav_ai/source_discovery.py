@@ -144,6 +144,9 @@ def trace_call_graph(graph: sqlite3.Connection, start: str,
     adjacency: dict[str, list[str]] = {}
     for src, dst in graph.execute("SELECT src,dst FROM edges WHERE kind='CALL' ORDER BY src,dst"):
         adjacency.setdefault(src, []).append(dst)
+    procedure_nodes = {
+        row[0] for row in graph.execute("SELECT node FROM procedures").fetchall()
+    }
 
     depth_by_node: dict[str, int] = {}
     queue = deque()
@@ -151,12 +154,16 @@ def trace_call_graph(graph: sqlite3.Connection, start: str,
         depth_by_node.setdefault(node, 0)
         queue.append(node)
     truncated = False
+    unresolved_call_targets: set[tuple[str, str]] = set()
     while queue:
         node = queue.popleft()
         depth = depth_by_node[node]
         if depth >= max_depth:
             continue
         for target in adjacency.get(node, []):
+            if target not in procedure_nodes:
+                unresolved_call_targets.add((node, target))
+                continue
             if target in depth_by_node:
                 continue
             if len(depth_by_node) >= max_nodes:
@@ -219,12 +226,17 @@ def trace_call_graph(graph: sqlite3.Connection, start: str,
         "truncated": truncated,
         "procedures": procedures,
         "call_edges": trace_edges,
+        "unresolved_call_targets": [
+            {"src": src, "dst": dst, "reason": "CALL edge targets an object/non-procedure graph node"}
+            for src, dst in sorted(unresolved_call_targets)
+        ],
         "semantics": {
             "graph_source": "existing dependency graph CALL edges",
             "source_resolution": "exact object type/id; symbol source_file labels used to disambiguate",
             "runtime_evaluated": False,
             "limitations": [
                 "Only CALL edges already present in the dependency graph are traversed.",
+                "CALL edges targeting object nodes (for example Var.RUN) are reported as unresolved targets, not expanded into guessed procedures.",
                 "Calls absent from the graph, dynamic dispatch, triggers and implicit side effects are not discovered.",
                 "Missing or ambiguous source exports are reported rather than inferred.",
                 "Depth is measured in procedure-call edges; starting all procedures of an object begins at depth zero.",

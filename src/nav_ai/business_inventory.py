@@ -11,6 +11,7 @@ from .process_mapping import map_candidate_processes
 from .process_classification import classify_process_candidates
 from .source_discovery import trace_call_graph
 from .entrypoint_intelligence import discover_source_entrypoints
+from .entrypoint_tracing import trace_entrypoint_graph
 
 
 def _slug(value: str) -> str:
@@ -122,6 +123,12 @@ def generate_business_process_inventory(
     mapping["candidates"] = classify_process_candidates(mapping["candidates"])
     entrypoints = discover_source_entrypoints(source_roots)
     (output / "entrypoints.json").write_text(json.dumps(entrypoints, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    entrypoint_traces = trace_entrypoint_graph(
+        graph, entrypoints["entries"], max_depth=max_depth, max_nodes=max_nodes
+    )
+    (output / "entrypoint_traces.json").write_text(
+        json.dumps(entrypoint_traces, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+    )
     traces: dict[str, dict[str, Any]] = {}
     failures: dict[str, dict[str, str]] = {}
     for candidate in mapping["candidates"]:
@@ -170,6 +177,7 @@ def generate_business_process_inventory(
         "company": output.parent.name,
         "mapping": mapping,
         "entrypoints": entrypoints,
+        "entrypoint_traces": entrypoint_traces,
         "traces": traces,
         "trace_failures": failures,
         "trace_success_count": sum(item["status"] == "generated" for item in traces.values()),

@@ -131,8 +131,7 @@ def analyze_record_filters(
 
 
 def annotate_record_lookup_conditions(nodes: Any, lookups: list[dict[str, Any]]) -> None:
-    """Attach nearby FINDFIRST lookup evidence to direct IF predicates."""
-    by_line = {item["line"]: item for item in lookups}
+    """Attach all path-specific lookup alternatives to direct IF predicates."""
     def visit(node: Any) -> None:
         if isinstance(node, list):
             for child in node:
@@ -140,24 +139,23 @@ def annotate_record_lookup_conditions(nodes: Any, lookups: list[dict[str, Any]])
         elif isinstance(node, dict):
             if node.get("type") == "if":
                 condition = str(node.get("condition", ""))
-                match = re.search(r'\b(?P<neg>NOT\s+)?(?P<var>[A-Za-z_][A-Za-z0-9_@]*)\s*\.\s*FINDFIRST\b', condition, re.I)
+                match = re.search(r'\\b(?P<neg>NOT\\s+)?(?P<var>[A-Za-z_][A-Za-z0-9_@]*)\\s*\\.\\s*FINDFIRST\\b', condition, re.I)
                 if match:
-                    span_line = node.get("condition_span", {}).get("line_start")
-                    candidates = [item for line, item in by_line.items()
+                    line = node.get("condition_span", {}).get("line_start")
+                    candidates = [item for item in lookups
                                   if item["record_variable"].casefold() == match.group("var").casefold()
-                                  and line <= span_line and span_line - line <= 2]
+                                  and item["line"] == line]
                     if candidates:
                         node["record_lookup"] = {
                             "record_variable": match.group("var"),
                             "branch_meaning": "no_matching_record" if match.group("neg") else "matching_record",
-                            "lookup": candidates[-1],
+                            "lookup_paths": candidates,
                             "runtime_evaluated": False,
                         }
             for value in node.values():
                 if isinstance(value, (dict, list)):
                     visit(value)
     visit(nodes)
-
 
 
 def analyze_record_filter_paths(

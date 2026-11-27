@@ -468,3 +468,18 @@ that a Page Action is visible/enabled, that a trigger ran, or that a RunObject
 target was opened. Job Queue targets commonly depend on configured
 `Job Queue Entry` records and therefore require a separate configuration
 snapshot. Event subscribers and external schedules also need separate evidence.
+
+
+### Entry-point to CALL-graph tracing
+
+The business-process inventory also writes `entrypoint_traces.json`. For each
+source-declared entry object, it traverses indexed static `CALL` edges from the
+object's procedures and trigger scope, retaining reachable procedure paths,
+unresolved call targets, traversal limits, and explicit `RunObject` targets.
+The inventory JSON includes the same result under `entrypoint_traces`.
+
+This is deliberately object-scoped: the current dependency graph does not
+represent each Page Action body as its own graph node. Therefore a Page Action
+declaration is not yet a precise root for its individual action body, and
+reachable procedures may include other procedures belonging to the same object.
+The report must not be interpreted as an execution sequence or runtime call log.

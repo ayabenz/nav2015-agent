@@ -25,6 +25,7 @@ from .interprocedural import (analyze_direct_call_bindings, build_caller_var_eff
                               annotate_callsite_boolean_branches)
 from .var_mutation import analyze_var_parameter_mutations
 from .source_discovery import trace_call_graph
+from .business_docs import default_report_name, write_business_process_report
 
 
 def _attach_snapshot_evaluations(nodes: Any, snapshot: dict[str, Any],
@@ -378,6 +379,15 @@ def main(argv: list[str] | None = None) -> int:
     trace.add_argument("--max-interprocedural-depth", type=int, default=2, help="maximum additional VAR-effect propagation hops across discovered calls (default: 2)")
     trace.add_argument("--analyze-conditions", action="store_true", help="analyze IF/ELSE/CASE, assignments and filters for discovered procedures; load Table metadata from source roots")
 
+    document = sub.add_parser("document", help="generate Markdown and JSON business-process documentation from a dependency-graph trace")
+    document.add_argument("start", help='object or procedure node, e.g. "Codeunit 50107"')
+    document.add_argument("--source-root", action="append", required=True, help="TXT file, ZIP file, or directory containing NAV TXT exports; repeatable")
+    document.add_argument("--output", type=Path, help="Markdown output path; JSON is written beside it (default: reports/<company>/business_process/<start>.md)")
+    document.add_argument("--max-depth", type=int, default=5)
+    document.add_argument("--max-nodes", type=int, default=5000)
+    document.add_argument("--max-interprocedural-depth", type=int, default=2)
+    document.add_argument("--analyze-conditions", action="store_true", help="include IF/ELSE/CASE, assignment, filter and branch-effect analysis")
+
     tab = sub.add_parser("table", help="show all indexed READ/WRITE usage for a table")
     tab.add_argument("node", help='canonical table node, e.g. "Table 36"')
     tab.add_argument("--usage", choices=("READ", "WRITE", "VAR", "SOURCE", "RELATION", "REF"))
@@ -548,6 +558,24 @@ def main(argv: list[str] | None = None) -> int:
                             analyze_conditions=args.analyze_conditions,
                             max_interprocedural_depth=args.max_interprocedural_depth,
                         )
+                elif args.command == "document":
+                    with _connect(symbol_path) as symbols:
+                        result = trace_call_graph(
+                            graph, args.start, args.source_root, symbols,
+                            max_depth=args.max_depth, max_nodes=args.max_nodes,
+                            analyze_conditions=args.analyze_conditions,
+                            max_interprocedural_depth=args.max_interprocedural_depth,
+                        )
+                    output = args.output or (
+                        Path("reports") / args.company / "business_process" /
+                        (default_report_name(result["start"]) + ".md")
+                    )
+                    markdown_path, json_path = write_business_process_report(result, output)
+                    print(f"Business process report: {markdown_path}")
+                    print(f"Machine-readable trace: {json_path}")
+                    print(f"Procedures: {result['procedure_count']}; tables: {result['process_summary']['table_count']}; "
+                          f"effects: {sum(result['process_summary']['branch_effect_counts'].values())}")
+                    return 0
                 elif args.command == "object":
                     result = object_detail(graph, args.node)
                 elif args.command == "procedure":

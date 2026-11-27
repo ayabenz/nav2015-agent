@@ -4,8 +4,8 @@ from nav_ai.control_flow import analyze_control_flow
 
 def test_unconditional_interprocedural_var_mutation_reaches_caller_if():
     source = (
-        "Status := 'Old';\\n"
-        "Mutator.UpdateStatus(Status);\\n"
+        "Status := 'Old';\n"
+        "Mutator.UpdateStatus(Status);\n"
         "IF Status = 'Released' THEN Post;"
     )
     tree = analyze_control_flow(source)
@@ -30,7 +30,7 @@ def test_unconditional_interprocedural_var_mutation_reaches_caller_if():
 
 
 def test_record_var_field_mutation_maps_to_caller_record_field():
-    source = "Mutator.UpdateHeader(Rec);\\nIF Rec.Status = Rec.Status::Released THEN Post;"
+    source = "Mutator.UpdateHeader(Rec);\nIF Rec.Status = Rec.Status::Released THEN Post;"
     tree = analyze_control_flow(source)
     analyze_assignment_flow(
         tree["nodes"], "caller.txt",

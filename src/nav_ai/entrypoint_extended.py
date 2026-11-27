@@ -18,7 +18,7 @@ EVENT_RE = re.compile(r"""EventSubscriber\s*\(\s*ObjectType\s*::\s*(Codeunit|Pag
 RUN_RE = re.compile(r"\b(CODEUNIT|PAGE|REPORT|XMLPORT)\s*\.\s*RUN(?:MODAL)?\s*\(\s*([^,;)]+)", re.I)
 ASSIGN_RE = re.compile(r'\b([A-Za-z_][\w ]*)\s*:=\s*(\d+)\s*;', re.I)
 FIELD_START_RE = re.compile(r'^\s*\{\s*(\d+)\s*;\s*;\s*([^;]+?)\s*;', re.I)
-TRIGGER_LINE_RE = re.compile(r'^\s*(OnValidate|OnLookup|OnDrillDown|OnAssistEdit)\s*=\s*(.*)$', re.I)
+TRIGGER_LINE_RE = re.compile(r"\b(OnValidate|OnLookup|OnDrillDown|OnAssistEdit)\s*=\s*(.*)$", re.I)
 
 def _mask(text: str) -> str:
     text = re.sub(r"'(?:[^']|'')*'", " ", text)

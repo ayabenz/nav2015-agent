@@ -263,3 +263,6 @@ These are separate historical runs with different collection scopes. They must n
 
 
 **Fast CI validation (2026-11-27):** [GitHub Actions run #223](https://github.com/ayabenz/nav2015-agent/actions/runs/45931717791) passed: **99 passed, 1 skipped in 0.96s**. The skipped test is the opt-in full ZIP scan; that full Datascrip scan was separately executed and passed in run #216.
+
+
+**Process-trace output validation (2026-11-27):** [GitHub Actions run #233](https://github.com/ayabenz/nav2015-agent/actions/runs/45932114995) passed: **99 passed, 1 opt-in full-export test skipped in 1.29s**. The trace now returns a representative shortest call path per procedure, preserves all discovered edges (including alternate/cycle edges), and aggregates table usage and IF/CASE counts into `process_summary`.

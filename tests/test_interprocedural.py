@@ -1,4 +1,4 @@
-from nav_ai.interprocedural import analyze_direct_call_bindings, build_caller_var_effect_map
+from nav_ai.interprocedural import (analyze_direct_call_bindings, build_caller_var_effect_map,\n                                    annotate_callsite_boolean_branches)
 
 CALLEE = """OBJECT Codeunit 50107 Block Stocktake
 {
@@ -101,3 +101,44 @@ def test_does_not_map_complex_var_argument_expression():
         }],
     }
     assert build_caller_var_effect_map(binding) == {}
+
+
+
+def test_boolean_literal_call_specializes_matching_if_branch():
+    nodes = [{
+        "type": "if",
+        "condition": "CreateWhseShipment",
+        "true_branch": {"type": "statement", "source": "CreateShipment;"},
+        "false_branch": {"type": "statement", "source": "NormalShip;"},
+    }]
+    binding = {
+        "call_sites": [{
+            "caller_object": "Codeunit 50081",
+            "source_file": "caller.txt",
+            "line": 14,
+            "arguments": [{
+                "parameter": "CreateWhseShipment",
+                "formal_type": "Boolean",
+                "argument": "FALSE",
+                "type_match": "compatible_literal",
+            }],
+        }],
+    }
+    annotate_callsite_boolean_branches(nodes, binding)
+    annotation = nodes[0]["call_site_specializations"][0]
+    assert annotation["compatible_if_outcome"] is False
+    assert annotation["incompatible_if_outcome"] is True
+    assert annotation["actual_argument"] == "FALSE"
+    assert annotation["runtime_evaluated"] is False
+
+
+def test_boolean_specialization_does_not_guess_complex_condition():
+    nodes = [{"type": "if", "condition": "CreateWhseShipment OR IsPreview"}]
+    binding = {"call_sites": [{
+        "arguments": [{
+            "parameter": "CreateWhseShipment", "formal_type": "Boolean",
+            "argument": "FALSE", "type_match": "compatible_literal",
+        }],
+    }]}
+    annotate_callsite_boolean_branches(nodes, binding)
+    assert "call_site_specializations" not in nodes[0]

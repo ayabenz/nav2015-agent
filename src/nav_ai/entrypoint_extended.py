@@ -112,8 +112,10 @@ def discover_extended_entrypoints(source_roots: list[str], graph=None) -> dict[s
                 for m in RUN_RE.finditer(clean):
                     kind = m.group(1).title().replace("Xmlport", "XMLport")
                     expr = m.group(2).strip()
-                    var = all_vars.get(expr.casefold())
-                    value = int(expr) if expr.isdigit() else literal_values.get(expr.casefold())
+                    normalized_expr = re.sub(r"^(?:CODEUNIT|PAGE|REPORT|XMLPORT)\\s*::\\s*", "", expr, flags=re.I).strip()
+                    variable_name = normalized_expr.strip('"')
+                    var = all_vars.get(variable_name.casefold())
+                    value = int(normalized_expr) if normalized_expr.isdigit() else literal_values.get(variable_name.casefold())
                     resolved = None
                     reason = None
                     if var and var["type"] == kind:
@@ -122,6 +124,17 @@ def discover_extended_entrypoints(source_roots: list[str], graph=None) -> dict[s
                     elif value is not None:
                         resolved = f"{kind} {value}"
                         evidence = "constant_or_assigned_numeric_run_target"
+                    elif normalized_expr.startswith('"') and normalized_expr.endswith('"') and graph is not None:
+                        object_rows = graph.execute(
+                            "SELECT node FROM objects WHERE type=? COLLATE NOCASE AND name=? COLLATE NOCASE",
+                            (kind, variable_name),
+                        ).fetchall()
+                        if len(object_rows) == 1:
+                            resolved = str(object_rows[0][0])
+                            evidence = "explicit_named_object_reference"
+                        else:
+                            reason = "Named RUN target is not unique in graph metadata"
+                            evidence = "unresolved_dynamic_run"
                     else:
                         reason = "RUN target is variable/expression without a unique static numeric or typed-object resolution"
                         evidence = "unresolved_dynamic_run"

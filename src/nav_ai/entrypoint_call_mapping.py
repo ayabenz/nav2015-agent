@@ -51,7 +51,7 @@ def map_entrypoint_calls(
 
         for proc_name, proc_node in by_object.get(owner.casefold(), []):
             pattern = re.compile(
-                r"(?<![\w."])"
+                r'(?<![\w."])'
                 + re.escape(proc_name.strip('"'))
                 + r"\s*(?:\(|;)",
                 re.I,

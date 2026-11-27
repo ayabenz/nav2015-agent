@@ -199,3 +199,73 @@ def discover_extended_entrypoints(source_roots: list[str], graph=None) -> dict[s
                           "Procedure-local variable parsing is conservative and currently recognizes declarations visible in the containing object text."
                       ]}
     }
+
+def map_job_queue_snapshot(snapshot: dict[str, Any], graph) -> dict[str, Any]:
+    """Map an explicitly supplied Job Queue Entry configuration snapshot to NAV objects.
+
+    Expected input: {"snapshot_at": "...", "entries": [{"entry_no": "...",
+    "object_type": "Codeunit", "object_id": 50000, ...}]}. Parameter String is
+    deliberately redacted; this is configuration evidence, not execution telemetry.
+    """
+    if not isinstance(snapshot, dict) or not isinstance(snapshot.get("entries"), list):
+        raise ValueError("Job Queue snapshot must be an object with an entries array")
+    mapped = []
+    for index, row in enumerate(snapshot["entries"]):
+        if not isinstance(row, dict):
+            mapped.append({"row_index": index, "resolution": "invalid_row"})
+            continue
+        raw_type = str(row.get("object_type", "")).strip()
+        raw_id = row.get("object_id")
+        try:
+            object_id = int(raw_id)
+        except (TypeError, ValueError):
+            object_id = None
+        target_type = raw_type.title().replace("Xmlport", "XMLport")
+        target = f"{target_type} {object_id}" if object_id is not None else None
+        valid_types = {"Codeunit", "Page", "Report", "XMLport"}
+        target_rows = graph.execute(
+            "SELECT node FROM objects WHERE type=? COLLATE NOCASE AND id=?",
+            (target_type, object_id),
+        ).fetchall() if target and target_type in valid_types else []
+        target_node = str(target_rows[0][0]) if len(target_rows) == 1 else None
+        procedure_count = 0
+        if target_node:
+            procedure_count = graph.execute(
+                "SELECT COUNT(*) FROM procedures WHERE object_node=? COLLATE NOCASE",
+                (target_node,),
+            ).fetchone()[0]
+        parameter = row.get("parameter_string")
+        mapped.append({
+            "row_index": index,
+            "entry_no": row.get("entry_no"),
+            "object_type": target_type,
+            "object_id": object_id,
+            "target_object": target_node,
+            "target_indexed": bool(target_node),
+            "target_procedure_count": int(procedure_count),
+            "status": row.get("status"),
+            "earliest_start_datetime": row.get("earliest_start_datetime"),
+            "next_run_datetime": row.get("next_run_datetime"),
+            "recurring": row.get("recurring"),
+            "parameter_string_present": bool(parameter),
+            "parameter_string_length": len(str(parameter)) if parameter is not None else 0,
+            "resolution": "unique_object_match" if target_node else "unresolved_or_missing_target",
+            "configuration_snapshot_only": True,
+            "runtime_executed": False,
+        })
+    return {
+        "snapshot_at": snapshot.get("snapshot_at"),
+        "company": snapshot.get("company"),
+        "entry_count": len(mapped),
+        "entries": mapped,
+        "semantics": {
+            "configuration_snapshot_only": True,
+            "runtime_executed": False,
+            "limitations": [
+                "A configured or enabled Job Queue Entry does not prove that its next run occurred or completed.",
+                "Parameter String values are intentionally redacted; only presence and length are retained.",
+                "Historical execution requires separate Job Queue Log / telemetry evidence.",
+                "The supplied snapshot must be exported from the intended NAV company and time window."
+            ]
+        }
+    }

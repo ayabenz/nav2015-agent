@@ -228,8 +228,8 @@ def analyze_record_filter_paths(
                         record_filters[field_key] = detail
                         operation = method
                     events.append({"operation": operation, "record_variable": receiver,
-                                   "field": field_name, "line": line,
-                                   "filters_after": list(record_filters.values()),
+                                   "field": field_name, "arguments": args[1:] if method in {"SETRANGE", "SETFILTER"} else [],
+                                   "line": line, "filters_after": list(record_filters.values()),
                                    "path": list(state["path"])})
             elif method in {"FINDFIRST", "FINDLAST", "FINDSET", "FIND"}:
                 lookups.append({

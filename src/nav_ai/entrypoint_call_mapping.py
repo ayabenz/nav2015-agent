@@ -7,13 +7,12 @@ from collections import deque
 from typing import Any
 
 STRING_RE = re.compile(r"'(?:[^']|'')*'")
-LOCAL_CALL_RE = re.compile(r"(?<![\w.\"])({names})(?![\w\"@])", re.I)
 
 
-def _mask_strings(text: str) -> str:
+def _mask_non_code(text: str) -> str:
     text = STRING_RE.sub(" ", text)
-    text = re.sub(r"//[^\\n]*", " ", text)
-    return re.sub(r"\\{[^{}]*\\}", " ", text)
+    text = re.sub(r"//[^\n]*", " ", text)
+    return re.sub(r"\{[^{}]*\}", " ", text)
 
 
 def map_entrypoint_calls(
@@ -23,11 +22,10 @@ def map_entrypoint_calls(
     max_depth: int = 5,
     max_nodes: int = 5000,
 ) -> dict[str, Any]:
-    """Map provable local procedure and explicit typed RUN targets per entry.
+    """Map unique same-object procedure identifiers and explicit RUN targets."""
+    if max_depth < 0 or max_nodes < 1:
+        raise ValueError("max_depth must be non-negative and max_nodes positive")
 
-    Dynamic receivers, ambiguous procedure names and inferred runtime invocation
-    are intentionally not resolved.
-    """
     objects = {
         str(node).casefold(): str(node)
         for (node,) in graph.execute("SELECT node FROM objects")
@@ -46,29 +44,26 @@ def map_entrypoint_calls(
     mapped: list[dict[str, Any]] = []
     for entry in entry_bodies.get("entries", []):
         owner = str(entry.get("object", ""))
-        body = _mask_strings(str(entry.get("body", "")))
+        body = _mask_non_code(str(entry.get("body", "")))
         direct: list[dict[str, Any]] = []
         unresolved: list[dict[str, Any]] = []
         seen: set[str] = set()
 
-        # Local procedure calls are only resolved when the procedure name is
-        # unique within the owning NAV object and occurs as a code identifier.
         for proc_name, proc_node in by_object.get(owner.casefold(), []):
-            if proc_node.casefold() in seen:
-                continue
             pattern = re.compile(
-                r"(?<![\w.\"])"+re.escape(proc_name.strip('"'))+r"(?![\w\"@])",
+                r"(?<![\w."])"
+                + re.escape(proc_name.strip('"'))
+                + r"\s*(?:\(|;)",
                 re.I,
             )
-            if pattern.search(body):
+            if pattern.search(body) and proc_node.casefold() not in seen:
                 seen.add(proc_node.casefold())
                 direct.append({
-                    "target": proc_node, "kind": "local_procedure_name_match",
+                    "target": proc_node,
+                    "kind": "local_procedure_name_match",
                     "confidence": "source_identifier_match",
                 })
 
-        # Explicit CODEUNIT.RUN / REPORT.RUN / PAGE.RUN / XMLPORT.RUN with a
-        # numeric ID or typed object-name literal.
         run_re = re.compile(
             r"\b(CODEUNIT|REPORT|PAGE|XMLPORT)\s*\.\s*RUN(?:MODAL)?\s*\(\s*"
             r"(?:\1\s*::\s*)?(?:(\d+)|\"([^\"]+)\"|([A-Za-z_][A-Za-z0-9_]*))",
@@ -80,7 +75,6 @@ def map_entrypoint_calls(
             if match.group(2):
                 object_node = f"{kind} {int(match.group(2))}"
             elif match.group(3):
-                name = match.group(3).casefold()
                 rows = graph.execute(
                     "SELECT node FROM objects WHERE type=? COLLATE NOCASE AND name=? COLLATE NOCASE",
                     (kind, match.group(3)),
@@ -92,7 +86,8 @@ def map_entrypoint_calls(
                 if target.casefold() not in seen:
                     seen.add(target.casefold())
                     direct.append({
-                        "target": target, "kind": "explicit_run_object",
+                        "target": target,
+                        "kind": "explicit_run_object",
                         "confidence": "explicit_object_reference",
                     })
             else:
@@ -101,9 +96,6 @@ def map_entrypoint_calls(
                     "reason": "RUN target is not uniquely resolvable from graph metadata",
                 })
 
-        # Traverse graph only from resolved direct procedure roots. Object RUN
-        # targets are recorded, but do not pretend an object-level scope is an
-        # exact per-action call tree.
         roots = [item["target"] for item in direct if "." in item["target"]]
         reached: dict[str, int] = {}
         parents: dict[str, str] = {}
@@ -124,8 +116,9 @@ def map_entrypoint_calls(
                 if target.casefold() not in reached:
                     parents[target.casefold()] = key
                     queue.append((target, depth + 1))
-        procedures_out = []
+
         labels = {str(row[0]).casefold(): str(row[0]) for row in procedures}
+        procedures_out = []
         for key, depth in sorted(reached.items(), key=lambda item: (item[1], item[0])):
             path = [labels.get(key, key)]
             parent = parents.get(key)
@@ -133,7 +126,12 @@ def map_entrypoint_calls(
                 path.append(labels.get(parent, parent))
                 parent = parents.get(parent)
             path.reverse()
-            procedures_out.append({"node": labels.get(key, key), "depth": depth, "call_path": path})
+            procedures_out.append({
+                "node": labels.get(key, key),
+                "depth": depth,
+                "call_path": path,
+            })
+
         mapped.append({
             "entry_id": entry.get("entry_id"),
             "object": owner,
@@ -148,14 +146,15 @@ def map_entrypoint_calls(
             "call_order_proven": False,
             "semantics": "Static source identifier and explicit RUN-reference mapping; not proof of runtime invocation.",
         })
+
     return {
         "entry_count": len(mapped),
         "entries": mapped,
         "semantics": {
             "runtime_executed": False,
             "limitations": [
-                "Only unique same-object procedure identifier matches and explicit RUN object references are resolved.",
-                "Typed variable method calls, ambiguous identifiers, event dispatch, dynamic RUN and indirect calls remain unresolved.",
+                "Only call-shaped, unique same-object procedure identifiers and explicit RUN object references are resolved.",
+                "Typed variable method calls, ambiguous identifiers, function-return shorthand, event dispatch, dynamic RUN and indirect calls remain unresolved.",
                 "Object RUN targets are reported without expanding object-wide procedures as if they belonged to this individual entry.",
             ],
         },

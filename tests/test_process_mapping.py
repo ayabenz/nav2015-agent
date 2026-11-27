@@ -89,4 +89,6 @@ def test_mapping_reports_depth_truncation_and_unresolved_call_targets():
         "dst": "Codeunit 99999",
         "reason": "CALL target is not an indexed procedure",
     }]
-    assert page["reachable_procedure_count"] == 2
+    # The unresolved target is reported separately; it does not remove the
+    # three indexed procedures already reachable through the CALL graph.
+    assert page["reachable_procedure_count"] == 3

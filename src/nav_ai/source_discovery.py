@@ -50,7 +50,8 @@ def build_source_catalog(source_roots: list[str]) -> dict[tuple[str, int], list[
             if identity_key in seen:
                 continue
             seen.add(identity_key)
-            for _, block in split_objects(text):
+            for object_match, block in split_objects(text):
+                line_offset = text.count("\\n", 0, object_match.start())
                 try:
                     parsed = parse_nav_text(block, display_path)
                 except ValueError:
@@ -64,8 +65,8 @@ def build_source_catalog(source_roots: list[str]) -> dict[tuple[str, int], list[
                     "procedures": {
                         p["name"].casefold(): {
                             "name": p["name"],
-                            "line_start": p["line_start"],
-                            "line_end": p["line_end"],
+                            "line_start": line_offset + p["line_start"],
+                            "line_end": line_offset + p["line_end"],
                         }
                         for p in parsed["procedures"]
                     },

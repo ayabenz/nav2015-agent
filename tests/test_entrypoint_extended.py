@@ -7,6 +7,7 @@ def _graph():
     graph = sqlite3.connect(":memory:")
     graph.execute("CREATE TABLE objects(node TEXT PRIMARY KEY, type TEXT, id INTEGER, name TEXT)")
     graph.execute("CREATE TABLE procedures(node TEXT PRIMARY KEY, object_node TEXT, name TEXT)")
+    graph.execute("CREATE TABLE edges(src TEXT, dst TEXT, kind TEXT)")
     graph.executemany("INSERT INTO objects VALUES(?,?,?,?)", [
         ("Codeunit 50001", "Codeunit", 50001, "Worker"),
         ("Codeunit 50002", "Codeunit", 50002, "Subscriber"),

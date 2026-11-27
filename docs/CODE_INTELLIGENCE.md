@@ -389,3 +389,16 @@ This explains *which Table field is being assigned and whether the named Option 
 Trace now reports `interprocedural_filter_analysis` for direct CALL edges. When a callee receives a typed Record parameter by reference, explicit `SETRANGE`, `SETFILTER`, field-clearing `SETRANGE(Field)`, and `RESET` operations can be mapped to a simple caller Record argument. Conditional operations are propagated only when supported Boolean literals at the call site select the corresponding IF path.
 
 With `--analyze-conditions`, mapped filter effects are applied to the caller's path-sensitive Record-filter state at the call statement. A later `FINDFIRST`/FIND lookup can therefore show filters established inside the called Codeunit. Filter arguments remain source expressions; no filter is executed and no matching row is inferred. This first version handles direct callee filter operations; nested interprocedural filter composition remains unsupported.
+
+
+#### Business-process documentation generator
+
+Use the `document` command to generate a human-readable Markdown report and a machine-readable JSON trace from the same dependency-graph traversal:
+
+```powershell
+nav-intel --company datascrip document "Codeunit 50107" --source-root "data\\input\\datascrip\\datascrip.zip" --max-depth 5 --max-nodes 5000 --max-interprocedural-depth 2 --analyze-conditions
+```
+
+By default, files are written under `reports/datascrip/business_process/` using the start object as the filename. Supply `--output "reports\\datascrip\\business_process\\stocktake.md"` to choose a Markdown path; the companion JSON uses the same basename. The report includes process scope, procedure call paths, source resolution, direct table usage, IF/ELSE/CASE effect inventory with branch paths and source line references, aggregate table usage, unresolved call targets, and evidence limitations.
+
+The JSON companion retains the complete trace payload for downstream agent retrieval, including condition trees, assignment/filter analysis, interprocedural summaries, graph edges, and source evidence. Reports explicitly state that static effects are not runtime execution counts or proof of committed changes. Missing/ambiguous source remains visible. The command does not require a NAV database connection or runtime test.

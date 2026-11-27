@@ -147,3 +147,15 @@ Klasifikasi **tidak bergantung** pada `Modified=Yes` atau ID >= 50000. Hanya ber
 - Parser adalah **deterministic first-pass**, bukan full C/AL compiler. Tidak mengekstrak control-flow semantics, indirect calls, dynamic EVALUATE/record references, atau complete dependency resolution.
 - `Modified=Yes` disimpan sebagai metadata tapi **tidak bukti** bahwa objek adalah custom atau modified-standard.
 - Untuk detail parameter dan usage setiap tool, lihat `nav2015_agent.md`.
+
+
+### Automatic business-process candidate mapping
+
+Rank candidate entry objects and group candidates whose direct Table-usage footprints overlap:
+
+```powershell
+nav-intel --company datascrip --json discover --limit 300
+nav-intel --company datascrip --json map-processes --limit 300 --min-similarity 0.25
+```
+
+The mapping is heuristic: it uses direct `table_usage` rows for each candidate object, not the transitive tables of all reachable callees. A cluster is a related-candidate group for investigation, not a confirmed end-to-end business process.

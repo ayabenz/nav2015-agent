@@ -70,3 +70,91 @@ def test_trace_edge_keeps_missing_source_explicit():
     )
     assert result["edges"][0]["status"] == "source_unavailable"
     assert result["runtime_evaluated"] is False
+
+
+A_SOURCE = """OBJECT Codeunit 50010 A
+{
+  CODE
+  {
+    VAR
+      Header@1 : Record 36;
+      Middle@2 : Codeunit 50011;
+
+    PROCEDURE Run@3();
+    BEGIN
+      Middle.Mutate(Header,TRUE);
+    END;
+  }
+}"""
+
+B_SOURCE = """OBJECT Codeunit 50011 B
+{
+  CODE
+  {
+    VAR
+      Deep@1 : Codeunit 50012;
+
+    PROCEDURE Mutate@2(VAR Header@3 : Record 36;DoMutate@4 : Boolean);
+    BEGIN
+      Deep.Apply(Header,TRUE);
+    END;
+  }
+}"""
+
+C_SOURCE = """OBJECT Codeunit 50012 C
+{
+  CODE
+  {
+    PROCEDURE Apply@1(VAR Header@2 : Record 36;DoSet@3 : Boolean);
+    BEGIN
+      IF DoSet THEN
+        Header.Status := Header.Status::Released;
+    END;
+  }
+}"""
+
+
+def test_trace_composes_var_effects_across_two_call_hops():
+    catalog = {
+        ("codeunit", 50010): [_source(A_SOURCE, "a.txt", "Run")],
+        ("codeunit", 50011): [_source(B_SOURCE, "b.txt", "Mutate")],
+        ("codeunit", 50012): [_source(C_SOURCE, "c.txt", "Apply")],
+    }
+    result = analyze_trace_call_edges(
+        [
+            {"src": "Codeunit 50010.Run", "dst": "Codeunit 50011.Mutate"},
+            {"src": "Codeunit 50011.Mutate", "dst": "Codeunit 50012.Apply"},
+        ],
+        catalog,
+        max_call_depth=2,
+    )
+    assert result["propagated_hops"] == 2
+    a_to_b = next(edge for edge in result["edges"]
+                  if edge["src"] == "Codeunit 50010.Run")
+    mapped = next(iter(a_to_b["caller_state_effect_map"].values()))[0]
+    assert mapped["target"] == "Header.Status"
+    assert mapped["runtime_evaluated"] is False
+    b_summary = next(item["summary"] for item in result["procedure_summaries"]
+                     if item["procedure"] == "Codeunit 50011.Mutate")
+    mutations = b_summary["var_parameters"][0]["mutations"]
+    assert any(item["target"] == "Header.Status" and item["interprocedural"]
+               for item in mutations)
+
+
+def test_trace_interprocedural_depth_zero_keeps_direct_effects_only():
+    catalog = {
+        ("codeunit", 50010): [_source(A_SOURCE, "a.txt", "Run")],
+        ("codeunit", 50011): [_source(B_SOURCE, "b.txt", "Mutate")],
+        ("codeunit", 50012): [_source(C_SOURCE, "c.txt", "Apply")],
+    }
+    result = analyze_trace_call_edges(
+        [
+            {"src": "Codeunit 50010.Run", "dst": "Codeunit 50011.Mutate"},
+            {"src": "Codeunit 50011.Mutate", "dst": "Codeunit 50012.Apply"},
+        ],
+        catalog,
+        max_call_depth=0,
+    )
+    a_to_b = next(edge for edge in result["edges"]
+                  if edge["src"] == "Codeunit 50010.Run")
+    assert a_to_b.get("caller_state_effect_map", {}) == {}

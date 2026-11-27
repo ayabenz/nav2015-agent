@@ -429,3 +429,90 @@ def test_trace_propagates_callee_var_record_filter_into_caller_lookup(tmp_path):
     assert active_filter["operation"] == "SETRANGE"
     assert active_filter["interprocedural"] is True
     assert active_filter["arguments"] == ["Header.Status::Released"]
+
+
+def test_trace_composes_nested_record_filter_effects_through_two_call_hops(tmp_path):
+    parent = """OBJECT Codeunit 60001 Parent
+{
+  CODE
+  {
+    VAR
+      Header@1 : Record 36;
+      Middle@2 : Codeunit 60002;
+
+    PROCEDURE Run@3();
+    BEGIN
+      Middle.Update(Header);
+      IF Header.FINDFIRST THEN
+        MESSAGE('found');
+    END;
+  }
+}"""
+    middle = """OBJECT Codeunit 60002 Child
+{
+  CODE
+  {
+    VAR
+      Deep@1 : Codeunit 60003;
+
+    PROCEDURE Update@2(VAR Header@3 : Record 36);
+    BEGIN
+      Deep.Apply(Header);
+    END;
+  }
+}"""
+    deep = """OBJECT Codeunit 60003 Deep
+{
+  CODE
+  {
+    PROCEDURE Apply@1(VAR Header@2 : Record 36);
+    BEGIN
+      Header.SETRANGE(Status,Header.Status::Released);
+    END;
+  }
+}"""
+    table = """OBJECT Table 36 Sales Header
+{
+  FIELDS
+  {
+    { 1 ; ; Status ; Option }
+    {
+      OptionString=Open,Released;
+    }
+  }
+}"""
+    for name, content in (("parent.txt", parent), ("child.txt", middle),
+                          ("deep.txt", deep), ("table36.txt", table)):
+        (tmp_path / name).write_text(content, encoding="utf-8")
+
+    db = graph_db()
+    db.execute("UPDATE procedures SET name='Run',node='Codeunit 60001.Run' WHERE node='Codeunit 60001.Run'")
+    db.execute("UPDATE procedures SET name='Update' WHERE node='Codeunit 60002.Update'")
+    db.execute("INSERT INTO objects VALUES(?,?,?,?,?,?,?,?,?,?)",
+               ("Codeunit 60003", "Codeunit", 60003, "Deep", "CUSTOM", 0, 0, 1, 0, 1))
+    db.execute("INSERT INTO procedures VALUES(?,?,?,?,?,?)",
+               ("Codeunit 60003.Apply", "Codeunit 60003", "Apply", 5, 0, "CUSTOM"))
+    db.execute("DELETE FROM edges")
+    db.executemany("INSERT INTO edges VALUES(?,?,?,?,?,?,?)", [
+        ("Codeunit 60001.Run", "Codeunit 60002.Update", "CALL", 1, 1, "Codeunit 60001", "Codeunit 60002"),
+        ("Codeunit 60002.Update", "Codeunit 60003.Apply", "CALL", 1, 1, "Codeunit 60002", "Codeunit 60003"),
+    ])
+    symbols = symbol_db()
+    symbols.executemany("INSERT INTO symbols VALUES(?,?,?,?,?,?,?,?,?,?)", [
+        ("procedure", "Run", None, "Codeunit", 60001, "Parent", "Run()", "parent.txt", 8, 13),
+        ("procedure", "Apply", None, "Codeunit", 60003, "Deep", "Apply()", "deep.txt", 5, 8),
+    ])
+    result = trace_call_graph(
+        db, "Codeunit 60001", [str(tmp_path)], symbols,
+        max_depth=3, analyze_conditions=True, max_interprocedural_depth=2,
+    )
+    parent_result = next(p for p in result["procedures"]
+                         if p["node"] == "Codeunit 60001.Run")
+    lookup = next(x for x in parent_result["condition_analysis"]["record_filter_analysis"]["lookups"]
+                  if x["record_variable"] == "Header")
+    assert len(lookup["active_filters"]) == 1, lookup
+    assert lookup["active_filters"][0]["field"] == "Status"
+    assert lookup["active_filters"][0]["arguments"] == ["Header.Status::Released"]
+    assert lookup["active_filters"][0]["interprocedural"] is True
+    assert result["interprocedural_filter_analysis"]["propagated_hops"] >= 2
+    assert result["interprocedural_filter_analysis"]["runtime_evaluated"] is False

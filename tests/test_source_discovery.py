@@ -360,3 +360,63 @@ def test_trace_injects_composed_var_effects_into_reached_if_assignment_contexts(
         propagated = next(item for item in incoming if item["target"] == "Header.Status")
         assert propagated["semantic_assignment"]["target_resolution"]["resolution"] == "resolved"
         assert propagated["semantic_assignment"]["value_resolution"]["resolution"] == "resolved"
+
+
+def test_trace_propagates_callee_var_record_filter_into_caller_lookup(tmp_path):
+    parent = """OBJECT Codeunit 60001 Parent
+{
+  CODE
+  {
+    VAR
+      Header@1 : Record 36;
+      Child@2 : Codeunit 60002;
+
+    PROCEDURE Run@3();
+    BEGIN
+      Child.Apply(Header,TRUE);
+      IF Header.FINDFIRST THEN
+        MESSAGE('found');
+    END;
+  }
+}"""
+    child = """OBJECT Codeunit 60002 Child
+{
+  CODE
+  {
+    PROCEDURE Apply@1(VAR Header@2 : Record 36;DoFilter@3 : Boolean);
+    BEGIN
+      IF DoFilter THEN
+        Header.SETRANGE(Status,Header.Status::Released);
+    END;
+  }
+}"""
+    table = """OBJECT Table 36 Sales Header
+{
+  FIELDS
+  {
+    { 1 ; ; Status ; Option }
+    {
+      OptionString=Open,Released;
+    }
+  }
+}"""
+    (tmp_path / "parent.txt").write_text(parent, encoding="utf-8")
+    (tmp_path / "child.txt").write_text(child, encoding="utf-8")
+    (tmp_path / "table36.txt").write_text(table, encoding="utf-8")
+    result = trace_call_graph(
+        graph_db(), "Codeunit 60001", [str(tmp_path)], symbol_db(),
+        max_depth=2, analyze_conditions=True,
+    )
+    parent_result = next(
+        item for item in result["procedures"] if item["node"] == "Codeunit 60001.Run"
+    )
+    analysis = parent_result["condition_analysis"]
+    assert analysis["interprocedural_filter_effect_count"] == 1
+    lookup = next(item for item in analysis["record_filter_analysis"]["lookups"]
+                  if item["record_variable"] == "Header")
+    assert len(lookup["active_filters"]) == 1
+    active_filter = lookup["active_filters"][0]
+    assert active_filter["field"] == "Status"
+    assert active_filter["operation"] == "SETRANGE"
+    assert active_filter["interprocedural"] is True
+    assert active_filter["arguments"] == ["Header.Status::Released"]

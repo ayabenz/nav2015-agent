@@ -19,37 +19,70 @@ from .semantic_conditions import parse_record_variables, parse_table_metadata, e
 from .record_filters import analyze_record_filter_paths, annotate_record_lookup_conditions
 
 
-def _iter_source_texts(root: str):
+def _iter_source_texts(root: str, source_labels: set[str] | None = None):
     path = Path(root)
+    normalized_labels = {
+        label.casefold() for label in (source_labels or set())
+    }
+    normalized_basenames = {Path(label).name.casefold() for label in normalized_labels}
+
+    def wanted(label: str) -> bool:
+        if source_labels is None:
+            return True
+        return label.casefold() in normalized_labels or Path(label).name.casefold() in normalized_basenames
+
     if path.is_dir():
         for item in sorted(path.rglob("*")):
             if item.is_file() and item.suffix.lower() == ".txt":
-                yield str(item), item.name, item.read_text(encoding="utf-8-sig", errors="replace")
+                if wanted(item.name):
+                    yield str(item), item.name, item.read_text(encoding="utf-8-sig", errors="replace")
             elif item.is_file() and item.suffix.lower() == ".zip":
                 try:
                     with zipfile.ZipFile(item) as archive:
                         for name in archive.namelist():
-                            if name.lower().endswith(".txt"):
+                            if name.lower().endswith(".txt") and wanted(name):
                                 yield f"{item}!{name}", name, archive.read(name).decode("utf-8-sig", errors="replace")
                 except (OSError, zipfile.BadZipFile):
                     continue
     elif path.is_file() and path.suffix.lower() == ".zip":
         with zipfile.ZipFile(path) as archive:
             for name in archive.namelist():
-                if name.lower().endswith(".txt"):
+                if name.lower().endswith(".txt") and wanted(name):
                     yield f"{path}!{name}", name, archive.read(name).decode("utf-8-sig", errors="replace")
     elif path.is_file():
-        yield str(path), path.name, path.read_text(encoding="utf-8-sig", errors="replace")
+        # A direct TXT path is always read; it may contain several objects.
+        if path.suffix.lower() != ".zip" or wanted(path.name):
+            yield str(path), path.name, path.read_text(encoding="utf-8-sig", errors="replace")
     else:
         raise FileNotFoundError(f"Source root not found: {root}")
 
 
-def build_source_catalog(source_roots: list[str]) -> dict[tuple[str, int], list[dict[str, Any]]]:
-    """Index exported objects by exact NAV type/id without guessing duplicates."""
+def build_source_catalog(
+    source_roots: list[str],
+    wanted_keys: set[tuple[str, int]] | None = None,
+    symbols: sqlite3.Connection | None = None,
+) -> dict[tuple[str, int], list[dict[str, Any]]]:
+    """Index exported objects by exact NAV type/id without guessing duplicates.
+
+    When every requested object has a symbol-index source label, scan only those
+    TXT members/files. If labels are incomplete, fall back to a complete scan.
+    """
     catalog: dict[tuple[str, int], list[dict[str, Any]]] = {}
+    source_labels: set[str] | None = None
+    if wanted_keys:
+        labels: set[str] = set()
+        complete = True
+        for object_type, object_id in wanted_keys:
+            found = _symbol_source_labels(symbols, object_type, object_id)
+            if not found:
+                complete = False
+                break
+            labels.update(found)
+        if complete and labels:
+            source_labels = labels
     seen: set[tuple[str, str]] = set()
     for root in source_roots:
-        for display_path, source_label, text in _iter_source_texts(root):
+        for display_path, source_label, text in _iter_source_texts(root, source_labels):
             identity_key = (display_path.casefold(), source_label.casefold())
             if identity_key in seen:
                 continue
@@ -190,11 +223,38 @@ def trace_call_graph(graph: sqlite3.Connection, start: str,
             depth_by_node[target] = depth + 1
             queue.append(target)
 
-    catalog = build_source_catalog(source_roots)
+    wanted_objects: set[tuple[str, int]] = set()
+    for node in depth_by_node:
+        proc_row = graph.execute(
+            "SELECT object_node FROM procedures WHERE node=?", (node,)
+        ).fetchone()
+        if proc_row:
+            object_type, object_id = proc_row[0].rsplit(" ", 1)
+            wanted_objects.add((object_type, int(object_id)))
+    catalog = build_source_catalog(source_roots, wanted_objects, symbols)
     tables: dict[int, dict[str, Any]] = {}
     table_source_status: list[dict[str, Any]] = []
     if analyze_conditions:
-        for (object_type, object_id), _ in catalog.items():
+        required_table_ids: set[int] = set()
+        for candidates in catalog.values():
+            for candidate in candidates:
+                if candidate["source_path"] and candidate["source_path"].lower().endswith(".txt"):
+                    pass
+                try:
+                    parsed_source = parse_nav_text(candidate["raw_block"], candidate["source_path"])
+                except ValueError:
+                    continue
+                declarations = "\n".join(
+                    variable["raw"] for variable in parsed_source["variables"]
+                )
+                for procedure in parsed_source["procedures"]:
+                    required_table_ids.update(
+                        parse_record_variables(declarations + "\n" + procedure["raw"]).values()
+                    )
+        table_keys = {("Table", table_id) for table_id in required_table_ids}
+        table_catalog = build_source_catalog(source_roots, table_keys, symbols) if table_keys else {}
+        catalog.update(table_catalog)
+        for object_type, object_id in table_catalog:
             if object_type != "table":
                 continue
             resolved_table = _resolve_source(catalog, symbols, "Table", object_id)

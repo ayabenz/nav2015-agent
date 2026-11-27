@@ -173,3 +173,20 @@ def test_assignment_flow_enriches_interprocedural_context_with_option_metadata()
     assert flow["events"][0]["semantic_assignment"]["value_resolution"]["resolution"] == "resolved"
     known = nodes[0]["assignment_context"]["alternatives"][0]["known_assignments"][0]
     assert known["semantic_assignment"]["target_resolution"]["field_id"] == 1
+
+
+def test_table_metadata_reads_optionstring_from_separate_field_property_block():
+    table = parse_table_metadata(
+        """OBJECT Table 36 Sales Header
+{
+  FIELDS
+  {
+    { 1 ; ; Status ; Option }
+    {
+      OptionString=Open,Released;
+    }
+  }
+}""",
+        "Table36.txt",
+    )
+    assert table["fields"]["status"]["option_values"] == ["Open", "Released"]

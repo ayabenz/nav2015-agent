@@ -202,25 +202,22 @@ def analyze_direct_call_bindings(
 
 
 
-def _simple_boolean_condition(condition: str, formal: str) -> tuple[bool, bool] | None:
-    """Return (condition_value_when_formal_true, is_inverted) for simple predicates."""
+def _simple_boolean_condition(condition: str, formal: str) -> bool | None:
+    """Return True for a positive formal predicate, False for its negation."""
     text = re.sub(r"\s+", "", condition).casefold()
     name = re.escape(re.sub(r"\s+", "", formal).casefold())
-    patterns = [
-        (rf"^{name}$", False),
-        (rf"^not{name}$", True),
-        (rf"^{name}=true$", False),
-        (rf"^{name}<>false$", False),
-        (rf"^{name}=false$", True),
-        (rf"^{name}<>true$", True),
-        (rf"^true={name}$", False),
-        (rf"^false<>{name}$", False),
-        (rf"^false={name}$", True),
-        (rf"^true<>{name}$", True),
+    positive = [
+        rf"^{name}$", rf"^{name}=true$", rf"^{name}<>false$",
+        rf"^true={name}$", rf"^false<>{name}$",
     ]
-    for pattern, inverted in patterns:
-        if re.fullmatch(pattern, text):
-            return (not inverted, inverted)
+    negative = [
+        rf"^not{name}$", rf"^{name}=false$", rf"^{name}<>true$",
+        rf"^false={name}$", rf"^true<>{name}$",
+    ]
+    if any(re.fullmatch(pattern, text) for pattern in positive):
+        return True
+    if any(re.fullmatch(pattern, text) for pattern in negative):
+        return False
     return None
 
 
@@ -239,21 +236,16 @@ def annotate_callsite_boolean_branches(nodes: list[dict[str, Any]],
             if value.get("type") == "if":
                 condition = str(value.get("condition", ""))
                 for formal, actual in bool_args.items():
-                    parsed = _simple_boolean_condition(condition, formal)
-                    if parsed is None:
+                    polarity = _simple_boolean_condition(condition, formal)
+                    if polarity is None:
                         continue
-                    condition_when_formal_true, inverted = parsed
-                    formal_value = actual
-                    selected = formal_value if not inverted else not formal_value
-                    if not condition_when_formal_true:
-                        selected = not selected
-                    annotations = value.setdefault("call_site_specializations", [])
-                    annotations.append({
+                    selected = actual if polarity else not actual
+                    value.setdefault("call_site_specializations", []).append({
                         "caller_object": site.get("caller_object"),
                         "caller_source_file": site.get("source_file"),
                         "call_site_line": site.get("line"),
                         "formal_parameter": formal,
-                        "actual_argument": "TRUE" if formal_value else "FALSE",
+                        "actual_argument": "TRUE" if actual else "FALSE",
                         "condition": condition,
                         "compatible_if_outcome": bool(selected),
                         "incompatible_if_outcome": not bool(selected),

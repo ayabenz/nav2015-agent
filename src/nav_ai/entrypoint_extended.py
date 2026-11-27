@@ -11,7 +11,7 @@ from typing import Any
 from .entrypoint_intelligence import _source_files
 from .parser import OBJECT_RE, split_objects
 
-SECTION_RE = re.compile(r"^  ([A-Z][A-Z0-9 -]*)\s*$")
+SECTION_RE = re.compile(r"^\s{2,}([A-Z][A-Z0-9 -]*)\s*$")
 VAR_RE = re.compile(r'^\s*(?:"([^"]+)"|([A-Za-z_][\w ]*?))(?:@\d+)?\s*:\s*(Codeunit|Page|Report|XMLport|Query|Record)\s+(\d+)\s*;', re.I)
 PROC_RE = re.compile(r"^\s*(?:LOCAL\s+)?PROCEDURE\s+([^ (]+)", re.I)
 EVENT_RE = re.compile(r"""EventSubscriber\s*\(\s*ObjectType\s*::\s*(Codeunit|Page|Table|Report|XMLport)\s*,\s*(?:\1\s*::\s*)?(\d+|"([^"]+)")\s*,\s*'([^']+)'""", re.I)

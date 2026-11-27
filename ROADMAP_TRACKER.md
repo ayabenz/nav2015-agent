@@ -18,7 +18,7 @@
 | NAV runtime validation | BLOCKED | Requires isolated non-production NAV 2015 test company and matching Datascrip build |
 | Remediation implementation | NOT STARTED / gated | Do not change posting logic until policy is confirmed and runtime cases are reproducible |
 | Deterministic Code Intelligence query layer | IMPLEMENTED — first vertical slice | `nav-intel` queries existing symbol/graph SQLite databases; object/procedure/callers/callees/impact/table usage; tests added, execution pending |
-| Conditional Logic Intelligence | PLANNED | Explain IF/ELSE/ELSEIF/CASE branches, field/value predicates, nested paths and data-flow; static analysis first, runtime evaluation later |
+| Conditional Logic Intelligence | IMPLEMENTED — static analysis foundation | IF/ELSE/CASE parsing, metadata-backed predicates, filter paths, explicit snapshots, local assignment provenance and first direct-call argument binding; CI and broader grammar validation remain pending |
 | AI-assisted NAV reasoning / agent workflows | PLANNED | Build on deterministic query layer, conditional logic, parser, symbol index, semantic diff and dependency graph; keep source evidence traceable |
 
 ## 2. Roadmap
@@ -85,7 +85,8 @@ These are recorded analysis outputs, not a claim that every NAV object or indire
 - [x] Extract SETRANGE / SETFILTER / RESET and FIND operations, preserving arguments, source locations and resolved field metadata where available.
 - [x] Implement path-sensitive filter-state tracking across IF / ELSE / CASE branches; preserve distinct states at joins rather than merging incompatible filters. Compatible-state compaction remains an optimization.
 - [x] Add conservative local assignment tracking for explicit `:=` statements; attach incoming assignments to IF predicates and preserve divergent IF/CASE path alternatives. Expressions remain symbolic, not evaluated.
-- [ ] Trace relevant values across direct procedure calls where parameter and Record-variable flow can be resolved safely. This is the next data-flow milestone after validating local provenance.
+- [x] Add first conservative direct-call argument binding: match receiver Codeunit type, map positional actual arguments to formal parameters, resolve Record variables/Rec via TableNo and identify Boolean literals; mark VAR formals by-reference. Post-call mutation propagation remains open.
+- [ ] Propagate values through direct calls, including VAR mutation and return values, only when source evidence and call context are sufficient.
 - [x] Add initial nav-intel conditions command with explicit source-file and optional object/procedure selection; return branch tree, raw predicates and source spans.
 - [ ] Resolve source files automatically from the symbol index and integrate conditions into object/procedure queries.
 - [x] Add unit fixtures for nested IF/ELSE, CASE arms/default, comment/string masking and source line spans.
@@ -93,6 +94,7 @@ These are recorded analysis outputs, not a claim that every NAV object or indire
 - [x] Add fixtures for SETRANGE clearing, SETFILTER placeholders, RESET invalidation, FINDFIRST lookup annotation and path isolation across IF / ELSE / CASE.
 - [x] Add initial fixtures for literal and Record-field assignments, reassignment, IF/ELSE divergence and unknown-call invalidation. ELSEIF and broader unresolved/dynamic expression coverage remain open.
 - [x] Trace simple intra-procedural assignment provenance transitively (local variable → Record field → IF predicate), preserving source locations and unresolved/cycle markers. Regression tests added; CI validation pending.
+- [x] Add `--call-source` to `nav-intel conditions` for direct call-site binding evidence; repeated caller exports are supported. Regression fixtures cover typed `Rec`, Boolean literals, comments and receiver type mismatch; CI validation pending.
 - [x] Document static-analysis limits and avoid presenting inferred branch reachability as runtime fact.
 - [x] Add a separate pure evaluator for explicitly supplied Record snapshots; preserve provenance and return indeterminate for missing/unsupported values.
 - [ ] Add NAV runtime evidence integration only as a separate later capability; a supplied snapshot evaluation is not proof of historical execution.
@@ -206,3 +208,6 @@ These are separate historical runs with different collection scopes. They must n
 
 
 **Implementation update (2026-11-27 — Static assignment flow):** Added `nav_ai.assignment_flow` and integrated it into `nav-intel conditions`. The first conservative pass tracks explicit local-variable and qualified Record-field assignments, links known assignments to later IF predicates, preserves separate incoming values across IF/ELSE and CASE paths, and invalidates tracked values when an unknown procedure call is encountered. Assignment expressions remain symbolic and are never evaluated. Interprocedural parameter flow, triggers, WITH scopes and implicit database mutations remain unsupported. Initial regression tests cover literal assignment, Record-field assignment, reassignment, divergent IF/ELSE values and unknown-call invalidation. GitHub Actions validation is running for the implementation commits; do not update the canonical test count until the run completes.
+
+
+**Implementation update (2026-11-27 — Direct call bindings):** Added `nav_ai.interprocedural.analyze_direct_call_bindings` and the repeatable `--call-source` option to `nav-intel conditions`. The first slice binds direct `Receiver.Procedure(...)` actual arguments to parsed formal parameters, checks the receiver's declared Codeunit ID, recognizes Record variables and `Rec` via `TableNo`, identifies Boolean literals, and marks `VAR` formals by-reference. It deliberately does not propagate post-call mutations or infer runtime values. Regression tests were added; CI has not yet been verified for this increment.

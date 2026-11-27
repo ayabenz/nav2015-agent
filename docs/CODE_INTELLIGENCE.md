@@ -27,7 +27,7 @@ python -m nav_ai.intelligence --company datascrip table "Table 36" --usage WRITE
 The installed console command is also available:
 
 ```powershell
-nav-intel --company datascrip impact "Codeunit 80.PostItemJnlLine"
+nav-intel --company datascrip --json conditions --source-file "path\Codeunit_B.txt" --object "Codeunit 60001" --procedure "Process" --nested-source "path\Codeunit_C.txt" --nested-source "path\Codeunit_D.txt" --max-call-depth 2 --call-source "path\Codeunit_A.txt"
 ```
 
 Add `--json` before the subcommand to produce machine-readable JSON.

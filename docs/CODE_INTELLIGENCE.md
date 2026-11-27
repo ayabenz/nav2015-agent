@@ -296,3 +296,16 @@ The local assignment analyzer now records conservative symbolic references used 
 Each chain element retains its source assignment and line. String literals and quoted field names are masked before reference extraction; Option members after :: are not treated as variables. Missing upstream assignments are reported as unresolved. Cycles are marked explicitly. No expression is evaluated, and no database value is inferred.
 
 This remains intra-procedural analysis. Procedure parameters, return values, VAR parameter mutation across calls, WITH scopes, implicit trigger effects and RecordRef/FieldRef remain outside the supported scope. Unknown calls continue to invalidate tracked state.
+
+
+### Direct interprocedural argument binding
+
+The `conditions` command accepts repeatable `--call-source <caller.txt>` arguments when a specific `--procedure` is selected. It scans supplied caller exports for direct `Receiver.Procedure(...)` syntax, checks the receiver's declared Codeunit type against the callee object, and maps positional actual arguments to the callee's parsed formal parameters. It recognizes typed Record variables (including `Rec` when `TableNo` is declared) and Boolean literals. `VAR` formals are explicitly marked by-reference.
+
+Example:
+
+```powershell
+nav-intel --company datascrip --json conditions --source-file "reports/datascrip/ownership/Codeunit_50107.txt" --object "Codeunit 50107" --procedure "BlockStocktakeSalesHeader" --call-source "reports/datascrip/stocktake_callers/Codeunit_50081.txt"
+```
+
+The output is static call-site evidence only. It does not propagate values after a call, prove execution, or resolve WITH-scoped/unqualified calls, dynamic dispatch, indirect callbacks, or arbitrary expression types. Caller source line numbers are relative to the supplied object export.

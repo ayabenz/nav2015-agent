@@ -81,8 +81,8 @@ def test_assignment_provenance_does_not_treat_string_contents_as_variables():
 
 def test_builtin_record_filter_call_preserves_scalar_assignment():
     nodes, result = run(
-        "TransactionType := 'IN';\\n"
-        'StocktakeRule.SETRANGE("Jenis Transaksi", TransactionType);\\n'
+        "TransactionType := 'IN';\n"
+        'StocktakeRule.SETRANGE("Jenis Transaksi", TransactionType);\n'
         "IF TransactionType = 'IN' THEN Post;"
     )
     context = nodes[-1]["assignment_context"]["alternatives"][0]

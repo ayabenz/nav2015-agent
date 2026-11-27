@@ -81,7 +81,7 @@ def parse_record_variables(source: str) -> dict[str, int]:
     """Resolve local and procedure-parameter Record declarations to Table IDs."""
     declaration = re.compile(
         r'(?:"(?P<quoted>[^"]+)"|(?P<plain>[A-Za-z_][A-Za-z0-9_]*))'
-        r'(?:@\\d+)?\\s*:\\s*Record\\s+(?P<table_id>\\d+)',
+        r'(?:@\d+)?\s*:\s*Record\s+(?P<table_id>\d+)',
         re.I,
     )
     result: dict[str, int] = {}

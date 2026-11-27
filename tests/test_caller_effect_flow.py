@@ -44,13 +44,19 @@ def test_callee_var_effect_is_visible_in_callers_following_if():
     assert propagated[0]["expression"] == "Status::Released"
     assert propagated[0]["evaluated"] is False
     assert propagated[0]["interprocedural"] is True
-    def find_if(nodes):
-        for node in nodes:
-            if node.get("type") == "if":
-                return node
-            found = find_if(node.get("children", [])) if node.get("type") == "block" else None
-            if found:
-                return found
+    def find_if(value):
+        if isinstance(value, dict):
+            if value.get("type") == "if":
+                return value
+            for child in value.values():
+                found = find_if(child) if isinstance(child, (dict, list)) else None
+                if found:
+                    return found
+        elif isinstance(value, list):
+            for child in value:
+                found = find_if(child)
+                if found:
+                    return found
         return None
 
     condition = find_if(flow[0]["control_flow_nodes"])

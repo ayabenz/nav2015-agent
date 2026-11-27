@@ -287,3 +287,12 @@ Example output shape (abbreviated):
 ```
 
 The `assignment_flow_analysis` top-level section records assignment events, unknown-call invalidations, and the static-path limitation. This is provenance for source-level reasoning, not a substitute for a caller-supplied snapshot or NAV runtime trace.
+
+
+### Assignment provenance chains
+
+The local assignment analyzer now records conservative symbolic references used by an assignment and follows those references through the latest visible assignments on the same static path. For example, if Status := 'Released' is followed by SalesHeader.Status := Status, an IF predicate on SalesHeader.Status includes a provenance chain back to the assignment of Status.
+
+Each chain element retains its source assignment and line. String literals and quoted field names are masked before reference extraction; Option members after :: are not treated as variables. Missing upstream assignments are reported as unresolved. Cycles are marked explicitly. No expression is evaluated, and no database value is inferred.
+
+This remains intra-procedural analysis. Procedure parameters, return values, VAR parameter mutation across calls, WITH scopes, implicit trigger effects and RecordRef/FieldRef remain outside the supported scope. Unknown calls continue to invalidate tracked state.

@@ -55,25 +55,77 @@ def _resolve(expression: str, events: list[dict[str, Any]], line: int,
     }
 
 
+_OPTION_FILTER_VALUE = re.compile(
+    r'(?:(?P<var>[A-Za-z_][A-Za-z0-9_@]*)\s*\.\s*)?'
+    r'(?P<field>"(?:[^"]|"")*"|[A-Za-z_][A-Za-z0-9_ ]*)\s*::\s*'
+    r'(?:(?P<qualifier>"(?:[^"]|"")*"|[A-Za-z_][A-Za-z0-9_ ]*)\s*::\s*)?'
+    r'(?P<option>"(?:[^"]|"")*"|[A-Za-z_][A-Za-z0-9_ ]*)',
+    re.I,
+)
+
+
+def _resolve_filter_argument(expression, field_resolution, events, line, path):
+    match = _OPTION_FILTER_VALUE.fullmatch(expression.strip())
+    if match and field_resolution and field_resolution.get("resolution") == "resolved":
+        field = match.group("field").strip().strip('"').replace('""', '"')
+        qualifier = (match.group("qualifier") or "").strip().strip('"').replace('""', '"')
+        option = match.group("option").strip().strip('"').replace('""', '"')
+        expected = str(field_resolution.get("field", "")).casefold()
+        if field.casefold() == expected or qualifier.casefold() == expected:
+            allowed = field_resolution.get("option_values", [])
+            found = next((value for value in allowed if value.casefold() == option.casefold()), None)
+            return {"status": "resolved_option" if found is not None else "unverified_option",
+                    "kind": "option_member", "field": field_resolution.get("field"),
+                    "option": option, "resolved_value": found, "allowed_values": allowed,
+                    "evaluated": False}
+    return _resolve(expression, events, line, path)
+
+
+def _setfilter_template(expression, arguments, resolutions):
+    placeholders = sorted({int(x) for x in re.findall(r"%([1-9]\\d*)", expression)})
+    bindings = []
+    for index in placeholders:
+        if index >= len(arguments):
+            bindings.append({"placeholder": f"%{index}", "status": "missing_argument"})
+        else:
+            bindings.append({"placeholder": f"%{index}", "argument": arguments[index],
+                             "argument_resolution": resolutions[index] if index < len(resolutions) else None,
+                             "status": "bound"})
+    return {"template": expression, "placeholder_bindings": bindings,
+            "status": "resolved_symbolically" if all(x["status"] == "bound" for x in bindings) else "incomplete",
+            "evaluated": False,
+            "meaning": "C/AL SETFILTER placeholders are linked to arguments; NAV filter syntax is not executed"}
+
 def enrich_record_filter_values(filter_analysis: dict[str, Any],
                                 assignment_flow: dict[str, Any]) -> None:
     """Attach value provenance to SETRANGE/SETFILTER arguments at filter time."""
     assignments = assignment_flow.get("events", [])
     for event in filter_analysis.get("events", []):
         if event.get("operation") in {"SETRANGE", "SETFILTER"}:
+            arguments = [str(arg) for arg in event.get("arguments", [])]
             event["argument_value_resolution"] = [
-                _resolve(str(arg), assignments, int(event.get("line", 0)), event.get("path", []))
-                for arg in event.get("arguments", [])
+                _resolve_filter_argument(arg, event.get("field_resolution"), assignments,
+                                         int(event.get("line", 0)), event.get("path", []))
+                for arg in arguments
             ]
+            if event.get("operation") == "SETFILTER" and arguments:
+                event["setfilter_interpretation"] = _setfilter_template(
+                    arguments[0], arguments, event["argument_value_resolution"]
+                )
     for lookup in filter_analysis.get("lookups", []):
         for record_filter in lookup.get("active_filters", []):
             if "argument_value_resolution" not in record_filter:
+                arguments = [str(arg) for arg in record_filter.get("arguments", [])]
                 record_filter["argument_value_resolution"] = [
-                    _resolve(str(arg), assignments,
-                             int(record_filter.get("line", lookup.get("line", 0))),
-                             lookup.get("path_conditions", []))
-                    for arg in record_filter.get("arguments", [])
+                    _resolve_filter_argument(arg, record_filter.get("field_resolution"), assignments,
+                                             int(record_filter.get("line", lookup.get("line", 0))),
+                                             lookup.get("path_conditions", []))
+                    for arg in arguments
                 ]
+                if record_filter.get("operation") == "SETFILTER" and arguments:
+                    record_filter["setfilter_interpretation"] = _setfilter_template(
+                        arguments[0], arguments, record_filter["argument_value_resolution"]
+                    )
     filter_analysis["value_provenance"] = {
         "analysis": "path_sensitive_symbolic_assignment_resolution",
         "runtime_evaluated": False,

@@ -48,9 +48,9 @@ def test_mapping_groups_candidates_using_transitive_call_reachable_tables():
     page = next(item for item in result["candidates"] if item["object"] == "Page 42")
     assert page["table_ids"] == ["Table 36", "Table 37"]
     assert page["reachable_procedure_count"] == 3
-    assert page["reachable_procedures"][1]["call_path"] == [
-        "Page 42.OnOpen", "Codeunit 60001.Run"
-    ]
+    run_proc = next(item for item in page["reachable_procedures"]
+                    if item["node"] == "Codeunit 60001.Run")
+    assert run_proc["call_path"] == ["Page 42.OnOpen", "Codeunit 60001.Run"]
     pair = next(item for item in result["similarities"]
                 if item["left"] == "Page 42" and item["right"] == "Codeunit 60001")
     assert pair["shared_tables"] == ["Table 36", "Table 37"]
@@ -79,7 +79,7 @@ def test_mapping_reports_depth_truncation_and_unresolved_call_targets():
         "Codeunit 60001.Write", "Codeunit 99999", "CALL", 1, 1,
         "Codeunit 60001", "Codeunit 99999",
     ))
-    result = map_candidate_processes(db, max_depth=2)
+    result = map_candidate_processes(db, max_depth=3)
     page = next(item for item in result["candidates"] if item["object"] == "Page 42")
     assert page["unresolved_call_targets"] == [{
         "src": "Codeunit 60001.Write",

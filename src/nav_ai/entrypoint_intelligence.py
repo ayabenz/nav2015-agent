@@ -88,7 +88,7 @@ def discover_source_entrypoints(source_roots: list[str]) -> dict[str, Any]:
                         continue
                     if code_started and PROCEDURE_RE.match(line):
                         code_started = False
-                    trigger = TRIGGER_RE.match(line) if code_started else None
+                    trigger = TRIGGER_RE.match(line)
                     if trigger:
                         entries.append({
                             "object": f"{object_type} {object_id}",
@@ -99,7 +99,7 @@ def discover_source_entrypoints(source_roots: list[str]) -> dict[str, Any]:
                             "source": display_path,
                             "source_label": source_label,
                             "line": line_no,
-                            "evidence": "trigger_declaration_in_CODE_section",
+                            "evidence": "trigger_declaration_in_CODE_section" if code_started else "trigger_property_declaration",
                             "confidence": "source_declaration",
                             "runtime_invoked": False,
                         })

@@ -17,7 +17,7 @@
 | Business-rule confirmation | PARTIAL | Accepted behavior documented in Issue #3; other policy decisions remain open |
 | NAV runtime validation | BLOCKED | Requires isolated non-production NAV 2015 test company and matching Datascrip build |
 | Remediation implementation | NOT STARTED / gated | Do not change posting logic until policy is confirmed and runtime cases are reproducible |
-| Deterministic Code Intelligence query layer | IMPLEMENTED — first vertical slice | `nav-intel` queries existing symbol/graph SQLite databases; object/procedure/callers/callees/impact/table usage; tests and CI validation passing (98 passed on 2026-11-27) |
+| Deterministic Code Intelligence query layer | IMPLEMENTED — first vertical slice | `nav-intel` queries existing symbol/graph SQLite databases; object/procedure/callers/callees/impact/table usage; tests and CI validation passing (99 passed, 1 opt-in test skipped by default on 2026-11-27) |
 | Conditional Logic Intelligence | IMPLEMENTED — static analysis foundation | IF/ELSE/CASE parsing, metadata-backed predicates, filter paths, explicit snapshots, local assignment provenance, Boolean-specialized direct-call VAR propagation and automatic caller assignment-flow analysis; broader grammar validation remains open |
 | AI-assisted NAV reasoning / agent workflows | PLANNED | Build on deterministic query layer, conditional logic, parser, symbol index, semantic diff and dependency graph; keep source evidence traceable |
 
@@ -260,3 +260,6 @@ These are separate historical runs with different collection scopes. They must n
 
 
 **Full-export validation (2026-11-27):** [GitHub Actions run #216](https://github.com/ayabenz/nav2015-agent/actions/runs/45931034390) completed the full `data/input/datascrip/datascrip.zip` Stocktake trace with `analyze_conditions=True`: **99 passed in 272.76s**. The integration test was subsequently split into a fast default Stocktake-source check and an opt-in full ZIP check (`NAV_RUN_FULL_DATASCRIP_TRACE=1`) to avoid imposing a multi-minute full-export scan on every ordinary CI run. Static source analysis only; no NAV runtime was executed.
+
+
+**Fast CI validation (2026-11-27):** [GitHub Actions run #223](https://github.com/ayabenz/nav2015-agent/actions/runs/45931717791) passed: **99 passed, 1 skipped in 0.96s**. The skipped test is the opt-in full ZIP scan; that full Datascrip scan was separately executed and passed in run #216.

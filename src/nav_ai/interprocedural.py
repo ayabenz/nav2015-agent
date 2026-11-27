@@ -55,10 +55,10 @@ def _split_args(value: str) -> list[str]:
 def _mask_non_code(source: str) -> str:
     """Mask C/AL strings and comments while preserving every source offset."""
     chars = list(source)
-    for pattern in (r"'(?:''|[^'])*'", r"//[^\\n]*", r"\\{[^{}]*\\}"):
+    for pattern in (r"'(?:''|[^'])*'", r"//[^\n]*", r"\{[^{}]*\}"):
         for match in re.finditer(pattern, source):
             for pos in range(match.start(), match.end()):
-                if chars[pos] != "\\n":
+                if chars[pos] != "\n":
                     chars[pos] = " "
     return "".join(chars)
 

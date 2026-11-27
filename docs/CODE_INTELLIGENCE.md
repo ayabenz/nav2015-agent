@@ -531,3 +531,28 @@ It contains five evidence families:
 
 All records retain static-evidence semantics. In particular, a resolved target is not a runtime call, an EventSubscriber declaration is not event dispatch evidence, and source references to Job Queue are not a live schedule inventory. The current analyzer is a conservative first pass; unusual variable scopes, aliases, computed RUN arguments, event publisher discovery and actual Job Queue configuration require further resolution/evidence.
 
+
+### Optional Job Queue configuration snapshot
+
+The inventory command accepts `--job-queue-snapshot <json>`. The JSON file must contain an `entries` array; each row may include `entry_no`, `object_type`, `object_id`, `status`, `earliest_start_datetime`, `next_run_datetime`, `recurring` and `parameter_string`. Example:
+
+```json
+{
+  "snapshot_at": "2026-11-27T10:00:00+07:00",
+  "company": "PT DATASCRIP",
+  "entries": [
+    {
+      "entry_no": "JOB-001",
+      "object_type": "Codeunit",
+      "object_id": 50001,
+      "status": "Ready",
+      "next_run_datetime": "2026-11-27T10:15:00+07:00",
+      "recurring": true,
+      "parameter_string": "..."
+    }
+  ]
+}
+```
+
+The mapper resolves the configured Object Type / Object ID against the indexed NAV object graph and records the procedure count. It deliberately redacts Parameter String content and retains only presence/length. The snapshot describes configuration at its stated time; it does not prove that the dispatcher started the job or that the job completed. Historical execution requires Job Queue Log or equivalent telemetry.
+

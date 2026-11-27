@@ -380,3 +380,18 @@ These are separate historical runs with different collection scopes. They must n
 - [x] Add a separate operational-role hint from CamelCase-aware posting verbs and indexed Table READ/WRITE usage (posting/transaction, data exchange, setup/configuration, inquiry, data maintenance, undetermined).
 - [x] Keep domain classification and operational-role evidence separately inspectable in inventory JSON; expose both hints in Markdown.
 - [ ] Validate role vocabulary against representative Datascrip posting, inquiry, integration and setup objects.
+
+### Phase 2.9 — Procedure-level entry-point mapping
+
+- [x] Extract individual Page Action `OnAction` bodies with Action IDs and absolute source line ranges.
+- [x] Extract supported object trigger bodies from the C/AL CODE section.
+- [x] Emit `entrypoint_bodies.json` automatically during `nav-intel inventory`.
+- [x] Preserve explicit non-runtime semantics for every extracted body.
+- [ ] Resolve each extracted body's local procedure calls and typed Record / Codeunit / Page / Report / XMLport calls into exact source-level targets.
+- [ ] Add per-entry synthetic roots or graph nodes and traverse CALL edges independently for each Action/trigger.
+- [ ] Extend trigger coverage to DataItem and field-level triggers where the export format requires distinct ownership.
+- [ ] Add Event Subscriber and Job Queue configuration evidence as separate entry-point families.
+- [ ] Validate extraction against representative full Datascrip TXT exports and run the complete CI suite.
+
+**Current boundary:** extraction is implemented, but exact per-Action call trees are not yet implemented. The existing object-level entry-point trace must not be presented as an individual Action's call tree. No test or CI pass is claimed for this change set.
+

@@ -6,13 +6,13 @@ def test_extracts_individual_page_action_and_trigger_bodies(tmp_path):
     source.write_text(
         """OBJECT Page 50000 Demo Page
   ACTIONS
-    { 10 ; 0 ;Action;
+    { 10 ;    ;Action;
       Name=Post;
       OnAction=BEGIN
         CODEUNIT.RUN(CODEUNIT::Worker);
       END;
     }
-    { 20 ; 0 ;Action;
+    { 20 ;    ;Action;
       Name=Preview;
       OnAction=BEGIN
         MESSAGE('Preview');
@@ -48,7 +48,7 @@ def test_extracts_action_bodies_from_combined_export_with_absolute_lines(tmp_pat
     source = tmp_path / "combined.txt"
     source.write_text(
         "OBJECT Codeunit 50001 Worker\n  CODE\n    OnRun()\n    BEGIN\n    END;\n"
-        "OBJECT Page 50002 Demo\n  ACTIONS\n    { 7 ; 0 ;Action;\n"
+        "OBJECT Page 50002 Demo\n  ACTIONS\n    { 7 ;    ;Action;\n"
         "      OnAction=BEGIN\n        MESSAGE('x');\n      END;\n    }\n",
         encoding="utf-8",
     )

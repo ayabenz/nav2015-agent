@@ -18,13 +18,13 @@ def test_literal_assignment_is_attached_to_later_condition():
 
 def test_record_field_assignment_is_tracked():
     nodes, _ = run('SalesHeader.Status := SalesHeader.Status::Released;\nIF SalesHeader.Status = SalesHeader.Status::Released THEN Post;')
-    known = nodes[0]["assignment_context"]["alternatives"][0]["known_assignments"]
+    known = nodes[-1]["assignment_context"]["alternatives"][0]["known_assignments"]
     assert any(x["target"] == "SalesHeader.Status" for x in known)
 
 
 def test_reassignment_uses_latest_assignment():
     nodes, _ = run("Status := 'Open';\nStatus := 'Released';\nIF Status = 'Released' THEN Post;")
-    known = nodes[0]["assignment_context"]["alternatives"][0]["known_assignments"]
+    known = nodes[-1]["assignment_context"]["alternatives"][0]["known_assignments"]
     status = next(x for x in known if x["target"] == "Status")
     assert status["expression"] == "'Released'"
     assert status["line"] == 2
@@ -40,6 +40,6 @@ def test_if_else_assignments_remain_separate_after_branch():
 
 def test_unknown_call_invalidates_known_assignments():
     nodes, result = run("Status := 'Open';\nMutate(Status);\nIF Status = 'Open' THEN Post;")
-    context = nodes[0]["assignment_context"]["alternatives"][0]
+    context = nodes[-1]["assignment_context"]["alternatives"][0]
     assert context["known_assignments"] == []
     assert any(e["kind"] == "unknown_call_invalidation" for e in result["events"])

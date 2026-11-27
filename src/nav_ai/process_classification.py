@@ -54,7 +54,7 @@ def _operational_profile(candidate: dict[str, Any]) -> dict[str, Any]:
     )
     integration_present = any(
         _contains_term(procedure_text, term)
-        for term in ("import", "export", "send", "receive", "edi", "xmlport")
+        for term in ("import", "export", "edi", "xmlport", "as2", "interface", "web service")
     ) or str(candidate.get("type") or "").casefold() == "xmlport"
     if integration_present:
         role = "data_exchange_candidate"

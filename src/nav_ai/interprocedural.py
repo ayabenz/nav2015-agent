@@ -12,13 +12,13 @@ from .parser import parse_nav_text, split_objects
 
 
 _CALL = re.compile(
-    r'(?P<receiver>"[^"]+"|[A-Za-z_][A-Za-z0-9_@]*)\\s*\\.\\s*'
-    r'(?P<procedure>"[^"]+"|[A-Za-z_][A-Za-z0-9_@]*)\\s*\\(',
+    r'(?P<receiver>"[^"]+"|[A-Za-z_][A-Za-z0-9_@]*)\s*\.\s*'
+    r'(?P<procedure>"[^"]+"|[A-Za-z_][A-Za-z0-9_@]*)\s*\(',
     re.I,
 )
 _VAR = re.compile(
-    r'(?m)^\\s*(?:"(?P<quoted>[^"]+)"|(?P<name>[A-Za-z_][A-Za-z0-9_ ./-]*?))'
-    r'(?:@\\d+)?\\s*:\\s*(?P<type>Record\\s+\\d+|Boolean|Integer|Codeunit\\s+\\d+)\\s*;',
+    r'(?m)^\s*(?:"(?P<quoted>[^"]+)"|(?P<name>[A-Za-z_][A-Za-z0-9_ ./-]*?))'
+    r'(?:@\d+)?\s*:\s*(?P<type>Record\s+\d+|Boolean|Integer|Codeunit\s+\d+)\s*;',
     re.I,
 )
 
@@ -55,22 +55,22 @@ def _split_args(value: str) -> list[str]:
 def _mask_non_code(source: str) -> str:
     """Mask C/AL strings and comments, preserving structural NAV braces and offsets."""
     chars = list(source)
-    for pattern in (r"'(?:''|[^'])*'", r"//[^\\n]*", r"\\{[^{}]*\\}"):
+    for pattern in (r"'(?:''|[^'])*'", r"//[^\n]*", r"\{[^{}]*\}"):
         for match in re.finditer(pattern, source):
-            if pattern.startswith(r"\\{"):
-                start_line = source.rfind("\\n", 0, match.start()) + 1
-                end_line = source.find("\\n", match.end())
+            if pattern.startswith(r"\{"):
+                start_line = source.rfind("\n", 0, match.start()) + 1
+                end_line = source.find("\n", match.end())
                 if end_line < 0:
                     end_line = len(source)
                 structural = (
-                    "\\n" in match.group(0)
+                    "\n" in match.group(0)
                     and not source[start_line:match.start()].strip()
                     and not source[match.end():end_line].strip()
                 )
                 if structural:
                     continue
             for pos in range(match.start(), match.end()):
-                if chars[pos] != "\\n":
+                if chars[pos] != "\n":
                     chars[pos] = " "
     return "".join(chars)
 
@@ -101,15 +101,15 @@ def _object(source: str, source_file: str) -> tuple[dict[str, Any], str]:
 def _record_types(parsed: dict[str, Any], block: str) -> dict[str, str]:
     result = {}
     for variable in parsed.get("variables", []):
-        match = re.search(r"\\bRecord\\s+(\\d+)\\b", variable.get("data_type", ""), re.I)
+        match = re.search(r"\bRecord\s+(\d+)\b", variable.get("data_type", ""), re.I)
         if match:
             result[variable["name"].casefold()] = f"Table {match.group(1)}"
     for procedure in parsed.get("procedures", []):
         for parameter in procedure.get("parameters", []):
-            match = re.search(r"\\bRecord\\s+(\\d+)\\b", parameter.get("data_type", ""), re.I)
+            match = re.search(r"\bRecord\s+(\d+)\b", parameter.get("data_type", ""), re.I)
             if match:
                 result[parameter["name"].casefold()] = f"Table {match.group(1)}"
-    props = re.search(r"\\bTableNo\\s*=\\s*(\\d+)", block, re.I)
+    props = re.search(r"\bTableNo\s*=\s*(\d+)", block, re.I)
     if props:
         result["rec"] = f"Table {props.group(1)}"
     return result
@@ -156,7 +156,7 @@ def analyze_direct_call_bindings(
             actual = actuals[index]
             record_type = receiver_types.get(actual.strip('"').casefold())
             literal = actual.upper() in {"TRUE", "FALSE"}
-            formal_record = re.search(r"Record\\s+(\\d+)", formal["data_type"], re.I)
+            formal_record = re.search(r"Record\s+(\d+)", formal["data_type"], re.I)
             mapped.append({
                 "parameter": formal["name"],
                 "formal_type": formal["data_type"],
@@ -179,7 +179,7 @@ def analyze_direct_call_bindings(
             "caller_object_name": caller["object"]["name"],
             "callee_procedure": target["name"],
             "receiver": match.group("receiver").strip('"'),
-            "line": caller_block.count("\\n", 0, match.start()) + 1,
+            "line": caller_block.count("\n", 0, match.start()) + 1,
             "arguments": mapped,
             "source_file": caller_file,
             "evidence": "direct_static_call_syntax",
@@ -202,10 +202,7 @@ def analyze_direct_call_bindings(
 
 
 def build_caller_var_effect_map(binding: dict[str, Any]) -> dict[int, list[dict[str, Any]]]:
-    """Map unconditional callee VAR assignments back to simple caller variables.
-
-    Conditional callee mutations are not asserted as definite caller assignments.
-    """
+    """Map unconditional callee VAR assignments back to simple caller variables."""
     result: dict[int, list[dict[str, Any]]] = {}
     simple_name = re.compile(r'^(?:"[^"]+"|[A-Za-z_][A-Za-z0-9_@]*)$')
     for site in binding.get("call_sites", []):
@@ -219,15 +216,14 @@ def build_caller_var_effect_map(binding: dict[str, Any]) -> dict[int, list[dict[
             formal = str(effect_group.get("parameter", "")).strip()
             prefix = formal.casefold()
             for mutation in effect_group.get("mutations", []):
+                # Do not assert a conditional callee assignment as a definite value.
                 if mutation.get("path"):
                     continue
                 target = str(mutation.get("target", "")).strip()
                 if target.casefold() == prefix:
-                    caller_target = actual
-                    mapping = "var_scalar_argument"
+                    caller_target, mapping = actual, "var_scalar_argument"
                 elif target.casefold().startswith(prefix + "."):
-                    caller_target = actual + target[len(formal):]
-                    mapping = "var_record_field_argument"
+                    caller_target, mapping = actual + target[len(formal):], "var_record_field_argument"
                 else:
                     continue
                 result.setdefault(line, []).append({

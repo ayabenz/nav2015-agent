@@ -553,3 +553,28 @@ def test_trace_exposes_cross_procedure_business_flow_and_branch_effects(tmp_path
         "error": 1, "message": 1, "record_write": 1
     }
     assert flow["runtime_executed"] is False
+
+
+def test_trace_identifies_cross_origin_procedure_call_boundaries(tmp_path):
+    db = graph_db()
+    db.execute(
+        "UPDATE procedures SET origin='STANDARD_UNCHANGED' "
+        "WHERE node='Codeunit 60002.Update'"
+    )
+    (tmp_path / "parent.txt").write_text(OBJ_A, encoding="utf-8")
+    (tmp_path / "child.txt").write_text(OBJ_B, encoding="utf-8")
+    result = trace_call_graph(
+        db, "Codeunit 60001", [str(tmp_path)], symbol_db(),
+        max_depth=2,
+    )
+    assert result["business_flow"][0]["origin"] in {"CUSTOM", "STANDARD_UNCHANGED"}
+    assert result["origin_transitions"] == [{
+        "src": "Codeunit 60001.Run",
+        "src_origin": "CUSTOM",
+        "dst": "Codeunit 60002.Update",
+        "dst_origin": "STANDARD_UNCHANGED",
+        "tree_edge": True,
+        "evidence": "dependency_graph_CALL_edge",
+        "runtime_executed": False,
+    }]
+    assert result["process_summary"]["origin_transition_count"] == 1

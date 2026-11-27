@@ -306,7 +306,7 @@ def build_caller_var_effect_map(binding: dict[str, Any]) -> dict[int, list[dict[
     unknown predicates remain unpropagated; incompatible paths are discarded.
     """
     result: dict[int, list[dict[str, Any]]] = {}
-    simple_name = re.compile(r'^[A-Za-z_][A-Za-z0-9_@]*
+    simple_name = re.compile(r'^(?:"[^"]+"|[A-Za-z_][A-Za-z0-9_@]*)$')
     for site in binding.get("call_sites", []):
         line = int(site.get("line", 0))
         if line <= 0:

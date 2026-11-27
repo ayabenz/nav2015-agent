@@ -80,8 +80,8 @@ def discover_extended_entrypoints(source_roots: list[str], graph=None) -> dict[s
                                 if end > i and depth <= 0:
                                     break
                                 end += 1
-                            for j in range(i + 1, min(end + 1, len(lines))):
-                                tm = TRIGGER_LINE_RE.match(lines[j])
+                            for j in range(i, min(end + 1, len(lines))):
+                                tm = TRIGGER_LINE_RE.search(lines[j])
                                 if tm:
                                     trigger_body = [tm.group(2)]
                                     k = j + 1

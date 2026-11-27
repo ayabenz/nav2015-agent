@@ -38,7 +38,7 @@ Tidak memerlukan database eksternal, AI API, atau koneksi internet (Phase 1 mile
 | | `python -m nav_ai.search find --company <company> <terms>` | Cari simbol dalam index |
 | **nav-diff** | `python -m nav_ai.semantic_diff --company <company>` | Perbandingan semantik original vs company |
 | **nav-audit** | `python -m nav_ai.audit --company <company>` | Audit perubahan (REAL / WHITESPACE ONLY / BOUNDARY ARTIFACT) |
-| **nav-depgraph** | `python -m nav_ai.depgraph --company <company>` | Dependency graph + klasifikasi objek + impact analysis |\n| **nav-intel** | `nav-intel --company <company> impact \\\"Codeunit 80.PostItemJnlLine\\\"` | Evidence-oriented object, procedure, caller, impact and table queries |
+| **nav-depgraph** | `python -m nav_ai.depgraph --company <company>` | Dependency graph + klasifikasi objek + impact analysis |\n| **nav-intel** | `nav-intel --company <company> impact \\\"Codeunit 80.PostItemJnlLine\\\"` | Evidence-oriented object, procedure, caller, impact and table queries |\n| | `nav-intel --company <company> document \\\"Codeunit 50107\\\" --source-root <TXT/ZIP> --analyze-conditions` | Generate business-process Markdown + JSON from dependency graph and source exports |
 | **clean** | `python clean.py --execute` | Hapus semua file hasil generate |
 
 ---

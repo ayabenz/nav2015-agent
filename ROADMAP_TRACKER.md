@@ -243,9 +243,9 @@ These are separate historical runs with different collection scopes. They must n
 
 ### Phase 2.6 — Automatic source discovery and call tracing
 
-- [x] Add `nav-intel trace` to traverse existing procedure-level `CALL` edges from an object or procedure with depth/node limits.
+- [x] Add `nav-intel trace` to traverse existing `CALL` edges from an object or procedure with depth/node limits, including object-level and trigger-scope roots.
 - [x] Resolve reachable objects against user-supplied TXT, ZIP, or directory roots; use symbol-index `source_file` labels when multiple exports share an object identity.
-- [x] Report source procedure line ranges and origin classification, and preserve missing/ambiguous source states.
+- [x] Report source procedure absolute line ranges and origin classification, and preserve missing/ambiguous source states.
 - [x] Report object-level/non-procedure CALL targets (such as possible `Var.RUN` edges) instead of expanding them into guessed procedures.
 - [ ] Feed discovered source files directly into the existing `conditions` analysis and add table metadata auto-discovery from the same source catalog.
 - [ ] Validate tracing against the full Datascrip export and review uncovered dynamic/trigger call paths.

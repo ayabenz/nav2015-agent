@@ -102,3 +102,25 @@ R.FINDFIRST;"""
         "'OUT|ALL'", "'IN|ALL'", "'ALL'"
     }
     assert all(item["filter_state"] == "path_specific" for item in lookup)
+
+
+def test_stocktake_sales_document_type_builds_out_in_and_unfiltered_paths():
+    from nav_ai.control_flow import analyze_control_flow
+    from nav_ai.record_filters import analyze_record_filter_paths
+
+    source = """IF SalesHeader."Document Type" IN [SalesHeader."Document Type"::Order, SalesHeader."Document Type"::Invoice] THEN
+  tblStocktake.SETFILTER("Jenis Transaksi", 'OUT|ALL')
+ELSE IF SalesHeader."Document Type" IN [SalesHeader."Document Type"::"Credit Memo", SalesHeader."Document Type"::"Return Order"] THEN
+  tblStocktake.SETFILTER("Jenis Transaksi", 'IN|ALL');
+IF tblStocktake.FINDFIRST THEN
+  DoStocktakeCheck;"""
+    tree = analyze_control_flow(source, procedure="BlockStocktakeSalesHeader")
+    result = analyze_record_filter_paths(tree["nodes"], {"tblstocktake": 50063}, {})
+    lookups = [item for item in result["lookups"] if item["record_variable"] == "tblStocktake"]
+    assert len(lookups) == 3
+    filter_values = [
+        item["active_filters"][0]["arguments"][0] if item["active_filters"] else None
+        for item in lookups
+    ]
+    assert set(filter_values) == {"'OUT|ALL'", "'IN|ALL'", None}
+    assert all(item["filter_state"] == "path_specific" for item in lookups)

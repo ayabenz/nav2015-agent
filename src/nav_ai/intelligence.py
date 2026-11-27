@@ -28,6 +28,7 @@ from .source_discovery import trace_call_graph
 from .business_docs import default_report_name, write_business_process_report
 from .process_discovery import discover_process_entrypoints
 from .process_mapping import map_candidate_processes
+from .business_inventory import generate_business_process_inventory
 
 
 def _attach_snapshot_evaluations(nodes: Any, snapshot: dict[str, Any],
@@ -384,6 +385,17 @@ def main(argv: list[str] | None = None) -> int:
     mapping.add_argument("--max-depth", type=int, default=5, help="maximum CALL edges from each candidate (default: 5)")
     mapping.add_argument("--max-nodes", type=int, default=5000, help="maximum graph nodes per candidate (default: 5000)")
 
+    inventory = sub.add_parser("inventory", help="automatically generate process inventory and per-candidate source reports")
+    inventory.add_argument("--source-root", action="append", required=True, help="TXT file, ZIP file, or directory containing NAV TXT exports; repeatable")
+    inventory.add_argument("--output-dir", type=Path, help="output directory (default: reports/<company>/business_process)")
+    inventory.add_argument("--limit", type=int, default=100, help="maximum ranked candidates to document")
+    inventory.add_argument("--include-standard", action="store_true", help="include STANDARD_UNCHANGED objects")
+    inventory.add_argument("--min-similarity", type=float, default=0.25)
+    inventory.add_argument("--max-depth", type=int, default=5)
+    inventory.add_argument("--max-nodes", type=int, default=5000)
+    inventory.add_argument("--max-interprocedural-depth", type=int, default=2)
+    inventory.add_argument("--skip-conditions", action="store_true", help="skip IF/ELSE/CASE, assignment and filter analysis")
+
     trace = sub.add_parser("trace", help="trace reachable CALL procedures and discover their source exports")
     trace.add_argument("start", help='object or procedure node, e.g. "Codeunit 50107"')
     trace.add_argument("--source-root", action="append", required=True, help="TXT file, ZIP file, or directory containing NAV TXT exports; repeatable")
@@ -571,6 +583,24 @@ def main(argv: list[str] | None = None) -> int:
                         min_similarity=args.min_similarity,
                         max_depth=args.max_depth, max_nodes_per_candidate=args.max_nodes,
                     )
+                elif args.command == "inventory":
+                    output_dir = args.output_dir or (
+                        Path("reports") / args.company / "business_process"
+                    )
+                    with _connect(symbol_path) as symbols:
+                        inventory_result = generate_business_process_inventory(
+                            graph, symbols, args.source_root, output_dir,
+                            limit=args.limit, include_standard=args.include_standard,
+                            min_similarity=args.min_similarity,
+                            max_depth=args.max_depth, max_nodes=args.max_nodes,
+                            analyze_conditions=not args.skip_conditions,
+                            max_interprocedural_depth=args.max_interprocedural_depth,
+                        )
+                    print(f"Business process inventory: {output_dir / 'process_inventory.md'}")
+                    print(f"Machine-readable inventory: {output_dir / 'process_inventory.json'}")
+                    print(f"Candidate traces: {inventory_result['trace_success_count']} generated; "
+                          f"{inventory_result['trace_failure_count']} unavailable")
+                    return 0
                 elif args.command == "trace":
                     if not args.source_root:
                         raise ValueError("trace requires at least one --source-root")

@@ -24,6 +24,20 @@ python -m nav_ai.intelligence --company datascrip table "Table 36"
 python -m nav_ai.intelligence --company datascrip table "Table 36" --usage WRITE
 ```
 
+### Automatic call-graph tracing and source discovery
+
+The `trace` command starts from an object or procedure node, follows existing `CALL` edges to a configurable depth, and resolves each reached object against source exports supplied as TXT files, ZIP files, or directories. It uses the symbol index's `source_file` labels to disambiguate duplicate object exports where possible.
+
+```powershell
+nav-intel --company datascrip --json trace "Codeunit 50107" --source-root "reports\datascrip" --max-depth 5
+nav-intel --company datascrip --json trace "Codeunit 50107.BlockStocktakeSalesHeader" --source-root "data\input\datascrip.zip" --max-depth 3
+```
+
+The output contains reachable procedure nodes, call edges, source paths, procedure line ranges, origin classification, and explicit missing/ambiguous source statuses. Object starts include all indexed procedures at depth zero. `--max-depth` counts procedure-call edges; `--max-nodes` bounds output size.
+
+This command does not automatically analyze IF/ELSE bodies yet; it establishes the source-resolved procedure set that can be passed into the existing `conditions` analysis. It follows only dependency-graph `CALL` edges, so dynamic calls, triggers, implicit side effects, and edges missing from the graph are not discovered. It is static analysis and never proves runtime execution.
+
+
 The installed console command is also available:
 
 ```powershell

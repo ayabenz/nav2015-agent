@@ -6,7 +6,7 @@ import re
 from pathlib import Path
 from typing import Any
 
-from .business_docs import render_business_process_markdown, write_business_process_report
+from .business_docs import write_business_process_report
 from .process_mapping import map_candidate_processes
 from .process_classification import classify_process_candidates
 from .source_discovery import trace_call_graph

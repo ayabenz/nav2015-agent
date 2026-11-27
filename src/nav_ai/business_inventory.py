@@ -133,6 +133,11 @@ def generate_business_process_inventory(
     extended_entrypoints = discover_extended_entrypoints(source_roots, graph)
     if job_queue_snapshot is not None:
         extended_entrypoints["job_queue_configuration_snapshot"] = map_job_queue_snapshot(job_queue_snapshot, graph)
+    field_trigger_bodies = {"entries": extended_entrypoints["table_field_triggers"]}
+    field_trigger_call_mapping = map_entrypoint_calls(
+        graph, field_trigger_bodies, max_depth=max_depth, max_nodes=max_nodes
+    )
+    extended_entrypoints["table_field_trigger_call_mapping"] = field_trigger_call_mapping
     (output / "extended_entrypoints.json").write_text(
         json.dumps(extended_entrypoints, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
     )

@@ -417,6 +417,8 @@ def test_trace_propagates_callee_var_record_filter_into_caller_lookup(tmp_path):
     analysis = parent_result["condition_analysis"]
     filter_edge = result["interprocedural_filter_analysis"]["edges"][0]
     assert filter_edge["filter_summary"]["events"], filter_edge["filter_summary"]
+    assert filter_edge["call_binding"]["call_sites"]
+    assert filter_edge["call_binding"]["call_sites"][0]["arguments"][0]["type_match"] is True, filter_edge["call_binding"]
     assert filter_edge["caller_filter_effect_map"], filter_edge
     assert analysis["interprocedural_filter_effect_count"] == 1
     lookup = next(item for item in analysis["record_filter_analysis"]["lookups"]

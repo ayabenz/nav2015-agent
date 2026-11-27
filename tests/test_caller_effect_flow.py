@@ -43,3 +43,6 @@ def test_callee_var_effect_is_visible_in_callers_following_if():
     assert propagated[0]["expression"] == "Status::Released"
     assert propagated[0]["evaluated"] is False
     assert propagated[0]["interprocedural"] is True
+    condition = next(node for node in flow[0]["control_flow_nodes"] if node["type"] == "if")
+    incoming = condition["assignment_context"]["alternatives"][0]["known_assignments"]
+    assert any(item["target"] == "Rec.Status" for item in incoming)

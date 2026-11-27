@@ -242,9 +242,9 @@ def enrich_control_flow(node: Any, variables: dict[str, int],
 
 
 _ASSIGNMENT_OPTION_RE = re.compile(
-    r'(?:(?P<var>[A-Za-z_][A-Za-z0-9_@]*)\\s*\\.\\s*)?'
-    r'(?P<field>"(?:[^"]|"")*"|[A-Za-z_][A-Za-z0-9_ ]*)\\s*::\\s*'
-    r'(?:(?P<qualifier>"(?:[^"]|"")*"|[A-Za-z_][A-Za-z0-9_ ]*)\\s*::\\s*)?'
+    r'(?:(?P<var>[A-Za-z_][A-Za-z0-9_@]*)\s*\\.\s*)?'
+    r'(?P<field>"(?:[^"]|"")*"|[A-Za-z_][A-Za-z0-9_ ]*)\s*::\s*'
+    r'(?:(?P<qualifier>"(?:[^"]|"")*"|[A-Za-z_][A-Za-z0-9_ ]*)\s*::\s*)?'
     r'(?P<option>"(?:[^"]|"")*"|[A-Za-z_][A-Za-z0-9_ ]*)',
     re.I,
 )

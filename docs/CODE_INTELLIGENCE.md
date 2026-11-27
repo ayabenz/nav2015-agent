@@ -499,3 +499,20 @@ The extractor is intentionally conservative:
 
 The generated file is created automatically when running `nav-intel inventory`; no separate command is required.
 
+## Per-entry-point CALL mapping
+
+The inventory now also emits `entrypoint_call_mapping.json`. This stage attempts a separate source-to-graph mapping for each extracted Page Action or object trigger:
+
+- Unique procedure identifiers belonging to the same NAV object are matched against the extracted entry body and become procedure roots.
+- Explicit `CODEUNIT.RUN`, `REPORT.RUN`, `PAGE.RUN` and `XMLPORT.RUN` references with numeric IDs or uniquely named object references are recorded as object targets.
+- Resolved procedure roots are traversed through existing static `CALL` edges, with bounded depth/node limits and call paths.
+- Object-level RUN targets are deliberately not expanded into all procedures of that object: doing so would falsely imply that every procedure belongs to that Action.
+- String literals are masked before identifier matching.
+
+This is deliberately a conservative first mapping stage, not a C/AL compiler. It does not yet resolve typed variable method calls such as `MyCodeunit.RunSomething(...)`, all parameter-driven dispatch, ambiguous identifiers, event subscribers, Job Queue configuration, or dynamic RUN expressions. A local procedure identifier match is source evidence, not proof of invocation. The report sets `runtime_executed=false` and `call_order_proven=false`.
+
+Generated inventory artifacts:
+- `entrypoint_bodies.json`: isolated Action/trigger bodies.
+- `entrypoint_call_mapping.json`: per-entry direct targets and CALL-reachable procedures.
+- `entrypoint_traces.json`: earlier object-level entry-point trace; it must not be confused with the more precise per-entry mapping.
+\n

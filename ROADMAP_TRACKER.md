@@ -150,13 +150,13 @@ These are recorded analysis outputs, not a claim that every NAV object or indire
 
 The repository README currently records an earlier test snapshot of **44 passed, 4 failed**. The four failures were attributed there to missing, previously deleted `data/incoming/*.txt` fixtures in `test_real_exports.py`; they were described as pre-existing. A later conversation run recorded **27 collected tests, all passing** for the then-current test selection.
 
-These are separate historical runs with different collection scopes. They must not be added together or represented as the current full-suite status. The current canonical full-suite result is **NOT YET RE-RUN / NOT VERIFIED**.
+These are separate historical runs with different collection scopes. They must not be added together or represented as the current full-suite status. The current canonical full-suite result is **45 passed** on `datascrip` commit `bb0d0f267ffe059d37b67db39b999e8e53439971` (GitHub Actions run #32).
 
 | Validation | Result | Classification | Notes |
 |---|---|---|---|
 | Earlier repository test snapshot | 44 passed, 4 failed | Historical automated test run | README attributes failures to absent `data/incoming/*.txt` fixtures |
 | Later focused test run | 27 passed | Historical automated test run | Output in project conversation showed all 27 collected tests passing |
-| Current full suite at tracker update | Not run / not verified | Pending | Run against current branch HEAD and record exact command, commit SHA and output |
+| Current full suite — 2026-11-27 | 45 passed in 0.42s | PASS — GitHub Actions | `python -m pytest -q`; commit `bb0d0f267ffe059d37b67db39b999e8e53439971`; [run #32](https://github.com/ayabenz/nav2015-agent/actions/runs/45914601404) |
 | Parser / ingest / diff / audit / depgraph / search / ZIP support | Reported passing in README snapshot | Historical automated coverage | Confirm again in canonical full-suite run |
 | Stocktake source audit | Completed | Static analysis | Does not prove NAV runtime behavior |
 | Stocktake runtime ST-001…ST-008 | Not executed | Blocked | Requires non-production NAV environment |
@@ -198,4 +198,4 @@ These are separate historical runs with different collection scopes. They must n
 **Implementation update (2026-11-27):** `nav_ai.semantic_conditions` now parses Table TXT field definitions and OptionString metadata, resolves declared Record variables to Table IDs, and annotates IF/CASE expressions with field and Option resolution evidence. The `conditions` CLI accepts repeatable `--table-source` arguments. Current resolver coverage is intentionally limited to qualified `RecordVariable.Field` references; WITH-scope and data-flow remain open. See `docs/CODE_INTELLIGENCE.md` for an actual Stocktake command.
 
 
-**Implementation update (2026-11-27 — Record filter flow):** Added `nav_ai.record_filters` and integrated it into `nav-intel conditions`. The first pass extracts SETRANGE / SETFILTER / RESET and FINDFIRST / FINDLAST / FINDSET operations, preserves raw filter arguments and resolves filter fields against supplied Table metadata. Procedure-local Record declarations are included in variable resolution. Because the current scanner is source-order based, lookup snapshots in regions containing IF/CASE/ELSE are marked `branch_ambiguous`; they are not presented as path-exact. Initial tests cover filter accumulation, field clearing, RESET and NOT FINDFIRST interpretation. CI validation is pending.
+**Implementation update (2026-11-27 — Record filter flow):** Added `nav_ai.record_filters` and integrated it into `nav-intel conditions`. The first pass extracts SETRANGE / SETFILTER / RESET and FINDFIRST / FINDLAST / FINDSET operations, preserves raw filter arguments and resolves filter fields against supplied Table metadata. Procedure-local Record declarations are included in variable resolution. Because the current scanner is source-order based, lookup snapshots in regions containing IF/CASE/ELSE are marked `branch_ambiguous`; they are not presented as path-exact. Initial tests cover filter accumulation, field clearing, RESET and NOT FINDFIRST interpretation. GitHub Actions run [#32](https://github.com/ayabenz/nav2015-agent/actions/runs/45914601404) passed on commit `bb0d0f267ffe059d37b67db39b999e8e53439971`: `45 passed in 0.42s`.

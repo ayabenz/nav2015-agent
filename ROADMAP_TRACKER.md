@@ -247,7 +247,7 @@ These are separate historical runs with different collection scopes. They must n
 - [x] Resolve reachable objects against user-supplied TXT, ZIP, or directory roots; use symbol-index `source_file` labels when multiple exports share an object identity.
 - [x] Report source procedure absolute line ranges and origin classification, and preserve missing/ambiguous source states.
 - [x] Report object-level/non-procedure CALL targets (such as possible `Var.RUN` edges) instead of expanding them into guessed procedures.
-- [ ] Feed discovered source files directly into the existing `conditions` analysis and add table metadata auto-discovery from the same source catalog.
+- [x] Feed discovered source files directly into IF/ELSE/CASE, assignment and Record-filter analysis; automatically load Table metadata from the same source roots with explicit missing/ambiguous statuses.
 - [ ] Validate tracing against the full Datascrip export and review uncovered dynamic/trigger call paths.
 
 **Design boundary:** trace follows only existing dependency-graph `CALL` edges. It is a source-discovery and call-graph traversal layer, not proof that a call or branch ran in NAV.

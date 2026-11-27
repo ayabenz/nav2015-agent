@@ -213,11 +213,13 @@ def analyze_record_filter_paths(
                 if field_match:
                     field_name = _unquote(field_match.group("field")).strip()
                     field_key = field_name.casefold()
+                    field_resolution = None
                     if method == "SETRANGE" and len(args) == 1:
                         record_filters.pop(field_key, None)
                         operation = "SETRANGE_CLEAR"
                     else:
                         resolved = resolve_condition(f'{receiver}."{field_name}"', variables, tables)
+                        field_resolution = resolved["field_references"][0] if resolved["field_references"] else None
                         detail = {
                             "operation": method, "record_variable": receiver,
                             "field": field_name, "arguments": args[1:],
@@ -229,6 +231,7 @@ def analyze_record_filter_paths(
                         operation = method
                     events.append({"operation": operation, "record_variable": receiver,
                                    "field": field_name, "arguments": args[1:] if method in {"SETRANGE", "SETFILTER"} else [],
+                                   "field_resolution": field_resolution,
                                    "line": line, "filters_after": list(record_filters.values()),
                                    "path": list(state["path"])})
             elif method in {"FINDFIRST", "FINDLAST", "FINDSET", "FIND"}:

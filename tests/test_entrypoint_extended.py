@@ -80,9 +80,9 @@ def test_maps_job_queue_configuration_snapshot_without_claiming_execution():
         "snapshot_at": "2026-11-27T10:00:00+07:00",
         "company": "PT DATASCRIP",
         "entries": [{
-            "entry_no": "JOB-001", "object_type": "Codeunit", "object_id": 50001,
-            "status": "Ready", "parameter_string": "sensitive-value",
-            "recurring": True,
+            "Entry No.": "JOB-001", "Object Type to Run": "Codeunit", "Object ID to Run": 50001,
+            "Status": "Ready", "Parameter String": "sensitive-value",
+            "Recurring Job": True,
         }],
     }, _graph())
     entry = result["entries"][0]

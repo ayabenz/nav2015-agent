@@ -13,6 +13,10 @@ from pathlib import Path
 from typing import Any
 
 from .parser import parse_nav_text, split_objects
+from .control_flow import analyze_control_flow
+from .assignment_flow import analyze_assignment_flow
+from .semantic_conditions import parse_record_variables, parse_table_metadata, enrich_control_flow
+from .record_filters import analyze_record_filter_paths, annotate_record_lookup_conditions
 
 
 def _iter_source_texts(root: str):
@@ -63,6 +67,8 @@ def build_source_catalog(source_roots: list[str]) -> dict[tuple[str, int], list[
                     "source_path": display_path,
                     "source_label": source_label,
                     "object_name": obj["name"],
+                    "object_line_offset": line_offset,
+                    "raw_block": block,
                     "procedures": {
                         p["name"].casefold(): {
                             "name": p["name"],
@@ -114,7 +120,8 @@ def trace_call_graph(graph: sqlite3.Connection, start: str,
                      source_roots: list[str],
                      symbols: sqlite3.Connection | None = None,
                      max_depth: int = 5,
-                     max_nodes: int = 5000) -> dict[str, Any]:
+                     max_nodes: int = 5000,
+                     analyze_conditions: bool = False) -> dict[str, Any]:
     """Trace reachable CALL procedure nodes and resolve each to a source export."""
     if max_depth < 0:
         raise ValueError("max_depth must be zero or greater")
@@ -179,6 +186,31 @@ def trace_call_graph(graph: sqlite3.Connection, start: str,
             queue.append(target)
 
     catalog = build_source_catalog(source_roots)
+    tables: dict[int, dict[str, Any]] = {}
+    table_source_status: list[dict[str, Any]] = []
+    if analyze_conditions:
+        for (object_type, object_id), _ in catalog.items():
+            if object_type != "table":
+                continue
+            resolved_table = _resolve_source(catalog, symbols, "Table", object_id)
+            if resolved_table.get("status") != "resolved":
+                table_source_status.append({
+                    "table_id": object_id,
+                    "status": resolved_table.get("status"),
+                    "candidates": resolved_table.get("candidates", []),
+                })
+                continue
+            try:
+                metadata = parse_table_metadata(
+                    resolved_table["raw_block"], resolved_table["source_path"]
+                )
+                for field in metadata["fields"].values():
+                    field["line"] += resolved_table["object_line_offset"]
+                tables[object_id] = metadata
+            except ValueError as exc:
+                table_source_status.append({
+                    "table_id": object_id, "status": "parse_error", "error": str(exc)
+                })
     procedures = []
     object_cache: dict[str, dict[str, Any]] = {}
     for node, depth in sorted(depth_by_node.items(), key=lambda item: (item[1], item[0].casefold())):
@@ -198,6 +230,9 @@ def trace_call_graph(graph: sqlite3.Connection, start: str,
                 "source": source,
             }
         source = object_cache[key]["source"]
+        source_public = {
+            key: value for key, value in source.items() if key != "raw_block"
+        }
         item = {
             "node": row["node"],
             "object_node": row["object_node"],
@@ -206,7 +241,7 @@ def trace_call_graph(graph: sqlite3.Connection, start: str,
             "origin": row["origin"],
             "is_local": bool(row["is_local"]),
             "graph_line": row["line"],
-            "source": source,
+            "source": source_public,
         }
         if source["status"] == "resolved":
             proc_info = source["procedures"].get(row["name"].casefold())
@@ -215,6 +250,65 @@ def trace_call_graph(graph: sqlite3.Connection, start: str,
                 item["source_line_end"] = proc_info["line_end"]
             else:
                 item["source_procedure_status"] = "not_found_in_resolved_object"
+            if analyze_conditions and proc_info:
+                try:
+                    parsed_object = parse_nav_text(source["raw_block"], source["source_path"])
+                    proc_matches = [
+                        proc for proc in parsed_object["procedures"]
+                        if proc["name"].casefold() == row["name"].casefold()
+                    ]
+                    if len(proc_matches) != 1:
+                        raise ValueError(
+                            f"Expected one source procedure {row['name']!r}; found {len(proc_matches)}"
+                        )
+                    selected_proc = proc_matches[0]
+                    raw_lines = selected_proc["raw"].splitlines()
+                    begin = next((
+                        index for index, line in enumerate(raw_lines)
+                        if line.strip().upper() == "BEGIN"
+                    ), None)
+                    if begin is None:
+                        raise ValueError(f"Procedure {row['name']} has no BEGIN block")
+                    code = "\n".join(raw_lines[begin:])
+                    line_offset = (
+                        source["object_line_offset"] + selected_proc["line_start"] + begin - 1
+                    )
+                    tree = analyze_control_flow(
+                        code, object_type, object_id, source["object_name"],
+                        selected_proc["name"], source["source_path"],
+                        line_offset=line_offset,
+                    )
+                    variable_source = "\n".join(
+                        variable["raw"] for variable in parsed_object["variables"]
+                    ) + "\n" + selected_proc["raw"]
+                    variables = parse_record_variables(variable_source)
+                    if tables:
+                        enrich_control_flow(tree["nodes"], variables, tables)
+                    filters = analyze_record_filter_paths(
+                        tree["nodes"], variables, tables, source["source_path"]
+                    )
+                    annotate_record_lookup_conditions(tree["nodes"], filters["lookups"])
+                    item["condition_analysis"] = {
+                        "nodes": tree["nodes"],
+                        "assignment_flow_analysis": analyze_assignment_flow(
+                            tree["nodes"], source["source_path"]
+                        ),
+                        "record_filter_analysis": filters,
+                        "semantic_resolution": {
+                            "enabled": bool(tables),
+                            "record_variables": variables,
+                            "table_ids_loaded": sorted(tables),
+                            "table_source_status": table_source_status,
+                            "runtime_evaluated": False,
+                        },
+                        "runtime_evaluated": False,
+                    }
+                except (ValueError, KeyError) as exc:
+                    item["condition_analysis"] = {
+                        "status": "unavailable",
+                        "reason": str(exc),
+                        "runtime_evaluated": False,
+                    }
         procedures.append(item)
 
     trace_edges = [
@@ -229,6 +323,8 @@ def trace_call_graph(graph: sqlite3.Connection, start: str,
         "procedure_count": len(procedures),
         "edge_count": len(trace_edges),
         "truncated": truncated,
+        "conditions_analyzed": bool(analyze_conditions),
+        "table_metadata_count": len(tables),
         "procedures": procedures,
         "call_edges": trace_edges,
         "unresolved_call_targets": [
@@ -238,6 +334,10 @@ def trace_call_graph(graph: sqlite3.Connection, start: str,
         "semantics": {
             "graph_source": "existing dependency graph CALL edges",
             "source_resolution": "exact object type/id; symbol source_file labels used to disambiguate",
+            "condition_analysis": (
+                "static IF/ELSE/CASE, assignment and filter analysis for resolved procedures"
+                if analyze_conditions else "not requested"
+            ),
             "runtime_evaluated": False,
             "limitations": [
                 "Only CALL edges already present in the dependency graph are traversed.",

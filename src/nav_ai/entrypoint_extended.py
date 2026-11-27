@@ -300,8 +300,8 @@ def map_job_queue_snapshot(snapshot: dict[str, Any], graph) -> dict[str, Any]:
         if not isinstance(row, dict):
             mapped.append({"row_index": index, "resolution": "invalid_row"})
             continue
-        raw_type = str(row.get("object_type", "")).strip()
-        raw_id = row.get("object_id")
+        raw_type = str(row.get("object_type", row.get("Object Type to Run", row.get("Object Type", "")))).strip()
+        raw_id = row.get("object_id", row.get("Object ID to Run", row.get("Object ID")))
         try:
             object_id = int(raw_id)
         except (TypeError, ValueError):
@@ -320,19 +320,19 @@ def map_job_queue_snapshot(snapshot: dict[str, Any], graph) -> dict[str, Any]:
                 "SELECT COUNT(*) FROM procedures WHERE object_node=? COLLATE NOCASE",
                 (target_node,),
             ).fetchone()[0]
-        parameter = row.get("parameter_string")
+        parameter = row.get("parameter_string", row.get("Parameter String"))
         mapped.append({
             "row_index": index,
-            "entry_no": row.get("entry_no"),
+            "entry_no": row.get("entry_no", row.get("Entry No.")),
             "object_type": target_type,
             "object_id": object_id,
             "target_object": target_node,
             "target_indexed": bool(target_node),
             "target_procedure_count": int(procedure_count),
-            "status": row.get("status"),
-            "earliest_start_datetime": row.get("earliest_start_datetime"),
-            "next_run_datetime": row.get("next_run_datetime"),
-            "recurring": row.get("recurring"),
+            "status": row.get("status", row.get("Status")),
+            "earliest_start_datetime": row.get("earliest_start_datetime", row.get("Earliest Start Date/Time")),
+            "next_run_datetime": row.get("next_run_datetime", row.get("Next Run Date/Time")),
+            "recurring": row.get("recurring", row.get("Recurring Job")),
             "parameter_string_present": bool(parameter),
             "parameter_string_length": len(str(parameter)) if parameter is not None else 0,
             "resolution": "unique_object_match" if target_node else "unresolved_or_missing_target",

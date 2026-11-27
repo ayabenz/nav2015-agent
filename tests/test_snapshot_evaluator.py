@@ -10,6 +10,7 @@ TABLE = """OBJECT Table 50063 Setting Blocked Stocktake
     { 7 ; ; Jenis Transaksi ; Option ; OptionString=IN,OUT,ALL }
     { 11 ; ; Block Type ; Option ; OptionString=Item,Product Group,Item Category }
     { 12 ; ; Item Category Code ; Code20 }
+    { 13 ; ; Blocked ; Boolean }
   }
 }
 """
@@ -68,3 +69,22 @@ def test_missing_table_metadata_does_not_turn_option_mismatch_into_false():
     assert result["status"] == "indeterminate"
     assert any(reason.startswith("field_metadata_unresolved:")
                for reason in result["missing_or_unsupported"])
+
+
+def test_boolean_field_is_evaluated_without_python_bool_integer_coercion():
+    variables, tables = _context()
+    condition = normalize_condition_expression('tblStocktake.Blocked = FALSE')
+    result = evaluate_condition_snapshot(
+        condition, {"tblStocktake": {"Blocked": False}}, variables, tables
+    )
+    assert result["result"] is True
+
+
+def test_cross_type_comparison_is_indeterminate_not_false():
+    variables, tables = _context()
+    condition = normalize_condition_expression('tblStocktake."Item Category Code" = 123')
+    result = evaluate_condition_snapshot(
+        condition, {"tblStocktake": {"Item Category Code": "123"}}, variables, tables
+    )
+    assert result["result"] is None
+    assert "incompatible_value_types:str:int" in result["missing_or_unsupported"]

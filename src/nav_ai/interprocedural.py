@@ -135,7 +135,10 @@ def analyze_direct_call_bindings(
         name = (variable.group("quoted") or variable.group("name") or "").strip()
         data_type = variable.group("type")
         if name:
-            receiver_types[name.casefold()] = data_type.title()
+            record_match = re.search(r"\\bRecord\\s+(\\d+)\\b", data_type, re.I)
+            receiver_types[name.casefold()] = (
+                f"Table {record_match.group(1)}" if record_match else data_type.title()
+            )
     target_object = f"{callee['object']['type']} {callee['object']['id']}"
     bindings = []
     for match, actuals in _calls(caller_block):

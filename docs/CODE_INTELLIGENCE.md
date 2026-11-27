@@ -454,3 +454,17 @@ Generated reports are static evidence. They do not prove that a process was exec
 The inventory attaches a heuristic domain hint (for example sales, purchase, inventory, warehouse, transfer, finance, production, service, integration or ownership) from the candidate object name, reachable procedure names and transitive Table names. The JSON preserves matched terms and their evidence category. Ties are reported as `ambiguous`; candidates without lexical evidence remain `unclassified`. A `moderate_heuristic` label is only a vocabulary-based hint, not confirmation of an actual business process. Validate vocabulary and classifications against Datascrip-specific objects before using them as authoritative process labels.
 
 The inventory also emits a separate **operational role hint** using CamelCase-aware reachable procedure names and indexed Table usage kinds. Possible hints include posting/transaction, data exchange, setup/configuration, inquiry, data maintenance and undetermined. This is a static profile: it does not prove that INSERT/MODIFY/DELETE executed or that a posting transaction completed. Both domain and role evidence are retained in the candidate's `domain_classification` JSON object.
+
+
+## Source-declared entry-point evidence
+
+The `nav_ai.entrypoint_intelligence.discover_source_entrypoints(source_roots)`
+API scans NAV TXT files and ZIP exports for source-declared trigger signatures,
+Page `OnAction` properties, and `RunObject` properties. Each finding retains
+object identity, source label, line number, section, and evidence kind.
+
+This is an evidence inventory, not a runtime invocation log. It does not prove
+that a Page Action is visible/enabled, that a trigger ran, or that a RunObject
+target was opened. Job Queue targets commonly depend on configured
+`Job Queue Entry` records and therefore require a separate configuration
+snapshot. Event subscribers and external schedules also need separate evidence.

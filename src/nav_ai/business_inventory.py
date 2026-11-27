@@ -8,6 +8,7 @@ from typing import Any
 
 from .business_docs import render_business_process_markdown, write_business_process_report
 from .process_mapping import map_candidate_processes
+from .process_classification import classify_process_candidates
 from .source_discovery import trace_call_graph
 
 
@@ -52,14 +53,15 @@ def render_inventory_markdown(inventory: dict[str, Any]) -> str:
     lines += [
         "## Candidate inventory",
         "",
-        "| Candidate | Origin | Score | Reachable procedures | Tables | Trace status |",
-        "|---|---|---:|---:|---:|---|",
+        "| Candidate | Domain hint | Origin | Score | Procedures | Tables | Trace status |",
+        "|---|---|---|---:|---:|---:|---|",
     ]
     traces = inventory["traces"]
     for candidate in mapping["candidates"]:
         trace = traces.get(candidate["object"], {})
         lines.append(
             f"| {candidate['object']} — {candidate.get('name') or ''} "
+            f"| {candidate.get('domain_classification', {}).get('primary_domain', 'unclassified')} "
             f"| {candidate['origin']} | {candidate['score']} "
             f"| {candidate.get('reachable_procedure_count', 0)} "
             f"| {len(candidate.get('table_ids', []))} "
@@ -114,6 +116,7 @@ def generate_business_process_inventory(
         min_similarity=min_similarity, max_depth=max_depth,
         max_nodes_per_candidate=max_nodes,
     )
+    mapping["candidates"] = classify_process_candidates(mapping["candidates"])
     traces: dict[str, dict[str, Any]] = {}
     failures: dict[str, dict[str, str]] = {}
     for candidate in mapping["candidates"]:

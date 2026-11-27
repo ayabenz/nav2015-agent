@@ -20,6 +20,7 @@ from .record_filters import analyze_record_filter_paths, annotate_record_lookup_
 from .snapshot_evaluator import evaluate_condition_snapshot
 from .assignment_flow import analyze_assignment_flow
 from .interprocedural import analyze_direct_call_bindings
+from .var_mutation import analyze_var_parameter_mutations
 
 
 def _attach_snapshot_evaluations(nodes: Any, snapshot: dict[str, Any],
@@ -304,10 +305,34 @@ def main(argv: list[str] | None = None) -> int:
                 call_bindings = []
                 for caller_path in args.call_source:
                     caller_text = Path(caller_path).read_text(encoding="utf-8-sig", errors="replace")
-                    call_bindings.append(analyze_direct_call_bindings(
+                    binding = analyze_direct_call_bindings(
                         caller_text, block, args.procedure or "",
                         caller_path, args.source_file,
-                    ))
+                    )
+                    mutation_summary = analyze_var_parameter_mutations(
+                        block, args.procedure or "", args.source_file
+                    )
+                    effects_by_parameter = {
+                        item["parameter"].casefold(): item
+                        for item in mutation_summary["var_parameters"]
+                    }
+                    for site in binding["call_sites"]:
+                        site["var_parameter_effects"] = []
+                        for argument in site["arguments"]:
+                            if not argument.get("by_reference"):
+                                continue
+                            effect = effects_by_parameter.get(argument["parameter"].casefold())
+                            if effect:
+                                site["var_parameter_effects"].append({
+                                    "parameter": argument["parameter"],
+                                    "caller_argument": argument.get("argument"),
+                                    "caller_argument_record_type": argument.get("argument_record_type"),
+                                    "mutation_state": effect["mutation_state"],
+                                    "mutations": effect["mutations"],
+                                    "propagation": "symbolic_only",
+                                })
+                    binding["callee_var_mutation_summary"] = mutation_summary
+                    call_bindings.append(binding)
                 result["interprocedural_call_bindings"] = call_bindings
             if args.snapshot_json and not args.table_source:
                 raise ValueError("--snapshot-json requires at least one --table-source")

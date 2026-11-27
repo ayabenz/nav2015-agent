@@ -267,14 +267,57 @@ def annotate_callsite_boolean_branches(nodes: list[dict[str, Any]],
         if bool_args:
             walk(nodes, site, bool_args)
 
+def _resolve_boolean_path(path: list[dict[str, Any]],
+                          bool_args: dict[str, bool]) -> str:
+    """Classify a mutation path against known Boolean call arguments.
+
+    Returns compatible when every predicate is resolved and matches, impossible
+    when at least one resolved predicate conflicts, otherwise unresolved.
+    """
+    unresolved = False
+    for step in path:
+        condition = step.get("if")
+        outcome = step.get("outcome")
+        if condition is None or not isinstance(outcome, bool):
+            unresolved = True
+            continue
+        matched = [
+            (formal, _simple_boolean_condition(str(condition), formal))
+            for formal in bool_args
+        ]
+        matched = [(formal, polarity) for formal, polarity in matched
+                   if polarity is not None]
+        if not matched:
+            unresolved = True
+            continue
+        # If multiple formals syntactically match, require all to agree.
+        for formal, polarity in matched:
+            selected = bool_args[formal] if polarity else not bool_args[formal]
+            if selected != outcome:
+                return "impossible"
+    return "unresolved" if unresolved else "compatible"
+
+
 def build_caller_var_effect_map(binding: dict[str, Any]) -> dict[int, list[dict[str, Any]]]:
-    """Map unconditional callee VAR assignments back to simple caller variables."""
+    """Map call-site-compatible explicit callee VAR assignments to caller variables.
+
+    Conditional mutations are propagated as definite only when all path predicates
+    are resolved by Boolean literals supplied at that exact call site. Paths with
+    unknown predicates remain unpropagated; incompatible paths are discarded.
+    """
     result: dict[int, list[dict[str, Any]]] = {}
-    simple_name = re.compile(r'^(?:"[^"]+"|[A-Za-z_][A-Za-z0-9_@]*)$')
+    simple_name = re.compile(r'^(?:"[^"]+"|[A-Za-z_][A-Za-z0-9_@]*))
     for site in binding.get("call_sites", []):
         line = int(site.get("line", 0))
         if line <= 0:
             continue
+        bool_args = {
+            arg["parameter"]: arg["argument"].upper() == "TRUE"
+            for arg in site.get("arguments", [])
+            if arg.get("type_match") == "compatible_literal"
+            and arg.get("formal_type", "").casefold() == "boolean"
+            and arg.get("argument", "").upper() in {"TRUE", "FALSE"}
+        }
         for effect_group in site.get("var_parameter_effects", []):
             actual = str(effect_group.get("caller_argument", "")).strip()
             if not simple_name.fullmatch(actual):
@@ -282,8 +325,11 @@ def build_caller_var_effect_map(binding: dict[str, Any]) -> dict[int, list[dict[
             formal = str(effect_group.get("parameter", "")).strip()
             prefix = formal.casefold()
             for mutation in effect_group.get("mutations", []):
-                # Do not assert a conditional callee assignment as a definite value.
-                if mutation.get("path"):
+                path = mutation.get("path") or []
+                path_state = _resolve_boolean_path(path, bool_args)
+                if path_state == "impossible":
+                    continue
+                if path_state != "compatible":
                     continue
                 target = str(mutation.get("target", "")).strip()
                 if target.casefold() == prefix:
@@ -300,5 +346,8 @@ def build_caller_var_effect_map(binding: dict[str, Any]) -> dict[int, list[dict[
                     "callee_parameter": formal,
                     "mapping": mapping,
                     "conditional": False,
+                    "path_specialization": "call_site_boolean_arguments" if path else "unconditional",
+                    "callee_path": path,
+                    "runtime_evaluated": False,
                 })
     return result

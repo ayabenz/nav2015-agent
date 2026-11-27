@@ -117,6 +117,8 @@ See ROADMAP_TRACKER.md, Phase 2.5, for implementation tasks and exit criteria.
 
 The first implementation adds `nav_ai.control_flow` and a `conditions` command. It extracts nested IF/ELSE and CASE/OF branches from a supplied NAV TXT export and preserves raw predicates, branch statements, source spans and parser diagnostics.
 
+The analyzer also annotates simple Boolean callee conditions when a direct caller passes a literal `TRUE` or `FALSE`. For example, Codeunit 50081 calls `BlockStocktakeSalesHeader(Rec, FALSE)`, while Codeunit 50107 branches on `IF CreateWhseShipment THEN`. The call-site annotation identifies the ELSE outcome as compatible with that call and the THEN outcome as incompatible. This is call-site-specific static specialization, not proof that either procedure executed. Only simple predicates directly referencing the Boolean formal (or supported `NOT`/Boolean comparison forms) are recognized; compound expressions remain unresolved.
+
 Example:
 
 ```powershell
@@ -300,7 +302,9 @@ This remains intra-procedural analysis. Procedure parameters, return values, VAR
 
 ### Direct interprocedural argument binding
 
-The `conditions` command accepts repeatable `--call-source <caller.txt>` arguments when a specific `--procedure` is selected. It scans supplied caller exports for direct `Receiver.Procedure(...)` syntax, checks the receiver's declared Codeunit type against the callee object, and maps positional actual arguments to the callee's parsed formal parameters. It recognizes typed Record variables (including `Rec` when `TableNo` is declared) and Boolean literals. `VAR` formals are explicitly marked by-reference.\n\nThe same command also includes a conservative callee-side summary of explicit assignments to those `VAR` parameters. Assignments to a scalar parameter and assignments to a qualified field of a `VAR Record` parameter are reported with source line and branch path, then associated with the corresponding actual argument in each call-site result under `var_parameter_effects`. For example, a formal `SalesHeader: Record 36` passed by reference can report an assignment to `SalesHeader.Status` as a mutation of the caller's Record argument.  This remains symbolic: expressions are not evaluated, nested calls, triggers, implicit writes and other side effects are not fully modeled.
+The `conditions` command accepts repeatable `--call-source <caller.txt>` arguments when a specific `--procedure` is selected. It scans supplied caller exports for direct `Receiver.Procedure(...)` syntax, checks the receiver's declared Codeunit type against the callee object, and maps positional actual arguments to the callee's parsed formal parameters. It recognizes typed Record variables (including `Rec` when `TableNo` is declared) and Boolean literals. `VAR` formals are explicitly marked by-reference.
+
+The same command also includes a conservative callee-side summary of explicit assignments to those `VAR` parameters. Assignments to a scalar parameter and assignments to a qualified field of a `VAR Record` parameter are reported with source line and branch path, then associated with the corresponding actual argument in each call-site result under `var_parameter_effects`. For example, a formal `SalesHeader: Record 36` passed by reference can report an assignment to `SalesHeader.Status` as a mutation of the caller's Record argument.  This remains symbolic: expressions are not evaluated, nested calls, triggers, implicit writes and other side effects are not fully modeled.
 
 For simple caller arguments, the output now also includes `caller_state_effect_map`. It maps **unconditional** explicit callee assignments back to a simple caller variable (for example, `VAR Status` assigned `'Released'` maps to caller `Status`; `VAR SalesHeader` field assignment maps to `Rec.Status`). The same effects can be supplied to `analyze_assignment_flow(..., call_effects=...)` so later caller `IF` nodes can see those mapped assignments. The call transfer invalidates pre-call tracked facts first, then restores only mapped effects.
 
@@ -312,4 +316,4 @@ Example:
 nav-intel --company datascrip --json conditions --source-file "reports/datascrip/ownership/Codeunit_50107.txt" --object "Codeunit 50107" --procedure "BlockStocktakeSalesHeader" --call-source "reports/datascrip/stocktake_callers/Codeunit_50081.txt"
 ```
 
-The output is static call-site evidence only. It does not propagate values after a call, prove execution, or resolve WITH-scoped/unqualified calls, dynamic dispatch, indirect callbacks, or arbitrary expression types. Caller source line numbers are relative to the supplied object export.
+The output is static call-site evidence only. It does not prove execution or fully propagate caller state. Only unconditional explicit VAR mutations through simple arguments are mapped; conditional effects remain possible rather than definite. WITH-scoped/unqualified calls, dynamic dispatch, indirect callbacks, and arbitrary expression types are not resolved. Caller source line numbers are relative to the supplied object export.

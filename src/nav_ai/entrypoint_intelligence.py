@@ -73,6 +73,7 @@ def discover_source_entrypoints(source_roots: list[str]) -> dict[str, Any]:
                 continue
             seen_sources.add(identity)
             for match, block in split_objects(text):
+                line_offset = text.count("\n", 0, match.start())
                 header = OBJECT_RE.match(match.group(0).strip())
                 if not header:
                     continue
@@ -98,7 +99,7 @@ def discover_source_entrypoints(source_roots: list[str]) -> dict[str, Any]:
                             "trigger": trigger.group(1),
                             "source": display_path,
                             "source_label": source_label,
-                            "line": line_no,
+                            "line": line_no + line_offset,
                             "evidence": "trigger_declaration_in_CODE_section" if code_started else "trigger_property_declaration",
                             "confidence": "source_declaration",
                             "runtime_invoked": False,

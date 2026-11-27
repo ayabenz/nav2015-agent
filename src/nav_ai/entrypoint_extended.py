@@ -43,6 +43,7 @@ def discover_extended_entrypoints(source_roots: list[str], graph=None) -> dict[s
                 vars_by_name: dict[str, dict[str, Any]] = {}
                 current_proc = "<object>"
                 pending_publisher = None
+                pending_subscribers: list[dict[str, Any]] = []
                 proc_vars_by_scope: dict[str, dict[str, Any]] = {}
                 for i, line in enumerate(lines):
                     sm = SECTION_RE.match(line)
@@ -64,6 +65,9 @@ def discover_extended_entrypoints(source_roots: list[str], graph=None) -> dict[s
                                 "runtime_raised": False,
                             })
                             pending_publisher = None
+                        for pending_subscriber in pending_subscribers:
+                            pending_subscriber["subscriber_procedure"] = current_proc
+                        pending_subscribers.clear()
                     vm = VAR_RE.match(line)
                     if vm:
                         vname = (vm.group(1) or vm.group(2)).strip()
@@ -76,13 +80,15 @@ def discover_extended_entrypoints(source_roots: list[str], graph=None) -> dict[s
                         target_type = em.group(1).title()
                         target_id = int(em.group(2)) if em.group(2).isdigit() else None
                         target_name = em.group(3)
-                        subscribers.append({
-                            "subscriber_object": node, "subscriber_procedure": current_proc,
+                        subscriber = {
+                            "subscriber_object": node, "subscriber_procedure": None,
                             "event_object_type": target_type, "event_object_id": target_id,
                             "event_object_name": target_name, "event_name": em.group(4),
                             "source": display, "line": i + 1 + offset,
                             "evidence": "EventSubscriber_attribute", "runtime_invoked": False,
-                        })
+                        }
+                        subscribers.append(subscriber)
+                        pending_subscribers.append(subscriber)
                     if typ == "Table" and section == "FIELDS":
                         fm = FIELD_START_RE.match(line)
                         if fm:

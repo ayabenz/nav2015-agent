@@ -197,10 +197,12 @@ def trace_call_graph(graph: sqlite3.Connection, start: str,
     }
 
     depth_by_node: dict[str, int] = {}
+    parent_by_node: dict[str, str] = {}
     queue = deque()
     for node in starts:
-        depth_by_node.setdefault(node, 0)
-        queue.append(node)
+        if node not in depth_by_node:
+            depth_by_node[node] = 0
+            queue.append(node)
     truncated = False
     unresolved_call_targets: set[tuple[str, str]] = set()
     while queue:
@@ -219,6 +221,7 @@ def trace_call_graph(graph: sqlite3.Connection, start: str,
                 queue.clear()
                 break
             depth_by_node[target] = depth + 1
+            parent_by_node[target] = node
             queue.append(target)
 
     wanted_objects: set[tuple[str, int]] = set()
@@ -295,6 +298,19 @@ def trace_call_graph(graph: sqlite3.Connection, start: str,
         source_public = {
             key: value for key, value in source.items() if key != "raw_block"
         }
+        path_nodes = [row["node"]]
+        parent = parent_by_node.get(row["node"])
+        while parent:
+            path_nodes.append(parent)
+            parent = parent_by_node.get(parent)
+        path_nodes.reverse()
+        direct_table_usage = [
+            dict(usage_row) for usage_row in graph.execute(
+                "SELECT table_node,table_name,usage,count,new_vs_original "
+                "FROM table_usage WHERE src=? ORDER BY usage,table_node",
+                (row["node"],),
+            ).fetchall()
+        ]
         item = {
             "node": row["node"],
             "object_node": row["object_node"],
@@ -303,6 +319,8 @@ def trace_call_graph(graph: sqlite3.Connection, start: str,
             "origin": row["origin"],
             "is_local": bool(row["is_local"]),
             "graph_line": row["line"],
+            "call_path": path_nodes,
+            "table_usage": direct_table_usage,
             "source": source_public,
         }
         proc_info = None
@@ -396,6 +414,40 @@ def trace_call_graph(graph: sqlite3.Connection, start: str,
         for src, targets in adjacency.items() if src in depth_by_node
         for dst in targets if dst in depth_by_node and depth_by_node[dst] == depth_by_node[src] + 1
     ]
+    reached_objects = sorted({item["object_node"] for item in procedures})
+    aggregate_table_usage: list[dict[str, Any]] = []
+    if reached_objects:
+        placeholders = ",".join("?" for _ in reached_objects)
+        aggregate_table_usage = [
+            dict(row) for row in graph.execute(
+                "SELECT table_node,table_name,usage,SUM(count) AS count,"
+                "MAX(new_vs_original) AS new_vs_original "
+                f"FROM table_usage WHERE src_object IN ({placeholders}) "
+                "GROUP BY table_node,table_name,usage ORDER BY usage,table_node",
+                tuple(reached_objects),
+            ).fetchall()
+        ]
+    origin_counts: dict[str, int] = {}
+    source_status_counts: dict[str, int] = {}
+    condition_node_counts = {"if": 0, "case": 0}
+    def count_conditions(value: Any) -> None:
+        if isinstance(value, dict):
+            kind = value.get("type")
+            if kind in condition_node_counts:
+                condition_node_counts[kind] += 1
+            for child in value.values():
+                if isinstance(child, (dict, list)):
+                    count_conditions(child)
+        elif isinstance(value, list):
+            for child in value:
+                count_conditions(child)
+    for item in procedures:
+        origin_counts[item["origin"]] = origin_counts.get(item["origin"], 0) + 1
+        status = item["source"]["status"]
+        source_status_counts[status] = source_status_counts.get(status, 0) + 1
+        analysis = item.get("condition_analysis", {})
+        if analysis.get("status") == "analyzed":
+            count_conditions(analysis.get("nodes", []))
     return {
         "start": start_label,
         "max_depth": max_depth,
@@ -408,6 +460,20 @@ def trace_call_graph(graph: sqlite3.Connection, start: str,
         "table_metadata_count": len(tables),
         "procedures": procedures,
         "call_edges": trace_edges,
+        "table_usage_summary": aggregate_table_usage,
+        "process_summary": {
+            "procedure_count": len(procedures),
+            "call_edge_count": len(trace_edges),
+            "origin_counts": origin_counts,
+            "source_status_counts": source_status_counts,
+            "table_count": len({row["table_node"] for row in aggregate_table_usage}),
+            "table_usage_counts": {
+                usage: sum(row["count"] for row in aggregate_table_usage if row["usage"] == usage)
+                for usage in sorted({row["usage"] for row in aggregate_table_usage})
+            },
+            "condition_node_counts": condition_node_counts,
+            "unresolved_call_target_count": len(unresolved_call_targets),
+        },
         "unresolved_call_targets": [
             {"src": src, "dst": dst, "reason": "CALL edge targets an object/non-procedure graph node"}
             for src, dst in sorted(unresolved_call_targets)
@@ -426,6 +492,7 @@ def trace_call_graph(graph: sqlite3.Connection, start: str,
                 "Calls absent from the graph, dynamic dispatch, triggers and implicit side effects are not discovered.",
                 "Missing or ambiguous source exports are reported rather than inferred.",
                 "Depth is measured in procedure-call edges; starting all procedures of an object begins at depth zero.",
+            "Each procedure has one shortest first-discovered call_path; alternate paths are retained in call_edges, not collapsed into a single asserted execution path.",
             ],
         },
     }

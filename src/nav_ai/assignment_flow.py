@@ -17,6 +17,54 @@ _ASSIGNMENT = re.compile(
 _CALL = re.compile(r'\b[A-Za-z_][A-Za-z0-9_@]*\s*\(', re.I)
 _IDENTIFIER = re.compile(r'(?<![.])\b[A-Za-z_][A-Za-z0-9_@]*(?:\s*\.\s*(?:"(?:[^"]|"")*"|[A-Za-z_][A-Za-z0-9_ ]*))?', re.I)
 
+_KEYWORDS = {
+    "AND", "OR", "NOT", "TRUE", "FALSE", "THEN", "ELSE", "IF", "CASE",
+    "OF", "BEGIN", "END", "IN", "MOD", "DIV", "XOR", "EXIT", "ERROR",
+    "MESSAGE", "TESTFIELD", "FIELDERROR",
+}
+
+
+def _expression_references(expression: str) -> list[str]:
+    """Return conservative variable/field references from a simple expression."""
+    # Mask quoted literals so their contents are never mistaken for identifiers.
+    masked = re.sub(r"'(?:''|[^'])*'|""(?:""""|[^""])*""", " ", expression)
+    refs = []
+    for match in _IDENTIFIER.finditer(masked):
+        name = match.group(0).strip()
+        prefix = masked[:match.start()].rstrip()
+        if prefix.endswith("::") or name.upper() in _KEYWORDS:
+            continue
+        # A call target is not a variable dependency; calls are handled as unknown.
+        if masked[match.end():].lstrip().startswith("("):
+            continue
+        if _key(name) not in {_key(x) for x in refs}:
+            refs.append(name)
+    return refs
+
+
+def _dependency_chain(assignment: dict[str, Any], values: dict[str, dict[str, Any]],
+                      seen: set[str] | None = None) -> list[dict[str, Any]]:
+    """Resolve simple assignment-to-assignment provenance without evaluating expressions."""
+    seen = set(seen or ())
+    key = assignment["target_key"]
+    if key in seen:
+        return [{"state": "cycle", "target": assignment["target"]}]
+    seen.add(key)
+    chain = []
+    for reference in assignment.get("expression_references", []):
+        dependency = values.get(_key(reference))
+        if dependency is None:
+            chain.append({"state": "unresolved", "reference": reference})
+            continue
+        chain.append({
+            "state": "resolved",
+            "reference": reference,
+            "assignment": {k: v for k, v in dependency.items()
+                           if k not in {"expression_references"}},
+            "upstream": _dependency_chain(dependency, values, seen),
+        })
+    return chain
+
 
 def _key(value: str) -> str:
     return re.sub(r'\s+', '', value).casefold()
@@ -38,6 +86,7 @@ def _assignment(source: str, line: int, source_file: str) -> dict[str, Any] | No
         "source_file": source_file,
         "kind": "explicit_assignment",
         "evaluated": False,
+        "expression_references": _expression_references(value),
     }
 
 
@@ -102,7 +151,8 @@ def analyze_assignment_flow(nodes: list[dict[str, Any]], source_file: str = "<me
                     key = _key(name)
                     value = state["values"].get(key)
                     if value and all(x["target_key"] != key for x in refs):
-                        refs.append({**value, "referenced_as": name})
+                        refs.append({**value, "referenced_as": name,
+                                      "dependency_chain": _dependency_chain(value, state["values"])})
                 alternatives.append({
                     "path": list(state["path"]),
                     "known_assignments": refs,

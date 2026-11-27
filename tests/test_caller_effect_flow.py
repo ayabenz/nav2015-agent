@@ -22,7 +22,7 @@ def test_callee_var_effect_is_visible_in_callers_following_if():
         CALLER,
         "caller.txt",
         {
-            8: [{
+            9: [{
                 "target": "Rec.Status",
                 "expression": "Status::Released",
                 "callee_line": 19,
@@ -41,4 +41,5 @@ def test_callee_var_effect_is_visible_in_callers_following_if():
     assert len(propagated) == 1
     assert propagated[0]["target"] == "Rec.Status"
     assert propagated[0]["expression"] == "Status::Released"
-    assert propagated[0]["runtime_evaluated"] if "runtime_evaluated" in propagated[0] else True
+    assert propagated[0]["evaluated"] is False
+    assert propagated[0]["interprocedural"] is True

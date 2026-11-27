@@ -181,3 +181,14 @@ IF R.FINDFIRST THEN
 The lookup after the first IF is represented by two possible source paths, one carrying `OUT|ALL` and the other carrying `IN|ALL`. CASE arms and ELSE are handled similarly. Each lookup includes `path_conditions`, `active_filters`, and `filter_state=path_specific`. The IF predicate annotation retains all matching lookup alternatives in `lookup_paths`.
 
 This remains static path enumeration, not symbolic execution. Predicates such as `IsOutbound` are not evaluated, filter placeholders are not substituted, and the analyzer does not prove either path is reachable. Unknown or unsupported statement forms remain outside the interpreted subset. Database row existence is never inferred from FINDFIRST.
+
+
+### Stocktake Sales Header example
+
+The current `BlockStocktakeSalesHeader` source has a document-type IF / ELSE IF before the `tblStocktake.FINDFIRST` lookup:
+
+- Sales Order / Sales Invoice path: `Jenis Transaksi = OUT|ALL`
+- Sales Credit Memo / Sales Return Order path: `Jenis Transaksi = IN|ALL`
+- Other document-type path: no `Jenis Transaksi` filter is assigned by that IF chain
+
+The third path is important: the analyzer must not silently treat it as either IN or OUT. Whether it is reachable for the caller's document type is a separate question that requires value and caller-context analysis. A dedicated regression fixture covers these three syntactic paths.

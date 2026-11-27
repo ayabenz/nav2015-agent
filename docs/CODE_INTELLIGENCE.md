@@ -192,3 +192,17 @@ The current `BlockStocktakeSalesHeader` source has a document-type IF / ELSE IF 
 - Other document-type path: no `Jenis Transaksi` filter is assigned by that IF chain
 
 The third path is important: the analyzer must not silently treat it as either IN or OUT. Whether it is reachable for the caller's document type is a separate question that requires value and caller-context analysis. A dedicated regression fixture covers these three syntactic paths.
+
+
+## Normalized condition expressions
+
+The analyzer now attaches `normalized_condition` to IF nodes and `normalized_expression` to CASE selectors when Table metadata resolution is enabled. The initial expression normalizer recognizes:
+
+- Comparison operators: `=`, `<>`, `<`, `>`, `<=`, `>=`, and `IN`
+- Boolean composition: `AND`, `OR`, and unary `NOT`, with parentheses and precedence preserved
+- `IN [value, ...]` lists, retained as individual raw operands
+- Field references and Option members, which are resolved separately by `semantic_conditions`
+
+For example, the Stocktake predicate comparing `tblStocktake."Block Type"` to the `"Item Category"` Option member becomes a comparison node with left and right operands. The resolver separately confirms whether the field and Option member exist in the supplied Table 50063 metadata.
+
+Normalization is structural, not evaluative. It does not determine the current value of a Record field, evaluate Boolean expressions, classify every literal type, or prove a branch reachable. Unrecognized fragments remain raw operand nodes so the original source expression is not discarded.

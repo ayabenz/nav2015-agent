@@ -46,7 +46,7 @@ def test_unknown_call_invalidates_known_assignments():
 
 
 def test_call_inside_assignment_invalidates_other_tracked_values():
-    nodes, result = run("Status := 'Open';\nOther := GetStatus();\\nIF Status = 'Open' THEN Post;")
+    nodes, result = run("Status := 'Open';\nOther := GetStatus();\nIF Status = 'Open' THEN Post;")
     context = nodes[-1]["assignment_context"]["alternatives"][0]
     assert context["known_assignments"] == []
     assert any(e["kind"] == "unknown_call_invalidation" for e in result["events"])

@@ -138,6 +138,10 @@ def analyze_trace_filter_edges(
                 "callee_object": callee_object,
                 "callee_procedure": callee_proc,
                 "filter_summary": filter_summary,
+                "call_binding": binding,
+                "parameter_filter_event_counts": {
+                    name: len(events) for name, events in parameter_events.items()
+                },
                 "caller_filter_effect_map": {
                     str(line): effects for line, effects in mapped.items()
                 },

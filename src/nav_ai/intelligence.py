@@ -26,6 +26,7 @@ from .interprocedural import (analyze_direct_call_bindings, build_caller_var_eff
 from .var_mutation import analyze_var_parameter_mutations
 from .source_discovery import trace_call_graph
 from .business_docs import default_report_name, write_business_process_report
+from .process_discovery import discover_process_entrypoints
 
 
 def _attach_snapshot_evaluations(nodes: Any, snapshot: dict[str, Any],
@@ -371,6 +372,10 @@ def main(argv: list[str] | None = None) -> int:
     imp.add_argument("node")
     imp.add_argument("--kinds", default="CALL")
 
+    discover = sub.add_parser("discover", help="rank candidate business-process entry objects from the dependency graph")
+    discover.add_argument("--limit", type=int, default=200, help="maximum candidates to return")
+    discover.add_argument("--include-standard", action="store_true", help="include STANDARD_UNCHANGED objects")
+
     trace = sub.add_parser("trace", help="trace reachable CALL procedures and discover their source exports")
     trace.add_argument("start", help='object or procedure node, e.g. "Codeunit 50107"')
     trace.add_argument("--source-root", action="append", required=True, help="TXT file, ZIP file, or directory containing NAV TXT exports; repeatable")
@@ -548,7 +553,11 @@ def main(argv: list[str] | None = None) -> int:
                 result = symbol_search(symbols, args.terms, args.limit)
         else:
             with _connect(graph_path) as graph:
-                if args.command == "trace":
+                if args.command == "discover":
+                    result = discover_process_entrypoints(
+                        graph, limit=args.limit, include_standard=args.include_standard
+                    )
+                elif args.command == "trace":
                     if not args.source_root:
                         raise ValueError("trace requires at least one --source-root")
                     with _connect(symbol_path) as symbols:
